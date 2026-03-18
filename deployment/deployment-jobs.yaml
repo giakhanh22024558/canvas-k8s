@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: canvas-jobs
+  namespace: canvas
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: canvas-jobs
+  template:
+    metadata:
+      labels:
+        app: canvas-jobs
+    spec:
+      containers:
+        - name: jobs
+          image: your-image/canvas:latest
+          envFrom:
+            - secretRef:
+                name: canvas-secret
+          command:
+            - sh
+            - -c
+            - bundle exec ruby script/delayed_job run
