@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: canvas-web
+  namespace: canvas
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: canvas-web
+  template:
+    metadata:
+      labels:
+        app: canvas-web
+    spec:
+      containers:
+        - name: web
+          image: your-image/canvas:latest
+          envFrom:
+            - secretRef:
+                name: canvas-secret
+          env:
+            - name: RAILS_ENV
+              value: production
+            - name: RAILS_SERVE_STATIC_FILES
+              value: "1"
+          command: ["bundle","exec","puma","-C","config/puma.rb"]
+          ports:
+            - containerPort: 3000

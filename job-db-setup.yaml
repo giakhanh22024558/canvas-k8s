@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: canvas-db-init
+  namespace: canvas
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: init
+          image: your-image/canvas:latest
+          envFrom:
+            - secretRef:
+                name: canvas-secret
+          env:
+            - name: RAILS_ENV
+              value: production
+          command:
+            - sh
+            - -c
+            - |
+              bundle exec rails db:migrate &&
+              bundle exec rake db:initial_setup

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: canvas-config
+  namespace: canvas
+data:
+  database.yml: |
+    production:
+      adapter: postgresql
+      database: <%= ENV["DB_NAME"] %>
+      host: <%= ENV["DB_HOST"] %>
+      username: <%= ENV["DB_USER"] %>
+      password: <%= ENV["DB_PASSWORD"] %>
+
+  redis.yml: |
+    production:
+      url: <%= ENV["REDIS_URL"] %>
+
+# Need to add more
