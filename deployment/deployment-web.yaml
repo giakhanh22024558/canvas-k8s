@@ -28,7 +28,7 @@ spec:
           command: ["bundle","exec","puma","-C","config/puma.rb"]
 
           ports:
-            - containerPort: 80
+            - containerPort: 9292
 
           volumeMounts:
             - name: canvas-config
