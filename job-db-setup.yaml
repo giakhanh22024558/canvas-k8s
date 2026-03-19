@@ -10,15 +10,38 @@ spec:
       containers:
         - name: init
           image: khanhdev13/canvas-lms:latest
+
           envFrom:
             - secretRef:
                 name: canvas-secret
+
           env:
             - name: RAILS_ENV
               value: production
+
           command:
             - sh
             - -c
             - |
+              echo "⏳ Running DB migrate..."
               bundle exec rails db:migrate &&
+              echo "⏳ Running initial setup..."
               bundle exec rake db:initial_setup
+
+          volumeMounts:
+            - name: canvas-config
+              mountPath: /usr/src/app/config/database.yml
+              subPath: database.yml
+
+            - name: canvas-config
+              mountPath: /usr/src/app/config/redis.yml
+              subPath: redis.yml
+
+            - name: canvas-config
+              mountPath: /usr/src/app/config/security.yml
+              subPath: security.yml
+
+      volumes:
+        - name: canvas-config
+          configMap:
+            name: canvas-config

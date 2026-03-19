@@ -24,6 +24,26 @@ spec:
               value: production
             - name: RAILS_SERVE_STATIC_FILES
               value: "1"
+
           command: ["bundle","exec","puma","-C","config/puma.rb"]
+
           ports:
             - containerPort: 3000
+
+          volumeMounts:
+            - name: canvas-config
+              mountPath: /usr/src/app/config/database.yml
+              subPath: database.yml
+
+            - name: canvas-config
+              mountPath: /usr/src/app/config/redis.yml
+              subPath: redis.yml
+
+            - name: canvas-config
+              mountPath: /usr/src/app/config/security.yml
+              subPath: security.yml
+
+      volumes:
+        - name: canvas-config
+          configMap:
+            name: canvas-config
