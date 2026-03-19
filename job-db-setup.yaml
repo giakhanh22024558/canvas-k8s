@@ -47,7 +47,12 @@ spec:
                 );
 
                 a = Account.default;
-                a.add_user(u);
+
+                AccountUser.create!(
+                  user: u,
+                  account: a,
+                  role: 'admin'
+                );
 
                 puts '✅ Admin created'
               "
