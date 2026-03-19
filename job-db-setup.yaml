@@ -52,13 +52,13 @@ spec:
 
                 a = Account.default;
 
-                unless AccountUser.exists?(user: u, account: a)
-                  AccountUser.create!(
-                    user: u,
-                    account: a,
-                    role: 'admin'
-                  );
-                end;
+                admin_role = Role.get_built_in_role('AccountAdmin');
+
+                AccountUser.find_or_create_by!(
+                  user: u,
+                  account: a,
+                  role: admin_role
+                );
 
                 puts '✅ Admin ensured (idempotent)'
               "
