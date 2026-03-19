@@ -31,30 +31,36 @@ spec:
 
               echo "⏳ Creating admin user..."
               bundle exec rails runner "
-                u = User.create!(
-                  name: 'Admin',
-                  short_name: 'Admin',
-                  sortable_name: 'Admin',
-                  workflow_state: 'active'
-                );
+                u = User.find_or_initialize_by(name: 'Admin');
 
-                p = Pseudonym.create!(
-                  user: u,
-                  unique_id: 'admin@canvas.com',
-                  password: 'Admin123!',
-                  password_confirmation: 'Admin123!',
-                  workflow_state: 'active'
-                );
+                if u.new_record?
+                  u.short_name = 'Admin';
+                  u.sortable_name = 'Admin';
+                  u.workflow_state = 'active';
+                  u.save!;
+                end;
+
+                p = Pseudonym.find_or_initialize_by(unique_id: 'admin@canvas.com');
+
+                if p.new_record?
+                  p.user = u;
+                  p.password = 'Admin123!';
+                  p.password_confirmation = 'Admin123!';
+                  p.workflow_state = 'active';
+                  p.save!;
+                end;
 
                 a = Account.default;
 
-                AccountUser.create!(
-                  user: u,
-                  account: a,
-                  role: 'admin'
-                );
+                unless AccountUser.exists?(user: u, account: a)
+                  AccountUser.create!(
+                    user: u,
+                    account: a,
+                    role: 'admin'
+                  );
+                end;
 
-                puts '✅ Admin created'
+                puts '✅ Admin ensured (idempotent)'
               "
 
           volumeMounts:
