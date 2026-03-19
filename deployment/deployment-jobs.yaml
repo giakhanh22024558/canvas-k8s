@@ -16,10 +16,30 @@ spec:
       containers:
         - name: jobs
           image: khanhdev13/canvas-lms:latest
+
           envFrom:
             - secretRef:
                 name: canvas-secret
+
           command:
             - sh
             - -c
             - bundle exec ruby script/delayed_job run
+
+          volumeMounts:
+            - name: canvas-config
+              mountPath: /usr/src/app/config/database.yml
+              subPath: database.yml
+
+            - name: canvas-config
+              mountPath: /usr/src/app/config/redis.yml
+              subPath: redis.yml
+
+            - name: canvas-config
+              mountPath: /usr/src/app/config/security.yml
+              subPath: security.yml
+
+      volumes:
+        - name: canvas-config
+          configMap:
+            name: canvas-config

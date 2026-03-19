@@ -16,4 +16,6 @@ data:
     production:
       url: <%= ENV["REDIS_URL"] %>
 
-# Need to add more
+  security.yml: |
+    production:
+      encryption_key: <%= ENV["ENCRYPTION_KEY"] %>
