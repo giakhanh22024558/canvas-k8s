@@ -31,16 +31,25 @@ spec:
 
               echo "⏳ Creating admin user..."
               bundle exec rails runner "
-                User.create!(
+                u = User.create!(
                   name: 'Admin',
                   short_name: 'Admin',
                   sortable_name: 'Admin',
-                  login_id: 'admin@canvas.com',
-                  email: 'admin@canvas.com',
+                  workflow_state: 'active'
+                );
+
+                p = Pseudonym.create!(
+                  user: u,
+                  unique_id: 'admin@canvas.com',
                   password: 'Admin123!',
                   password_confirmation: 'Admin123!',
                   workflow_state: 'active'
-                )
+                );
+
+                a = Account.default;
+                a.add_user(u);
+
+                puts '✅ Admin created'
               "
 
           volumeMounts:
