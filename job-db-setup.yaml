@@ -25,8 +25,23 @@ spec:
             - |
               echo "⏳ Running DB migrate..."
               bundle exec rails db:migrate &&
-              echo "⏳ Running initial setup..."
-              bundle exec rake db:initial_setup
+
+              echo "⏳ Seeding basic data..."
+              bundle exec rails db:seed &&
+
+              echo "⏳ Creating admin user..."
+              bundle exec rails runner "
+                User.create!(
+                  name: 'Admin',
+                  short_name: 'Admin',
+                  sortable_name: 'Admin',
+                  login_id: 'admin@canvas.com',
+                  email: 'admin@canvas.com',
+                  password: 'Admin123!',
+                  password_confirmation: 'Admin123!',
+                  workflow_state: 'active'
+                )
+              "
 
           volumeMounts:
             - name: canvas-config
