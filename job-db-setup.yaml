@@ -9,7 +9,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: init
-          image: your-image/canvas:latest
+          image: khanhdev13/canvas-lms:latest
           envFrom:
             - secretRef:
                 name: canvas-secret
