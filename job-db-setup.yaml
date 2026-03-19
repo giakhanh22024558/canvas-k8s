@@ -52,7 +52,7 @@ spec:
 
                 a = Account.default;
 
-                admin_role = Role.get_built_in_role('AccountAdmin');
+                admin_role = Role.get_built_in_role('AccountAdmin', root_account_id: a.id);
 
                 AccountUser.find_or_create_by!(
                   user: u,
