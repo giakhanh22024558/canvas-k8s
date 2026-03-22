@@ -26,11 +26,9 @@ spec:
               echo "⏳ Running DB migrate..."
               bundle exec rails db:migrate &&
 
-              echo "⏳ Running initial setup..."
-              export CANVAS_LMS_ADMIN_EMAIL=admin@canvas.com
-              export CANVAS_LMS_ADMIN_PASSWORD=Admin123!
-              export CANVAS_LMS_ADMIN_NAME=Admin
+              echo "⏳ Running initial setup (non-interactive)..."
 
+              printf "Canvas\nadmin@canvas.com\nAdmin\nAdmin123!\nAdmin123!\n" | \
               bundle exec rake db:initial_setup
 
           volumeMounts:
