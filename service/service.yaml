@@ -4,8 +4,10 @@ metadata:
   name: canvas
   namespace: canvas
 spec:
+  type: NodePort
   selector:
     app: canvas-web
   ports:
     - port: 80
       targetPort: 9292
+      nodePort: 30007   # you can change or remove this line
