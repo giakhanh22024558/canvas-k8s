@@ -31,6 +31,12 @@ spec:
 
               echo "⏳ Creating admin user..."
               bundle exec rails runner "
+                # Ensure root account exists
+                a = Account.default || Account.create!(
+                  name: 'Default Account'
+                );
+
+                # Ensure user
                 u = User.find_or_initialize_by(name: 'Admin');
 
                 if u.new_record?
@@ -40,6 +46,7 @@ spec:
                   u.save!;
                 end;
 
+                # Ensure login
                 p = Pseudonym.find_or_initialize_by(unique_id: 'admin@canvas.com');
 
                 if p.new_record?
@@ -50,10 +57,7 @@ spec:
                   p.save!;
                 end;
 
-                a = Account.default || Account.create!(
-                  name: 'Default Account'
-                )
-
+                # Ensure admin role
                 admin_role = Role.get_built_in_role('AccountAdmin', root_account_id: a.id);
 
                 AccountUser.find_or_create_by!(
