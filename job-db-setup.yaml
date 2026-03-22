@@ -26,52 +26,12 @@ spec:
               echo "⏳ Running DB migrate..."
               bundle exec rails db:migrate &&
 
-              echo "⏳ Seeding basic data..."
-              bundle exec rails db:seed &&
+              echo "⏳ Running initial setup..."
+              export CANVAS_LMS_ADMIN_EMAIL=admin@canvas.com
+              export CANVAS_LMS_ADMIN_PASSWORD=Admin123!
+              export CANVAS_LMS_ADMIN_NAME=Admin
 
-              echo "⏳ Creating admin user..."
-              bundle exec rails runner "
-                # Ensure root account exists
-                a = Account.default || Account.create!(
-                  name: 'Default Account',
-                );
-
-                if a.root_account_id.nil?
-                  a.update_column(:root_account_id, a.id);
-                end;
-
-                # Ensure user
-                u = User.find_or_initialize_by(name: 'Admin');
-
-                if u.new_record?
-                  u.short_name = 'Admin';
-                  u.sortable_name = 'Admin';
-                  u.workflow_state = 'active';
-                  u.save!;
-                end;
-
-                # Ensure login
-                p = Pseudonym.find_or_initialize_by(unique_id: 'admin@canvas.com');
-
-                if p.new_record?
-                  p.user = u;
-                  p.password = 'Admin123!';
-                  p.password_confirmation = 'Admin123!';
-                  p.workflow_state = 'active';
-                  p.save!;
-                end;
-
-                # Ensure admin role
-                admin_role = Role.get_built_in_role('AccountAdmin', root_account_id: a.id);
-
-                AccountUser.find_or_create_by!(
-                  user: u,
-                  account: a,
-                  role: admin_role
-                );
-
-                puts '✅ Admin ensured (idempotent)'
-              "
+              bundle exec rake db:initial_setup
 
           volumeMounts:
             - name: canvas-config
