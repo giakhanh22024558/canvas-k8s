@@ -31,48 +31,48 @@ spec:
 
               echo "⏳ Creating admin user..."
               bundle exec rails runner "
-              # Ensure root account exists (REAL FIX)
-              a = Account.default || Account.create!(
-                name: 'Default Account',
-                domain: 'canvas.local'
-              );
+                # Ensure root account exists (REAL FIX)
+                a = Account.default || Account.create!(
+                  name: 'Default Account',
+                  domain: 'canvas.local'
+                );
 
-              if a.root_account_id.nil?
-                a.update_column(:root_account_id, a.id);
-              end;
+                if a.root_account_id.nil?
+                  a.update_column(:root_account_id, a.id);
+                end;
 
-              # Ensure user
-              u = User.find_or_initialize_by(name: 'Admin');
+                # Ensure user
+                u = User.find_or_initialize_by(name: 'Admin');
 
-              if u.new_record?
-                u.short_name = 'Admin';
-                u.sortable_name = 'Admin';
-                u.workflow_state = 'active';
-                u.save!;
-              end;
+                if u.new_record?
+                  u.short_name = 'Admin';
+                  u.sortable_name = 'Admin';
+                  u.workflow_state = 'active';
+                  u.save!;
+                end;
 
-              # Ensure login
-              p = Pseudonym.find_or_initialize_by(unique_id: 'admin@canvas.com');
+                # Ensure login
+                p = Pseudonym.find_or_initialize_by(unique_id: 'admin@canvas.com');
 
-              if p.new_record?
-                p.user = u;
-                p.password = 'Admin123!';
-                p.password_confirmation = 'Admin123!';
-                p.workflow_state = 'active';
-                p.save!;
-              end;
+                if p.new_record?
+                  p.user = u;
+                  p.password = 'Admin123!';
+                  p.password_confirmation = 'Admin123!';
+                  p.workflow_state = 'active';
+                  p.save!;
+                end;
 
-              # Ensure admin role
-              admin_role = Role.get_built_in_role('AccountAdmin', root_account_id: a.id);
+                # Ensure admin role
+                admin_role = Role.get_built_in_role('AccountAdmin', root_account_id: a.id);
 
-              AccountUser.find_or_create_by!(
-                user: u,
-                account: a,
-                role: admin_role
-              );
+                AccountUser.find_or_create_by!(
+                  user: u,
+                  account: a,
+                  role: admin_role
+                );
 
-              puts '✅ Admin ensured (idempotent)'
-            "
+                puts '✅ Admin ensured (idempotent)'
+              "
 
           volumeMounts:
             - name: canvas-config
