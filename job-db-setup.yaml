@@ -33,13 +33,8 @@ spec:
               bundle exec rails runner "
                 # Ensure root account exists
                 a = Account.default || Account.create!(
-                  name: 'Default Account',
-                  domain: 'canvas.local'
+                  name: 'Default Account'
                 );
-
-                if a.root_account_id.nil?
-                  a.update_column(:root_account_id, a.id);
-                end;
 
                 # Ensure user
                 u = User.find_or_initialize_by(name: 'Admin');
