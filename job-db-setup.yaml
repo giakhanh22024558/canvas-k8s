@@ -31,10 +31,9 @@ spec:
 
               echo "⏳ Creating admin user..."
               bundle exec rails runner "
-                # Ensure root account exists (REAL FIX)
+                # Ensure root account exists
                 a = Account.default || Account.create!(
                   name: 'Default Account',
-                  domain: 'canvas.local'
                 );
 
                 if a.root_account_id.nil?
