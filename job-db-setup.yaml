@@ -50,7 +50,9 @@ spec:
                   p.save!;
                 end;
 
-                a = Account.default;
+                a = Account.default || Account.create!(
+                  name: 'Default Account'
+                )
 
                 admin_role = Role.get_built_in_role('AccountAdmin', root_account_id: a.id);
 
