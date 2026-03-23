@@ -26,20 +26,23 @@ data:
 
   session_store.yml: |
     production:
-      store: redis_store
-      servers:
-        - <%= ENV["REDIS_URL"] %>
-      key: "_canvas_session"
+      session_store: encrypted_cookie_store
+      expire_after: <%= ENV.fetch("CANVAS_SESSION_EXPIRE_AFTER", 86400) %>
 
   delayed_jobs.yml: |
     production:
-      num_workers: <%= ENV.fetch("CANVAS_JOB_WORKERS", 1) %>
-      max_attempts: 5
+      workers:
+        - queue: canvas_queue
+          workers: <%= ENV.fetch("CANVAS_JOB_WORKERS", 2) %>
+          max_priority: 10
+        - queue: canvas_queue
+          workers: <%= ENV.fetch("CANVAS_JOB_WORKERS_LOW_PRIORITY", 4) %>
 
   outgoing_mail.yml: |
     production:
       default_name: <%= ENV.fetch("CANVAS_OUTGOING_MAIL_DEFAULT_NAME", "Canvas LMS") %>
-      default_address: <%= ENV.fetch("CANVAS_OUTGOING_MAIL_DEFAULT_ADDRESS", "no-reply@canvas.local") %>
+      outgoing_address: <%= ENV.fetch("CANVAS_OUTGOING_MAIL_ADDRESS", "no-reply@canvas.local") %>
+      domain: <%= ENV["CANVAS_DOMAIN"] %>
       delivery_method: <%= ENV.fetch("CANVAS_MAIL_DELIVERY_METHOD", "test") %>
 
   file_store.yml: |
