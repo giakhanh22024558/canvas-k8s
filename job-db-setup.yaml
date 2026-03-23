@@ -47,6 +47,7 @@ spec:
                   u.short_name = 'Admin';
                   u.sortable_name = 'Admin';
                   u.workflow_state = 'active';
+                  u.save!;
                   u.email = 'admin@canvas.com';
                   u.save!;
                 end;
