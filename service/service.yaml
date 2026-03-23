@@ -8,4 +8,4 @@ spec:
     app: canvas-web
   ports:
     - port: 80
-      targetPort: 9292
+      targetPort: 80
