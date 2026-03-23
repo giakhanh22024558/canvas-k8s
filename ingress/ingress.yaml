@@ -10,7 +10,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: canvas.local
+    - host: canvas.io.vn
       http:
         paths:
           - path: /
