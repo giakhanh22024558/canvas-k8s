@@ -40,6 +40,8 @@ spec:
                   a.update_column(:root_account_id, a.id);
                 end;
 
+                a.create_built_in_roles;
+
                 # Ensure user
                 u = User.find_or_initialize_by(name: 'Admin');
 
