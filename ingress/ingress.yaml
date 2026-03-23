@@ -4,16 +4,11 @@ metadata:
   name: canvas
   namespace: canvas
   annotations:
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-body-size: "64m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
 spec:
   ingressClassName: nginx
-  tls:
-    - hosts:
-        - canvas.local
-      secretName: canvas-tls
   rules:
     - host: canvas.local
       http:

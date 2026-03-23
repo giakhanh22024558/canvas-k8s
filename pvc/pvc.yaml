@@ -3,6 +3,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: canvas-storage
   namespace: canvas
+  annotations:
+    canvas-lms.io/storage-note: "Temporary local attachment storage. Prefer S3-compatible object storage for multi-node reliability."
 spec:
   accessModes:
     - ReadWriteOnce
