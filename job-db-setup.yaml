@@ -31,9 +31,9 @@ spec:
 
               echo "⏳ Creating admin user..."
               bundle exec rails runner "
-                # Ensure root account exists
+                # Ensure root account
                 a = Account.default || Account.create!(
-                  name: 'Default Account',
+                  name: 'Default Account'
                 );
 
                 if a.root_account_id.nil?
@@ -50,11 +50,24 @@ spec:
                   u.sortable_name = 'Admin';
                   u.workflow_state = 'active';
                   u.save!;
-                  u.email = 'admin@canvas.com';
-                  u.save!;
                 end;
 
-                # Ensure login
+                # Force activate user (IMPORTANT)
+                u.update_column(:workflow_state, 'active');
+
+                # Ensure communication channel (EMAIL)
+                cc = CommunicationChannel.find_or_initialize_by(
+                  user: u,
+                  path: 'admin@canvas.com'
+                );
+
+                if cc.new_record?
+                  cc.workflow_state = 'active';
+                  cc.path_type = 'email';
+                  cc.save!;
+                end;
+
+                # Ensure login (Pseudonym)
                 p = Pseudonym.find_or_initialize_by(unique_id: 'admin@canvas.com');
 
                 if p.new_record?
@@ -75,7 +88,7 @@ spec:
                   role: admin_role
                 );
 
-                puts '✅ Admin ensured (idempotent)'
+                puts '✅ Admin fully ensured (user + login + role)'
               "
 
           volumeMounts:
