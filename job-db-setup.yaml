@@ -4,6 +4,7 @@ metadata:
   name: canvas-db-init
   namespace: canvas
 spec:
+  backoffLimit: 3
   template:
     spec:
       restartPolicy: Never
@@ -19,77 +20,29 @@ spec:
             - name: RAILS_ENV
               value: production
 
+            # 🔥 IMPORTANT: non-interactive setup
+            - name: CANVAS_LMS_ADMIN_EMAIL
+              value: admin@canvas.com
+
+            - name: CANVAS_LMS_ADMIN_PASSWORD
+              value: Admin123!
+
+            - name: CANVAS_LMS_ACCOUNT_NAME
+              value: Canvas
+
+            # optional but good practice
+            - name: CANVAS_LMS_STATS_COLLECTION
+              value: opt_out
+
           command:
             - sh
             - -c
             - |
-              echo "⏳ Running DB migrate..."
-              bundle exec rails db:migrate &&
+              echo "⏳ Running FULL Canvas initialization..."
 
-              echo "⏳ Seeding basic data..."
-              bundle exec rails db:seed &&
+              bundle exec rake db:initial_setup
 
-              echo "⏳ Creating admin user..."
-              bundle exec rails runner "
-                # Ensure root account
-                a = Account.default || Account.create!(
-                  name: 'Default Account'
-                );
-
-                if a.root_account_id.nil?
-                  a.update_column(:root_account_id, a.id);
-                end;
-
-                a.create_built_in_roles;
-
-                # Ensure user
-                u = User.find_or_initialize_by(name: 'Admin');
-
-                if u.new_record?
-                  u.short_name = 'Admin';
-                  u.sortable_name = 'Admin';
-                  u.workflow_state = 'active';
-                  u.save!;
-                end;
-
-                # Force activate user (IMPORTANT)
-                u.update_column(:workflow_state, 'active');
-
-                # Ensure communication channel (EMAIL)
-                cc = CommunicationChannel.find_or_initialize_by(
-                  user: u,
-                  path: 'admin@canvas.com'
-                );
-
-                if cc.new_record?
-                  cc.workflow_state = 'active';
-                  cc.path_type = 'email';
-                  cc.save!;
-                end;
-
-                # Ensure login (Pseudonym)
-                p = Pseudonym.find_or_initialize_by(unique_id: 'admin@canvas.com');
-
-                if p.new_record?
-                  p.user = u;
-                  p.account = a;
-                  p.password = 'Admin123!';
-                  p.password_confirmation = 'Admin123!';
-                  p.workflow_state = 'active';
-                  p.save!;
-                end;
-
-                # Ensure admin role
-                admin_role = Role.get_built_in_role('AccountAdmin', root_account_id: a.id);
-
-                AccountUser.find_or_create_by!(
-                  user: u,
-                  account: a,
-                  role: admin_role
-                );
-
-                puts '✅ Admin fully ensured (user + login + role)'
-              "
+              echo "✅ Canvas DB fully initialized"
 
           volumeMounts:
             - name: canvas-config
