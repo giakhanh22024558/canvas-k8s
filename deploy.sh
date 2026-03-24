@@ -34,7 +34,6 @@ esac
 
 kubectl apply -f deployment/
 kubectl apply -f service/
-kubectl apply -f ingress/
 
 kubectl rollout status deployment/canvas-web -n canvas --timeout=300s
 kubectl rollout status deployment/canvas-jobs -n canvas --timeout=300s
