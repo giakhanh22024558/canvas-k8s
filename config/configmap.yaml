@@ -29,7 +29,6 @@ data:
       session_store: encrypted_cookie_store
       expire_after: <%= ENV.fetch("CANVAS_SESSION_EXPIRE_AFTER", 86400) %>
       secure: <%= ENV.fetch("CANVAS_SESSION_SECURE", "false") %>
-      same_site: <%= ":#{ENV.fetch('CANVAS_SESSION_SAME_SITE', 'lax')}" %>
 
   delayed_jobs.yml: |
     production:
