@@ -1,20 +1,15 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: batch/v1
+kind: Job
 metadata:
-  name: canvas-jobs
+  name: canvas-db-migrate
   namespace: canvas
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: canvas-jobs
+  backoffLimit: 3
   template:
-    metadata:
-      labels:
-        app: canvas-jobs
     spec:
+      restartPolicy: Never
       containers:
-        - name: jobs
+        - name: migrate
           image: khanhdev13/canvas-lms:latest
           envFrom:
             - secretRef:
@@ -27,7 +22,7 @@ spec:
           command:
             - sh
             - -c
-            - bundle exec script/delayed_job run
+            - bundle exec rake db:migrate
           volumeMounts:
             - name: canvas-config
               mountPath: /usr/src/app/config/database.yml

@@ -4,7 +4,7 @@ metadata:
   name: canvas-web
   namespace: canvas
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: canvas-web
@@ -24,26 +24,49 @@ spec:
               value: production
             - name: RAILS_SERVE_STATIC_FILES
               value: "1"
-
-          command: ["bundle","exec","puma","-C","config/puma.rb"]
-
+            - name: PASSENGER_START_TIMEOUT
+              value: "300"
+            - name: PASSENGER_MIN_INSTANCES
+              value: "1"
           ports:
-            - containerPort: 9292
-
+            - containerPort: 80
           volumeMounts:
             - name: canvas-config
               mountPath: /usr/src/app/config/database.yml
               subPath: database.yml
-
             - name: canvas-config
               mountPath: /usr/src/app/config/redis.yml
               subPath: redis.yml
-
             - name: canvas-config
+              mountPath: /usr/src/app/config/domain.yml
+              subPath: domain.yml
+            - name: canvas-config
+              mountPath: /usr/src/app/config/session_store.yml
+              subPath: session_store.yml
+            - name: canvas-config
+              mountPath: /usr/src/app/config/delayed_jobs.yml
+              subPath: delayed_jobs.yml
+            - name: canvas-config
+              mountPath: /usr/src/app/config/outgoing_mail.yml
+              subPath: outgoing_mail.yml
+            - name: canvas-config
+              mountPath: /usr/src/app/config/file_store.yml
+              subPath: file_store.yml
+            - name: canvas-security
               mountPath: /usr/src/app/config/security.yml
               subPath: security.yml
-
+            - name: canvas-storage
+              mountPath: /usr/src/app/tmp/files
       volumes:
         - name: canvas-config
           configMap:
             name: canvas-config
+        - name: canvas-security
+          secret:
+            secretName: canvas-secret
+            items:
+              - key: security.yml
+                path: security.yml
+        - name: canvas-storage
+          persistentVolumeClaim:
+            claimName: canvas-storage

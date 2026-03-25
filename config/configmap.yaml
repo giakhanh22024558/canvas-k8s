@@ -9,13 +9,44 @@ data:
       adapter: postgresql
       database: <%= ENV["DB_NAME"] %>
       host: <%= ENV["DB_HOST"] %>
+      port: <%= ENV.fetch("DB_PORT", 5432) %>
       username: <%= ENV["DB_USER"] %>
       password: <%= ENV["DB_PASSWORD"] %>
+      encoding: utf8
+      pool: <%= ENV.fetch("DB_POOL", 5) %>
 
   redis.yml: |
     production:
       url: <%= ENV["REDIS_URL"] %>
 
-  security.yml: |
+  domain.yml: |
     production:
-      encryption_key: <%= ENV["ENCRYPTION_KEY"] %>
+      domain: <%= ENV["CANVAS_DOMAIN"] %>
+      ssl: <%= ENV.fetch("CANVAS_FORCE_SSL", "true") %>
+
+  session_store.yml: |
+    production:
+      session_store: encrypted_cookie_store
+      expire_after: <%= ENV.fetch("CANVAS_SESSION_EXPIRE_AFTER", 86400) %>
+      secure: <%= ENV.fetch("CANVAS_SESSION_SECURE", "false") %>
+
+  delayed_jobs.yml: |
+    production:
+      workers:
+        - queue: canvas_queue
+          workers: <%= ENV.fetch("CANVAS_JOB_WORKERS", 2) %>
+          max_priority: 10
+        - queue: canvas_queue
+          workers: <%= ENV.fetch("CANVAS_JOB_WORKERS_LOW_PRIORITY", 4) %>
+
+  outgoing_mail.yml: |
+    production:
+      default_name: <%= ENV.fetch("CANVAS_OUTGOING_MAIL_DEFAULT_NAME", "Canvas LMS") %>
+      outgoing_address: <%= ENV.fetch("CANVAS_OUTGOING_MAIL_ADDRESS", "no-reply@canvas.local") %>
+      domain: <%= ENV["CANVAS_DOMAIN"] %>
+      delivery_method: <%= ENV.fetch("CANVAS_MAIL_DELIVERY_METHOD", "test") %>
+
+  file_store.yml: |
+    production:
+      storage: local
+      path_prefix: /usr/src/app/tmp/files

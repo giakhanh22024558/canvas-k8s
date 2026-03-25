@@ -1,20 +1,15 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: batch/v1
+kind: Job
 metadata:
-  name: canvas-jobs
+  name: canvas-db-bootstrap
   namespace: canvas
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: canvas-jobs
+  backoffLimit: 3
   template:
-    metadata:
-      labels:
-        app: canvas-jobs
     spec:
+      restartPolicy: Never
       containers:
-        - name: jobs
+        - name: bootstrap
           image: khanhdev13/canvas-lms:latest
           envFrom:
             - secretRef:
@@ -24,10 +19,20 @@ spec:
               value: production
             - name: RAILS_SERVE_STATIC_FILES
               value: "1"
+            - name: CANVAS_LMS_ADMIN_EMAIL
+              value: admin@canvas.local
+            - name: CANVAS_LMS_ADMIN_PASSWORD
+              value: Admin123!
+            - name: CANVAS_LMS_ACCOUNT_NAME
+              value: Canvas
+            - name: CANVAS_LMS_STATS_COLLECTION
+              value: opt_out
           command:
             - sh
             - -c
-            - bundle exec script/delayed_job run
+            - |
+              bundle exec rake db:create
+              bundle exec rake db:initial_setup
           volumeMounts:
             - name: canvas-config
               mountPath: /usr/src/app/config/database.yml
