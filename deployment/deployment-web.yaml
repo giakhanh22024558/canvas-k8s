@@ -24,6 +24,10 @@ spec:
               value: production
             - name: RAILS_SERVE_STATIC_FILES
               value: "1"
+            - name: PASSENGER_START_TIMEOUT
+              value: "300"
+            - name: PASSENGER_MIN_INSTANCES
+              value: "1"
           ports:
             - containerPort: 80
           volumeMounts:
