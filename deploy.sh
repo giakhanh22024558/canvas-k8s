@@ -1,7 +1,20 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 MODE="${1:-migrate}"
+K3S_KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
+
+if [[ -z "${KUBECONFIG:-}" && -f "$K3S_KUBECONFIG" ]]; then
+  export KUBECONFIG="$K3S_KUBECONFIG"
+fi
+
+if ! kubectl version --client >/dev/null 2>&1; then
+  echo "kubectl is required but not installed."
+  exit 1
+fi
+
+echo "Using kubeconfig: ${KUBECONFIG:-default}"
+kubectl get nodes >/dev/null
 
 kubectl apply -f namespace.yaml
 
@@ -39,3 +52,4 @@ kubectl rollout status deployment/canvas-web -n canvas --timeout=300s
 kubectl rollout status deployment/canvas-jobs -n canvas --timeout=300s
 
 echo "Deployment completed with mode: $MODE"
+echo "Canvas service URL: http://<your-domain>:30080"
