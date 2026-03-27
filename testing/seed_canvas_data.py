@@ -113,7 +113,7 @@ def env_int(name: str, default: int) -> int:
     return value
 
 
-BASE_URL = os.environ.get("BASE_URL", "http://canvas.io.vn:30080").rstrip("/")
+BASE_URL = os.environ.get("BASE_URL", "http://canvas.io.vn").rstrip("/")
 API_TOKEN = os.environ.get("API_TOKEN", "").strip()
 SEED_PREFIX = os.environ.get("SEED_PREFIX", f"lt-{int(time.time())}")
 ACCOUNT_ID = os.environ.get("ACCOUNT_ID", "self")

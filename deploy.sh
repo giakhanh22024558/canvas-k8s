@@ -52,4 +52,4 @@ kubectl rollout status deployment/canvas-web -n canvas --timeout=300s
 kubectl rollout status deployment/canvas-jobs -n canvas --timeout=300s
 
 echo "Deployment completed with mode: $MODE"
-echo "Canvas service URL: http://<your-domain>:30080"
+echo "Canvas service URL: http://canvas.io.vn"

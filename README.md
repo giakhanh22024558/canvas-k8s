@@ -57,7 +57,7 @@ curl http://127.0.0.1:30080
 Public URL:
 
 ```text
-http://canvas.io.vn:30080
+http://canvas.io.vn
 ```
 
 ## Typical cluster flow
@@ -128,7 +128,7 @@ http://canvas.io.vn:30090
 Run a load test and send k6 metrics to Prometheus:
 
 ```bash
-API_TOKEN=<your-token> BASE_URL=http://canvas.io.vn:30080 ./testing/run-load-test.sh
+API_TOKEN=<your-token> BASE_URL=http://canvas.io.vn ./testing/run-load-test.sh
 ```
 
 ## Seed realistic load-test data
@@ -157,7 +157,7 @@ Linux/macOS shell:
 
 ```bash
 API_TOKEN=<your-token> \
-BASE_URL=http://canvas.io.vn:30080 \
+BASE_URL=http://canvas.io.vn \
 SEED_PREFIX=lt-batch-01 \
 ./testing/run-seed-data.sh
 ```
@@ -166,7 +166,7 @@ PowerShell:
 
 ```powershell
 $env:API_TOKEN="<your-token>"
-$env:BASE_URL="http://canvas.io.vn:30080"
+$env:BASE_URL="http://canvas.io.vn"
 $env:SEED_PREFIX="lt-batch-01"
 .\testing\run-seed-data.ps1
 ```
@@ -175,7 +175,7 @@ You can scale the dataset up or down with environment variables. For example:
 
 ```bash
 API_TOKEN=<your-token> \
-BASE_URL=http://canvas.io.vn:30080 \
+BASE_URL=http://canvas.io.vn \
 SEED_PREFIX=lt-batch-02 \
 COURSE_COUNT=20 \
 STUDENT_POOL_SIZE=600 \
@@ -188,6 +188,28 @@ Notes:
 - Use a fresh `SEED_PREFIX` for each run to avoid login collisions.
 - This is best run against a fresh or dedicated load-test environment because repeated runs add more data.
 - Python is required on the machine running the script. The wrappers try `python3`, `python`, then Windows `py`.
+
+Remove previously seeded data by prefix:
+
+Linux/macOS shell:
+
+```bash
+API_TOKEN=<your-token> \
+BASE_URL=http://canvas.io.vn \
+SEED_PREFIX=lt-batch-01 \
+./testing/run-unseed-data.sh
+```
+
+PowerShell:
+
+```powershell
+$env:API_TOKEN="<your-token>"
+$env:BASE_URL="http://canvas.io.vn"
+$env:SEED_PREFIX="lt-batch-01"
+.\testing\run-unseed-data.ps1
+```
+
+The un-seed flow deletes matching seeded courses first, then matching seeded users.
 
 Generate charts from Prometheus metrics:
 
@@ -208,4 +230,4 @@ testing/charts/output
 
 - Browser login over plain HTTP may still be limited by modern cookie policy.
 - API testing with a bearer token works better than browser login in this setup.
-- The main Canvas URL in this repo is `http://canvas.io.vn:30080`.
+- The main Canvas URL in this repo is `http://canvas.io.vn`.
