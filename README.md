@@ -1,47 +1,111 @@
 # canvas-k8s
 
-Small helper repo for deploying Canvas LMS on a single EC2 host with `k3s`.
+Deploy Canvas LMS on a single Ubuntu EC2 instance with `k3s`, then run load tests with `k6`, collect metrics in Prometheus, generate charts with Python, and publish result bundles to a separate Git repo.
 
-## Prerequisites
+## What this repo does
 
-- `k3s` installed on the host
-- `kubectl` available
-- AWS security group allows inbound TCP `30080`
-- DNS for `canvas.io.vn` points to the EC2 public IP
+- deploys Canvas LMS on `k3s`
+- exposes Canvas at `http://canvas.io.vn`
+- provides helper scripts for cluster start, bootstrap, token creation, seeding, load testing, charting, and publishing results
 
-## Cluster startup
+## Public endpoints
 
-Start the cluster and load the right kubeconfig automatically:
+- Canvas: `http://canvas.io.vn`
+- Prometheus: `http://canvas.io.vn:30090`
+
+## EC2 prerequisites
+
+Before using this repo on a fresh Ubuntu EC2 instance, make sure you have:
+
+- an EC2 instance with Ubuntu
+- DNS `A` record for `canvas.io.vn` pointing to the EC2 public IP
+- AWS security group inbound rules for:
+  - TCP `80`
+  - TCP `30080`
+  - TCP `30090`
+- `k3s` installed
+- `git`, `curl`, and `kubectl` available
+
+Optional but recommended:
+
+- `python3`
+- `python3-venv`
+- `k6`
+
+## Clone repo
+
+```bash
+git clone <your-canvas-k8s-repo-url>
+cd ~/canvas-k8s
+find . -type f -name "*.sh" -exec chmod +x {} +
+```
+
+## Install Ubuntu packages
+
+Install the packages commonly needed by the helper scripts:
+
+```bash
+sudo apt update
+sudo apt install -y git curl python3 python3-pip python3-venv
+```
+
+If `k6` is not installed yet, install it before running load tests.
+
+## Install k3s
+
+If `k3s` is not already installed:
+
+```bash
+curl -sfL https://get.k3s.io | sh -
+```
+
+After install, this repo expects kubeconfig at:
+
+```text
+/etc/rancher/k3s/k3s.yaml
+```
+
+## Start cluster
+
+Use the helper:
 
 ```bash
 ./start-cluster.sh
 ```
 
-This starts `k3s`, waits for the API to become ready, and prints node and Canvas namespace status.
+This script:
 
-## One-time shell setup
+- starts `k3s`
+- waits for the API to become ready
+- sets `/etc/rancher/k3s/k3s.yaml` readable
+- prints cluster status
+
+If you want the kubeconfig in the current shell too:
 
 ```bash
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 ```
 
-Most helper scripts in this repo auto-use that path if it exists.
+## Fresh deployment on a new EC2 instance
 
-## Deploy commands
-
-Fresh install:
+If this is a brand-new environment and you want a clean install:
 
 ```bash
 ./reset-and-bootstrap.sh
 ```
 
-First install without deleting namespace:
+This:
+
+- deletes namespace `canvas` if it exists
+- runs `./deploy.sh bootstrap`
+
+If you do not want to delete the namespace first:
 
 ```bash
 ./deploy.sh bootstrap
 ```
 
-Normal update:
+For later updates:
 
 ```bash
 ./deploy.sh
@@ -49,79 +113,98 @@ Normal update:
 
 ## Verify deployment
 
-```bash
-kubectl get all -n canvas
-curl http://127.0.0.1:30080
-```
-
-Public URL:
-
-```text
-http://canvas.io.vn
-```
-
-## Typical cluster flow
-
-Start the cluster:
-
-```bash
-./start-cluster.sh
-```
-
-Fresh deploy:
-
-```bash
-./reset-and-bootstrap.sh
-```
-
-Normal redeploy:
-
-```bash
-./deploy.sh
-```
-
-Quick health check:
+Check resources:
 
 ```bash
 kubectl get all -n canvas
-curl http://127.0.0.1:30080
+kubectl get svc -n canvas
 ```
 
-## Create an admin API token
+Check app reachability from the host:
+
+```bash
+curl http://127.0.0.1:30080
+curl http://canvas.io.vn
+```
+
+## Create admin API token
+
+Create a token for API usage:
 
 ```bash
 ./create-admin-token.sh
 ```
 
-If your admin login changes:
+If your admin login is different:
 
 ```bash
 ADMIN_LOGIN=admin@canvas.local ./create-admin-token.sh
 ```
 
-Use the output as:
+Use the token as:
 
 ```http
 Authorization: Bearer <token>
 ```
 
-## Load testing and metrics flow
+Quick verification:
 
-Testing files are grouped under:
+```bash
+curl -i -H "Authorization: Bearer <token>" http://canvas.io.vn/api/v1/courses
+```
+
+Expected result:
+
+- `200 OK` if token is valid
+
+## Testing folder layout
+
+All testing-related files live under:
 
 ```text
 testing/
 ```
 
-Save your local testing token and defaults once:
+Important scripts:
+
+- `testing/setup-env.sh`
+- `testing/apply-monitoring.sh`
+- `testing/run-seed-data.sh`
+- `testing/run-unseed-data.sh`
+- `testing/run-load-test.sh`
+- `testing/charts/setup-python.sh`
+- `testing/publish-results.sh`
+
+## Save local testing config once
+
+Run this once per EC2 instance:
 
 ```bash
-chmod +x ./testing/setup-env.sh
 ./testing/setup-env.sh
 ```
 
-This writes your local values to `testing/testing.env`, which is ignored by git and reused by the seed, un-seed, and load-test scripts.
-It also stores the Git repo settings for publishing result bundles.
+It writes local settings to:
+
+```text
+testing/testing.env
+```
+
+This file is ignored by git and reused by:
+
+- seed script
+- un-seed script
+- load test script
+- publish script
+
+It stores:
+
+- `BASE_URL`
+- `API_TOKEN`
+- `PROM_URL`
+- `RESULTS_REPO_URL`
+- `RESULTS_REPO_DIR`
+
+## Deploy monitoring
 
 Apply Prometheus and cAdvisor:
 
@@ -129,29 +212,41 @@ Apply Prometheus and cAdvisor:
 ./testing/apply-monitoring.sh
 ```
 
-Prometheus will be exposed on:
+Verify:
+
+```bash
+kubectl get all -n canvas-monitoring
+```
+
+Prometheus should be available at:
 
 ```text
 http://canvas.io.vn:30090
 ```
 
-Run a load test and send k6 metrics to Prometheus:
+## Seed test data
+
+Before load testing, seed data so the API has realistic content.
+
+Interactive mode:
 
 ```bash
-./testing/run-load-test.sh
+./testing/run-seed-data.sh
 ```
 
-The load test summary is saved under:
+It will ask for:
 
-```text
-testing/results/<testid>/
+- dataset size: Small, Medium, or Large
+- API token if not already saved
+- `SEED_PREFIX`
+
+Example explicit run:
+
+```bash
+SEED_PREFIX=lt-batch-01 ./testing/run-seed-data.sh
 ```
 
-## Seed realistic load-test data
-
-Before load testing, seed a larger set of users and course content so the API is working against a more realistic dataset.
-
-Recommended profile:
+Recommended medium-sized dataset:
 
 - `COURSE_COUNT=12`
 - `TEACHER_POOL_SIZE=8`
@@ -162,52 +257,74 @@ Recommended profile:
 - `PAGES_PER_COURSE=4`
 - `DISCUSSIONS_PER_COURSE=3`
 
-The seeder uses the Canvas REST API and creates:
+Use a unique prefix for every run to avoid collisions.
 
-- teacher and student user pools
-- multiple published courses
-- enrollments that reuse users across courses
-- assignments, wiki pages, and discussion topics per course
+## Remove seeded data
 
-Ubuntu shell:
+Delete previously seeded data by prefix:
 
 ```bash
-SEED_PREFIX=lt-batch-01 \
-./testing/run-seed-data.sh
+SEED_PREFIX=lt-batch-01 ./testing/run-unseed-data.sh
 ```
 
-You can scale the dataset up or down with environment variables. For example:
+This deletes matching seeded courses first, then matching seeded users.
+
+## Run load test
+
+Run:
 
 ```bash
-SEED_PREFIX=lt-batch-02 \
-COURSE_COUNT=20 \
-STUDENT_POOL_SIZE=600 \
-STUDENTS_PER_COURSE=80 \
-./testing/run-seed-data.sh
+./testing/run-load-test.sh
 ```
 
-Notes:
+The script:
 
-- Use a fresh `SEED_PREFIX` for each run to avoid login collisions.
-- This is best run against a fresh or dedicated load-test environment because repeated runs add more data.
-- Python is required on the machine running the script. The wrappers try `python3` first, then `python`.
+- loads `testing/testing.env`
+- uses your saved API token
+- sends metrics to Prometheus remote write
+- saves run output locally
 
-Remove previously seeded data by prefix:
+During startup it prints:
 
-Ubuntu shell:
+- base URL
+- Prometheus write URL
+- test ID
+- masked token preview
 
-```bash
-SEED_PREFIX=lt-batch-01 \
-./testing/run-unseed-data.sh
+Results are stored under:
+
+```text
+testing/results/<testid>/
 ```
 
-The un-seed flow deletes matching seeded courses first, then matching seeded users.
+Files include:
 
-Generate charts from Prometheus metrics:
+- `k6-summary.txt`
+- `metadata.env`
+
+## Generate charts
+
+Set up the Python environment once:
 
 ```bash
-chmod +x ./testing/charts/setup-python.sh
 ./testing/charts/setup-python.sh
+```
+
+If Ubuntu says `ensurepip is not available`, install:
+
+```bash
+sudo apt install -y python3-venv
+```
+
+If your AMI specifically asks for a versioned package, install that instead, for example:
+
+```bash
+sudo apt install -y python3.12-venv
+```
+
+Then generate charts:
+
+```bash
 source ./testing/charts/.venv/bin/activate
 python3 testing/charts/plot_prometheus.py --prometheus-url http://127.0.0.1:30090 --minutes 15
 ```
@@ -218,27 +335,149 @@ Charts are written to:
 testing/charts/output
 ```
 
-Publish the latest run and charts to the results Git repo:
+## Publish results to the results repo
 
-```bash
-chmod +x ./testing/publish-results.sh
-./testing/publish-results.sh
-```
-
-Or publish a specific run:
-
-```bash
-TEST_ID=canvas-20260327-120000 ./testing/publish-results.sh
-```
-
-By default this publishes to:
+This repo publishes load-test output and charts to:
 
 ```text
 https://github.com/giakhanh22024558/canvas-k8s-results.git
 ```
 
+Publish the latest run:
+
+```bash
+./testing/publish-results.sh
+```
+
+Publish a specific run:
+
+```bash
+TEST_ID=canvas-20260327-120000 ./testing/publish-results.sh
+```
+
+The publish script:
+
+- clones or updates the results repo locally
+- copies:
+  - `testing/results/<testid>/`
+  - `testing/charts/output/`
+- commits under:
+  - `runs/<testid>/`
+- pushes to GitHub
+
+## GitHub authentication for publishing
+
+Publishing will fail unless the EC2 host can push to GitHub.
+
+### Option 1: HTTPS with GitHub PAT
+
+Configure your Git identity:
+
+```bash
+git config --global user.name "Your Name"
+git config --global user.email "your-email@example.com"
+```
+
+Enable stored credentials:
+
+```bash
+git config --global credential.helper store
+rm -f ~/.git-credentials
+```
+
+Then when push prompts for credentials:
+
+- Username: your GitHub username
+- Password: paste a GitHub Personal Access Token, not your GitHub account password
+
+The token must have repository write access to:
+
+```text
+giakhanh22024558/canvas-k8s-results
+```
+
+### Option 2: SSH
+
+Generate a key:
+
+```bash
+ssh-keygen -t ed25519 -C "your-email@example.com"
+cat ~/.ssh/id_ed25519.pub
+```
+
+Add the public key to GitHub, then switch the results repo remote to SSH:
+
+```bash
+git -C /home/ubuntu/canvas-k8s-result remote set-url origin git@github.com:giakhanh22024558/canvas-k8s-results.git
+ssh -T git@github.com
+git -C /home/ubuntu/canvas-k8s-result push -u origin main
+```
+
+## Full end-to-end flow on a fresh EC2 instance
+
+Use this order:
+
+```bash
+cd ~/canvas-k8s
+find . -type f -name "*.sh" -exec chmod +x {} +
+./start-cluster.sh
+./reset-and-bootstrap.sh
+./create-admin-token.sh
+./testing/setup-env.sh
+./testing/apply-monitoring.sh
+SEED_PREFIX=lt-batch-01 ./testing/run-seed-data.sh
+./testing/run-load-test.sh
+./testing/charts/setup-python.sh
+source ./testing/charts/.venv/bin/activate
+python3 testing/charts/plot_prometheus.py --prometheus-url http://127.0.0.1:30090 --minutes 15
+./testing/publish-results.sh
+```
+
+## Typical repeat flow on the same EC2 instance
+
+For later runs:
+
+```bash
+cd ~/canvas-k8s
+./start-cluster.sh
+./deploy.sh
+./testing/run-load-test.sh
+source ./testing/charts/.venv/bin/activate
+python3 testing/charts/plot_prometheus.py --prometheus-url http://127.0.0.1:30090 --minutes 15
+./testing/publish-results.sh
+```
+
+## Troubleshooting
+
+### `401 Unauthorized` on API
+
+- token is missing or invalid
+- create a new token with `./create-admin-token.sh`
+
+### `python3 -m venv` fails with `ensurepip is not available`
+
+Install:
+
+```bash
+sudo apt install -y python3-venv
+```
+
+### `publish-results.sh` fails with GitHub password error
+
+GitHub does not support account passwords for Git push over HTTPS.
+Use a PAT or SSH.
+
+### `publish-results.sh` fails with `403`
+
+- token exists but does not have permission to push
+- create a PAT with repo write access for the correct account
+
+### Browser login issues over plain HTTP
+
+This setup is better for API-token-based testing than browser login because modern cookie policy can make HTTP login unreliable.
+
 ## Notes
 
-- Browser login over plain HTTP may still be limited by modern cookie policy.
-- API testing with a bearer token works better than browser login in this setup.
-- The main Canvas URL in this repo is `http://canvas.io.vn`.
+- Main Canvas URL: `http://canvas.io.vn`
+- Internal NodePort health check: `http://127.0.0.1:30080`
+- Prometheus URL: `http://canvas.io.vn:30090`
