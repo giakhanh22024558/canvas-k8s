@@ -58,7 +58,7 @@ def main():
     parser.add_argument("--testid", default="")
     args = parser.parse_args()
 
-    end = dt.datetime.utcnow()
+    end = dt.datetime.now(dt.UTC)
     start = end - dt.timedelta(minutes=args.minutes)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

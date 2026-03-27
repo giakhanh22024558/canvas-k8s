@@ -1,6 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
+load_testing_env
+
 if [[ -z "${API_TOKEN:-}" ]]; then
   echo "API_TOKEN is required"
   exit 1
@@ -24,4 +28,4 @@ else
   exit 1
 fi
 
-"$PYTHON_BIN" "$(dirname "$0")/unseed_canvas_data.py"
+"$PYTHON_BIN" "$SCRIPT_DIR/unseed_canvas_data.py"
