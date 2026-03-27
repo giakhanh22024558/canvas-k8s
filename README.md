@@ -121,6 +121,7 @@ chmod +x ./testing/setup-env.sh
 ```
 
 This writes your local values to `testing/testing.env`, which is ignored by git and reused by the seed, un-seed, and load-test scripts.
+It can also store your `rclone` remote name and Google Drive folder ID for result uploads.
 
 Apply Prometheus and cAdvisor:
 
@@ -138,6 +139,12 @@ Run a load test and send k6 metrics to Prometheus:
 
 ```bash
 ./testing/run-load-test.sh
+```
+
+The load test summary is saved under:
+
+```text
+testing/results/<testid>/
 ```
 
 ## Seed realistic load-test data
@@ -210,6 +217,21 @@ Charts are written to:
 ```text
 testing/charts/output
 ```
+
+Upload the latest run log and chart outputs to your Google Drive folder:
+
+```bash
+chmod +x ./testing/upload-results.sh
+./testing/upload-results.sh
+```
+
+Or upload a specific test run:
+
+```bash
+TEST_ID=canvas-20260327-120000 ./testing/upload-results.sh
+```
+
+This uses `rclone`, so configure your Google Drive remote once with `rclone config` on the EC2 host.
 
 ## Notes
 
