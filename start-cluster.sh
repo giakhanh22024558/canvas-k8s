@@ -40,4 +40,4 @@ fi
 
 echo
 echo "KUBECONFIG=$KUBECONFIG"
-echo "Canvas URL: http://canvas.io.vn:30080"
+echo "Canvas URL: http://canvas.io.vn"

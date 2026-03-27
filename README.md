@@ -9,13 +9,23 @@ Small helper repo for deploying Canvas LMS on a single EC2 host with `k3s`.
 - AWS security group allows inbound TCP `30080`
 - DNS for `canvas.io.vn` points to the EC2 public IP
 
+## Cluster startup
+
+Start the cluster and load the right kubeconfig automatically:
+
+```bash
+./start-cluster.sh
+```
+
+This starts `k3s`, waits for the API to become ready, and prints node and Canvas namespace status.
+
 ## One-time shell setup
 
 ```bash
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 ```
 
-Or the scripts will auto-use that path if it exists.
+Most helper scripts in this repo auto-use that path if it exists.
 
 ## Deploy commands
 
@@ -50,6 +60,33 @@ Public URL:
 http://canvas.io.vn:30080
 ```
 
+## Typical cluster flow
+
+Start the cluster:
+
+```bash
+./start-cluster.sh
+```
+
+Fresh deploy:
+
+```bash
+./reset-and-bootstrap.sh
+```
+
+Normal redeploy:
+
+```bash
+./deploy.sh
+```
+
+Quick health check:
+
+```bash
+kubectl get all -n canvas
+curl http://127.0.0.1:30080
+```
+
 ## Create an admin API token
 
 ```bash
@@ -68,11 +105,6 @@ Use the output as:
 Authorization: Bearer <token>
 ```
 
-## Notes
-
-- Browser login over plain HTTP may still be limited by modern cookie policy.
-- API testing with a bearer token works better than browser login in this setup.
-
 ## Load testing and metrics flow
 
 Testing files are grouped under:
@@ -90,7 +122,7 @@ Apply Prometheus and cAdvisor:
 Prometheus will be exposed on:
 
 ```text
-http://<your-domain>:30090
+http://canvas.io.vn:30090
 ```
 
 Run a load test and send k6 metrics to Prometheus:
@@ -171,3 +203,9 @@ Charts are written to:
 ```text
 testing/charts/output
 ```
+
+## Notes
+
+- Browser login over plain HTTP may still be limited by modern cookie policy.
+- API testing with a bearer token works better than browser login in this setup.
+- The main Canvas URL in this repo is `http://canvas.io.vn:30080`.
