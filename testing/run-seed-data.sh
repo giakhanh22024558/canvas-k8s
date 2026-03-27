@@ -1,6 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/common.sh"
+load_testing_env
+
 BASE_URL="${BASE_URL:-http://canvas.io.vn}"
 
 if command -v python3 >/dev/null 2>&1; then
@@ -77,4 +81,4 @@ echo "Seeding Canvas data with prefix: $SEED_PREFIX"
 echo "Base URL: $BASE_URL"
 echo "Courses: ${COURSE_COUNT:-default}, Teachers: ${TEACHER_POOL_SIZE:-default}, Students: ${STUDENT_POOL_SIZE:-default}"
 
-"$PYTHON_BIN" "$(dirname "$0")/seed_canvas_data.py"
+"$PYTHON_BIN" "$SCRIPT_DIR/seed_canvas_data.py"

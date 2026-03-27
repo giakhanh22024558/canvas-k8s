@@ -113,6 +113,16 @@ Testing files are grouped under:
 testing/
 ```
 
+Save your local testing token and defaults once:
+
+```bash
+chmod +x ./testing/setup-env.sh
+./testing/setup-env.sh
+```
+
+This writes your local values to `testing/testing.env`, which is ignored by git and reused by the seed, un-seed, and load-test scripts.
+It also stores the Git repo settings for publishing result bundles.
+
 Apply Prometheus and cAdvisor:
 
 ```bash
@@ -128,7 +138,13 @@ http://canvas.io.vn:30090
 Run a load test and send k6 metrics to Prometheus:
 
 ```bash
-API_TOKEN=<your-token> BASE_URL=http://canvas.io.vn ./testing/run-load-test.sh
+./testing/run-load-test.sh
+```
+
+The load test summary is saved under:
+
+```text
+testing/results/<testid>/
 ```
 
 ## Seed realistic load-test data
@@ -153,29 +169,16 @@ The seeder uses the Canvas REST API and creates:
 - enrollments that reuse users across courses
 - assignments, wiki pages, and discussion topics per course
 
-Linux/macOS shell:
+Ubuntu shell:
 
 ```bash
-API_TOKEN=<your-token> \
-BASE_URL=http://canvas.io.vn \
 SEED_PREFIX=lt-batch-01 \
 ./testing/run-seed-data.sh
-```
-
-PowerShell:
-
-```powershell
-$env:API_TOKEN="<your-token>"
-$env:BASE_URL="http://canvas.io.vn"
-$env:SEED_PREFIX="lt-batch-01"
-.\testing\run-seed-data.ps1
 ```
 
 You can scale the dataset up or down with environment variables. For example:
 
 ```bash
-API_TOKEN=<your-token> \
-BASE_URL=http://canvas.io.vn \
 SEED_PREFIX=lt-batch-02 \
 COURSE_COUNT=20 \
 STUDENT_POOL_SIZE=600 \
@@ -187,26 +190,15 @@ Notes:
 
 - Use a fresh `SEED_PREFIX` for each run to avoid login collisions.
 - This is best run against a fresh or dedicated load-test environment because repeated runs add more data.
-- Python is required on the machine running the script. The wrappers try `python3`, `python`, then Windows `py`.
+- Python is required on the machine running the script. The wrappers try `python3` first, then `python`.
 
 Remove previously seeded data by prefix:
 
-Linux/macOS shell:
+Ubuntu shell:
 
 ```bash
-API_TOKEN=<your-token> \
-BASE_URL=http://canvas.io.vn \
 SEED_PREFIX=lt-batch-01 \
 ./testing/run-unseed-data.sh
-```
-
-PowerShell:
-
-```powershell
-$env:API_TOKEN="<your-token>"
-$env:BASE_URL="http://canvas.io.vn"
-$env:SEED_PREFIX="lt-batch-01"
-.\testing\run-unseed-data.ps1
 ```
 
 The un-seed flow deletes matching seeded courses first, then matching seeded users.
@@ -214,9 +206,9 @@ The un-seed flow deletes matching seeded courses first, then matching seeded use
 Generate charts from Prometheus metrics:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r testing/charts/requirements.txt
+chmod +x ./testing/charts/setup-python.sh
+./testing/charts/setup-python.sh
+source ./testing/charts/.venv/bin/activate
 python3 testing/charts/plot_prometheus.py --prometheus-url http://127.0.0.1:30090 --minutes 15
 ```
 
@@ -224,6 +216,25 @@ Charts are written to:
 
 ```text
 testing/charts/output
+```
+
+Publish the latest run and charts to the results Git repo:
+
+```bash
+chmod +x ./testing/publish-results.sh
+./testing/publish-results.sh
+```
+
+Or publish a specific run:
+
+```bash
+TEST_ID=canvas-20260327-120000 ./testing/publish-results.sh
+```
+
+By default this publishes to:
+
+```text
+https://github.com/giakhanh22024558/canvas-k8s-results.git
 ```
 
 ## Notes
