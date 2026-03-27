@@ -199,9 +199,9 @@ The un-seed flow deletes matching seeded courses first, then matching seeded use
 Generate charts from Prometheus metrics:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r testing/charts/requirements.txt
+chmod +x ./testing/charts/setup-python.sh
+./testing/charts/setup-python.sh
+source ./testing/charts/.venv/bin/activate
 python3 testing/charts/plot_prometheus.py --prometheus-url http://127.0.0.1:30090 --minutes 15
 ```
 
