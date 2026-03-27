@@ -153,22 +153,13 @@ The seeder uses the Canvas REST API and creates:
 - enrollments that reuse users across courses
 - assignments, wiki pages, and discussion topics per course
 
-Linux/macOS shell:
+Ubuntu shell:
 
-```bash
+```powershell
 API_TOKEN=<your-token> \
 BASE_URL=http://canvas.io.vn \
 SEED_PREFIX=lt-batch-01 \
 ./testing/run-seed-data.sh
-```
-
-PowerShell:
-
-```powershell
-$env:API_TOKEN="<your-token>"
-$env:BASE_URL="http://canvas.io.vn"
-$env:SEED_PREFIX="lt-batch-01"
-.\testing\run-seed-data.ps1
 ```
 
 You can scale the dataset up or down with environment variables. For example:
@@ -187,26 +178,17 @@ Notes:
 
 - Use a fresh `SEED_PREFIX` for each run to avoid login collisions.
 - This is best run against a fresh or dedicated load-test environment because repeated runs add more data.
-- Python is required on the machine running the script. The wrappers try `python3`, `python`, then Windows `py`.
+- Python is required on the machine running the script. The wrappers try `python3` first, then `python`.
 
 Remove previously seeded data by prefix:
 
-Linux/macOS shell:
+Ubuntu shell:
 
 ```bash
 API_TOKEN=<your-token> \
 BASE_URL=http://canvas.io.vn \
 SEED_PREFIX=lt-batch-01 \
 ./testing/run-unseed-data.sh
-```
-
-PowerShell:
-
-```powershell
-$env:API_TOKEN="<your-token>"
-$env:BASE_URL="http://canvas.io.vn"
-$env:SEED_PREFIX="lt-batch-01"
-.\testing\run-unseed-data.ps1
 ```
 
 The un-seed flow deletes matching seeded courses first, then matching seeded users.
