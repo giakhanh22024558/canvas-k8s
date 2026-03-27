@@ -113,6 +113,15 @@ Testing files are grouped under:
 testing/
 ```
 
+Save your local testing token and defaults once:
+
+```bash
+chmod +x ./testing/setup-env.sh
+./testing/setup-env.sh
+```
+
+This writes your local values to `testing/testing.env`, which is ignored by git and reused by the seed, un-seed, and load-test scripts.
+
 Apply Prometheus and cAdvisor:
 
 ```bash
@@ -128,7 +137,7 @@ http://canvas.io.vn:30090
 Run a load test and send k6 metrics to Prometheus:
 
 ```bash
-API_TOKEN=<your-token> BASE_URL=http://canvas.io.vn ./testing/run-load-test.sh
+./testing/run-load-test.sh
 ```
 
 ## Seed realistic load-test data
@@ -155,9 +164,7 @@ The seeder uses the Canvas REST API and creates:
 
 Ubuntu shell:
 
-```powershell
-API_TOKEN=<your-token> \
-BASE_URL=http://canvas.io.vn \
+```bash
 SEED_PREFIX=lt-batch-01 \
 ./testing/run-seed-data.sh
 ```
@@ -165,8 +172,6 @@ SEED_PREFIX=lt-batch-01 \
 You can scale the dataset up or down with environment variables. For example:
 
 ```bash
-API_TOKEN=<your-token> \
-BASE_URL=http://canvas.io.vn \
 SEED_PREFIX=lt-batch-02 \
 COURSE_COUNT=20 \
 STUDENT_POOL_SIZE=600 \
@@ -185,8 +190,6 @@ Remove previously seeded data by prefix:
 Ubuntu shell:
 
 ```bash
-API_TOKEN=<your-token> \
-BASE_URL=http://canvas.io.vn \
 SEED_PREFIX=lt-batch-01 \
 ./testing/run-unseed-data.sh
 ```
