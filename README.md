@@ -121,7 +121,7 @@ chmod +x ./testing/setup-env.sh
 ```
 
 This writes your local values to `testing/testing.env`, which is ignored by git and reused by the seed, un-seed, and load-test scripts.
-It can also store your `rclone` remote name and Google Drive folder ID for result uploads.
+It also stores the Git repo settings for publishing result bundles.
 
 Apply Prometheus and cAdvisor:
 
@@ -218,20 +218,24 @@ Charts are written to:
 testing/charts/output
 ```
 
-Upload the latest run log and chart outputs to your Google Drive folder:
+Publish the latest run and charts to the results Git repo:
 
 ```bash
-chmod +x ./testing/upload-results.sh
-./testing/upload-results.sh
+chmod +x ./testing/publish-results.sh
+./testing/publish-results.sh
 ```
 
-Or upload a specific test run:
+Or publish a specific run:
 
 ```bash
-TEST_ID=canvas-20260327-120000 ./testing/upload-results.sh
+TEST_ID=canvas-20260327-120000 ./testing/publish-results.sh
 ```
 
-This uses `rclone`, so configure your Google Drive remote once with `rclone config` on the EC2 host.
+By default this publishes to:
+
+```text
+https://github.com/giakhanh22024558/canvas-k8s-results.git
+```
 
 ## Notes
 
