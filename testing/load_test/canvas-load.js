@@ -10,7 +10,7 @@ export const options = {
   },
 };
 
-const baseUrl = __ENV.BASE_URL || "http://canvas.io.vn:30080";
+const baseUrl = __ENV.BASE_URL || "http://canvas.io.vn";
 const apiToken = __ENV.API_TOKEN || "";
 
 export default function () {

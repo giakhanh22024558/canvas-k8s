@@ -1,11 +1,18 @@
 #!/bin/bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://canvas.io.vn}"
-
 if [[ -z "${API_TOKEN:-}" ]]; then
   echo "API_TOKEN is required"
   exit 1
+fi
+
+if [[ -z "${SEED_PREFIX:-}" ]]; then
+  echo "SEED_PREFIX is required"
+  exit 1
+fi
+
+if [[ -z "${BASE_URL:-}" ]]; then
+  BASE_URL="http://canvas.io.vn"
 fi
 
 if command -v python3 >/dev/null 2>&1; then
@@ -17,4 +24,4 @@ else
   exit 1
 fi
 
-"$PYTHON_BIN" "$(dirname "$0")/seed_canvas_data.py"
+"$PYTHON_BIN" "$(dirname "$0")/unseed_canvas_data.py"
