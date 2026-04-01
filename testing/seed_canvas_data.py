@@ -126,6 +126,8 @@ STUDENTS_PER_COURSE = env_int("STUDENTS_PER_COURSE", 40)
 ASSIGNMENTS_PER_COURSE = env_int("ASSIGNMENTS_PER_COURSE", 8)
 PAGES_PER_COURSE = env_int("PAGES_PER_COURSE", 4)
 DISCUSSIONS_PER_COURSE = env_int("DISCUSSIONS_PER_COURSE", 3)
+MODULES_PER_COURSE = env_int("MODULES_PER_COURSE", 4)
+QUIZZES_PER_COURSE = env_int("QUIZZES_PER_COURSE", 2)
 REQUEST_TIMEOUT = env_int("REQUEST_TIMEOUT", 30)
 RANDOM_SEED = env_int("RANDOM_SEED", 42)
 
@@ -257,6 +259,26 @@ def create_discussion(course_id: int, course_name: str, index: int):
     api_request("POST", f"/api/v1/courses/{course_id}/discussion_topics", params)
 
 
+def create_module(course_id: int, index: int):
+    params = {
+        "module[name]": f"Module {index + 1}",
+        "module[published]": "true",
+    }
+    api_request("POST", f"/api/v1/courses/{course_id}/modules", params)
+
+
+def create_quiz(course_id: int, course_name: str, index: int):
+    params = {
+        "quiz[title]": f"Quiz {index + 1}",
+        "quiz[description]": f"<p>{course_name} quiz {index + 1}.</p>",
+        "quiz[published]": "true",
+        "quiz[quiz_type]": "assignment",
+        "quiz[time_limit]": str(10 + (index * 5)),
+        "quiz[allowed_attempts]": "1",
+    }
+    api_request("POST", f"/api/v1/courses/{course_id}/quizzes", params)
+
+
 def choose_unique(rng: random.Random, pool, count: int):
     if not pool or count == 0:
         return []
@@ -297,6 +319,12 @@ def main():
         for discussion_index in range(DISCUSSIONS_PER_COURSE):
             create_discussion(course["id"], course["name"], discussion_index)
 
+        for module_index in range(MODULES_PER_COURSE):
+            create_module(course["id"], module_index)
+
+        for quiz_index in range(QUIZZES_PER_COURSE):
+            create_quiz(course["id"], course["name"], quiz_index)
+
         print(
             f"Seeded course {course_index + 1}/{COURSE_COUNT}: "
             f"{course['name']} with {len(teachers)} teachers and {len(students)} students",
@@ -313,7 +341,11 @@ def main():
         "assignments_per_course": ASSIGNMENTS_PER_COURSE,
         "pages_per_course": PAGES_PER_COURSE,
         "discussions_per_course": DISCUSSIONS_PER_COURSE,
+        "modules_per_course": MODULES_PER_COURSE,
+        "quizzes_per_course": QUIZZES_PER_COURSE,
         "base_url": BASE_URL,
+        "sample_student_login": student_pool[0]["login"] if student_pool else "",
+        "seed_password": PASSWORD,
     }
 
     print(json.dumps(summary, indent=2))

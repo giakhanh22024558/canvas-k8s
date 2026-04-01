@@ -33,6 +33,8 @@ choose_profile() {
       export ASSIGNMENTS_PER_COURSE="${ASSIGNMENTS_PER_COURSE:-2}"
       export PAGES_PER_COURSE="${PAGES_PER_COURSE:-1}"
       export DISCUSSIONS_PER_COURSE="${DISCUSSIONS_PER_COURSE:-1}"
+      export MODULES_PER_COURSE="${MODULES_PER_COURSE:-2}"
+      export QUIZZES_PER_COURSE="${QUIZZES_PER_COURSE:-1}"
       ;;
     2)
       export COURSE_COUNT="${COURSE_COUNT:-12}"
@@ -43,6 +45,8 @@ choose_profile() {
       export ASSIGNMENTS_PER_COURSE="${ASSIGNMENTS_PER_COURSE:-8}"
       export PAGES_PER_COURSE="${PAGES_PER_COURSE:-4}"
       export DISCUSSIONS_PER_COURSE="${DISCUSSIONS_PER_COURSE:-3}"
+      export MODULES_PER_COURSE="${MODULES_PER_COURSE:-4}"
+      export QUIZZES_PER_COURSE="${QUIZZES_PER_COURSE:-2}"
       ;;
     3)
       export COURSE_COUNT="${COURSE_COUNT:-20}"
@@ -53,6 +57,8 @@ choose_profile() {
       export ASSIGNMENTS_PER_COURSE="${ASSIGNMENTS_PER_COURSE:-10}"
       export PAGES_PER_COURSE="${PAGES_PER_COURSE:-5}"
       export DISCUSSIONS_PER_COURSE="${DISCUSSIONS_PER_COURSE:-4}"
+      export MODULES_PER_COURSE="${MODULES_PER_COURSE:-5}"
+      export QUIZZES_PER_COURSE="${QUIZZES_PER_COURSE:-3}"
       ;;
     *)
       echo "Invalid choice: $profile_choice"

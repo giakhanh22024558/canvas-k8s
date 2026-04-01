@@ -29,12 +29,34 @@ RESULTS_REPO_URL_VALUE="${RESULTS_REPO_URL_INPUT:-$default_results_repo_url}"
 read -r -p "Enter local results repo directory [$default_results_repo_dir]: " RESULTS_REPO_DIR_INPUT
 RESULTS_REPO_DIR_VALUE="${RESULTS_REPO_DIR_INPUT:-$default_results_repo_dir}"
 
+default_test_type="${TEST_TYPE:-load}"
+read -r -p "Enter default test profile [$default_test_type]: " TEST_TYPE_INPUT
+TEST_TYPE_VALUE="${TEST_TYPE_INPUT:-$default_test_type}"
+
+default_login_email="${TEST_LOGIN_EMAIL:-}"
+read -r -p "Enter optional Canvas login email for session tests [$default_login_email]: " TEST_LOGIN_EMAIL_INPUT
+TEST_LOGIN_EMAIL_VALUE="${TEST_LOGIN_EMAIL_INPUT:-$default_login_email}"
+
+default_login_password="${TEST_LOGIN_PASSWORD:-}"
+read -r -s -p "Enter optional Canvas login password [hidden]: " TEST_LOGIN_PASSWORD_INPUT
+echo
+TEST_LOGIN_PASSWORD_VALUE="${TEST_LOGIN_PASSWORD_INPUT:-$default_login_password}"
+
+default_submission_token="${SUBMISSION_API_TOKEN:-}"
+read -r -s -p "Enter optional student submission API token [hidden]: " SUBMISSION_API_TOKEN_INPUT
+echo
+SUBMISSION_API_TOKEN_VALUE="${SUBMISSION_API_TOKEN_INPUT:-$default_submission_token}"
+
 cat > "$ENV_FILE" <<EOF
 BASE_URL=$BASE_URL_VALUE
 API_TOKEN=$API_TOKEN_INPUT
 PROM_URL=$PROM_URL_VALUE
 RESULTS_REPO_URL=$RESULTS_REPO_URL_VALUE
 RESULTS_REPO_DIR=$RESULTS_REPO_DIR_VALUE
+TEST_TYPE=$TEST_TYPE_VALUE
+TEST_LOGIN_EMAIL=$TEST_LOGIN_EMAIL_VALUE
+TEST_LOGIN_PASSWORD=$TEST_LOGIN_PASSWORD_VALUE
+SUBMISSION_API_TOKEN=$SUBMISSION_API_TOKEN_VALUE
 EOF
 
 chmod 600 "$ENV_FILE"
