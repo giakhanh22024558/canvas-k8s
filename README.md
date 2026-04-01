@@ -105,7 +105,19 @@ If you do not want to delete the namespace first:
 ./deploy.sh bootstrap
 ```
 
-For later updates:
+For experiment 1 baseline deployment:
+
+```bash
+./deploy.sh baseline
+```
+
+For experiment 2 HPA deployment:
+
+```bash
+./deploy.sh hpa
+```
+
+For later updates with HPA enabled:
 
 ```bash
 ./deploy.sh
@@ -363,7 +375,14 @@ This repo now includes simple CPU-based HPAs for:
 - `canvas-web`
 - `canvas-jobs`
 
-The HPA manifest is applied automatically with the rest of the deployment manifests:
+Deployment modes:
+
+- `./deploy.sh baseline`: migrate DB, deploy fixed replicas, remove HPAs
+- `./deploy.sh hpa`: migrate DB, deploy with HPAs enabled
+- `./deploy.sh`: same as `./deploy.sh hpa`
+- `./deploy.sh bootstrap`: initialize DB, then deploy with HPAs enabled
+
+The HPA manifest used by `hpa` mode is:
 
 ```text
 deployment/hpa.yaml
@@ -381,8 +400,8 @@ Note:
 
 Suggested thesis experiment set:
 
-- baseline with the HPA manifest removed or scaled to fixed replicas
-- HPA enabled under the same workload profile
+- baseline with `./deploy.sh baseline`
+- HPA enabled under the same workload profile with `./deploy.sh hpa`
 - compare latency, throughput, and pod CPU over time
 
 ## Generate charts
