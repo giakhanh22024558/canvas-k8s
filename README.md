@@ -203,6 +203,10 @@ It stores:
 - `PROM_URL`
 - `RESULTS_REPO_URL`
 - `RESULTS_REPO_DIR`
+- `TEST_TYPE`
+- `TEST_LOGIN_EMAIL`
+- `TEST_LOGIN_PASSWORD`
+- `SUBMISSION_API_TOKEN`
 
 ## Deploy monitoring
 
@@ -256,8 +260,33 @@ Recommended medium-sized dataset:
 - `ASSIGNMENTS_PER_COURSE=8`
 - `PAGES_PER_COURSE=4`
 - `DISCUSSIONS_PER_COURSE=3`
+- `MODULES_PER_COURSE=4`
+- `QUIZZES_PER_COURSE=2`
 
 Use a unique prefix for every run to avoid collisions.
+
+The seeded dataset now includes:
+
+- users for teacher and student pools
+- published courses
+- enrollments
+- assignments
+- pages
+- discussion topics
+- modules
+- quizzes
+
+If you want to exercise the optional session-login flow, use a seeded student account such as:
+
+```text
+<seed-prefix>-student-001@seed.local
+```
+
+with password:
+
+```text
+ChangeMe123!
+```
 
 ## Remove seeded data
 
@@ -277,10 +306,20 @@ Run:
 ./testing/run-load-test.sh
 ```
 
+Or choose a named profile:
+
+```bash
+TEST_TYPE=smoke ./testing/run-load-test.sh
+TEST_TYPE=load ./testing/run-load-test.sh
+TEST_TYPE=stress ./testing/run-load-test.sh
+TEST_TYPE=soak ./testing/run-load-test.sh
+```
+
 The script:
 
 - loads `testing/testing.env`
 - uses your saved API token
+- applies a named test profile
 - sends metrics to Prometheus remote write
 - saves run output locally
 
@@ -288,6 +327,7 @@ During startup it prints:
 
 - base URL
 - Prometheus write URL
+- test profile
 - test ID
 - masked token preview
 
@@ -301,6 +341,49 @@ Files include:
 
 - `k6-summary.txt`
 - `metadata.env`
+
+The k6 workload is no longer a single endpoint. It now mixes:
+
+- `GET /api/v1/dashboard/dashboard_cards`
+- `GET /api/v1/courses`
+- `GET /api/v1/courses/{id}/modules`
+- `GET /api/v1/courses/{id}/quizzes`
+- optional `POST /login/canvas`
+- optional `POST /api/v1/courses/{id}/assignments/{id}/submissions`
+
+Optional flows:
+
+- set `TEST_LOGIN_EMAIL` and `TEST_LOGIN_PASSWORD` to enable session login checks
+- set `SUBMISSION_API_TOKEN` to enable assignment submission traffic with a student-scoped token
+
+## Horizontal Pod Autoscaling
+
+This repo now includes simple CPU-based HPAs for:
+
+- `canvas-web`
+- `canvas-jobs`
+
+The HPA manifest is applied automatically with the rest of the deployment manifests:
+
+```text
+deployment/hpa.yaml
+```
+
+To verify after deployment:
+
+```bash
+kubectl get hpa -n canvas
+```
+
+Note:
+
+- HPA requires Kubernetes metrics collection such as `metrics-server`
+
+Suggested thesis experiment set:
+
+- baseline with the HPA manifest removed or scaled to fixed replicas
+- HPA enabled under the same workload profile
+- compare latency, throughput, and pod CPU over time
 
 ## Generate charts
 

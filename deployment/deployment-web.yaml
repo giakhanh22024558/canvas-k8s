@@ -28,6 +28,13 @@ spec:
               value: "300"
             - name: PASSENGER_MIN_INSTANCES
               value: "1"
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 2Gi
           ports:
             - containerPort: 80
           volumeMounts:
