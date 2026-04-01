@@ -26,11 +26,11 @@ spec:
               value: "1"
           resources:
             requests:
-              cpu: 250m
-              memory: 512Mi
-            limits:
-              cpu: "1"
+              cpu: 500m
               memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 2Gi
           command:
             - sh
             - -c
