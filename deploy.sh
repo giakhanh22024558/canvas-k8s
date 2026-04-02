@@ -5,6 +5,7 @@ MODE="${1:-hpa}"
 K3S_KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
 DB_MODE="migrate"
 SCALING_MODE="hpa"
+BASELINE_DISABLE_JOBS="${BASELINE_DISABLE_JOBS:-false}"
 
 case "$MODE" in
   bootstrap)
@@ -29,6 +30,8 @@ case "$MODE" in
     echo "  hpa:      migrate DB, deploy with HPAs enabled"
     echo "  bootstrap: initialize DB, deploy with HPAs enabled"
     echo "  migrate:   alias for hpa"
+    echo "Environment:"
+    echo "  BASELINE_DISABLE_JOBS=true  Scale canvas-jobs to 0 in baseline mode"
     exit 1
     ;;
 esac
@@ -77,7 +80,11 @@ case "$SCALING_MODE" in
   baseline)
     kubectl delete -f deployment/hpa.yaml --ignore-not-found
     kubectl scale deployment/canvas-web --replicas=1 -n canvas
-    kubectl scale deployment/canvas-jobs --replicas=1 -n canvas
+    if [[ "$BASELINE_DISABLE_JOBS" == "true" ]]; then
+      kubectl scale deployment/canvas-jobs --replicas=0 -n canvas
+    else
+      kubectl scale deployment/canvas-jobs --replicas=1 -n canvas
+    fi
     ;;
   hpa)
     kubectl apply -f deployment/hpa.yaml
@@ -87,7 +94,9 @@ esac
 kubectl apply -f service/
 
 kubectl rollout status deployment/canvas-web -n canvas --timeout=300s
-kubectl rollout status deployment/canvas-jobs -n canvas --timeout=300s
+if ! [[ "$SCALING_MODE" == "baseline" && "$BASELINE_DISABLE_JOBS" == "true" ]]; then
+  kubectl rollout status deployment/canvas-jobs -n canvas --timeout=300s
+fi
 
 if [[ "$SCALING_MODE" == "hpa" ]]; then
   kubectl get hpa -n canvas
@@ -98,4 +107,5 @@ fi
 echo "Deployment completed with mode: $MODE"
 echo "Database action: $DB_MODE"
 echo "Scaling mode: $SCALING_MODE"
+echo "Baseline disable jobs: $BASELINE_DISABLE_JOBS"
 echo "Canvas service URL: http://canvas.io.vn"

@@ -113,6 +113,12 @@ For experiment 1 baseline deployment:
 ./deploy.sh baseline
 ```
 
+For baseline web-only deployment without delayed jobs:
+
+```bash
+BASELINE_DISABLE_JOBS=true ./deploy.sh baseline
+```
+
 For experiment 2 HPA deployment:
 
 ```bash
@@ -455,6 +461,7 @@ This repo now includes simple CPU-based HPAs for:
 Deployment modes:
 
 - `./deploy.sh baseline`: migrate DB, deploy fixed replicas, remove HPAs
+- `BASELINE_DISABLE_JOBS=true ./deploy.sh baseline`: same as baseline, but scales `canvas-jobs` to `0`
 - `./deploy.sh hpa`: migrate DB, deploy with HPAs enabled
 - `./deploy.sh`: same as `./deploy.sh hpa`
 - `./deploy.sh bootstrap`: initialize DB, then deploy with HPAs enabled
@@ -478,6 +485,7 @@ Note:
 Suggested thesis experiment set:
 
 - baseline with `./deploy.sh baseline`
+- baseline web-only with `BASELINE_DISABLE_JOBS=true ./deploy.sh baseline` if delayed jobs destabilize the single-node host
 - HPA enabled under the same workload profile with `./deploy.sh hpa`
 - compare latency, throughput, and pod CPU over time
 
