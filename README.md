@@ -248,6 +248,73 @@ Prometheus should be available at:
 http://canvas.io.vn:30090
 ```
 
+## Basic Grafana on your local machine
+
+If you want live monitoring without watching the terminal, run Grafana on your local machine and connect it to the remote Prometheus instance.
+
+Recommended local Grafana setup:
+
+1. Install Grafana locally.
+2. Open Grafana at:
+
+```text
+http://localhost:3000
+```
+
+3. Add a Prometheus data source with:
+
+```text
+URL: http://canvas.io.vn:30090
+```
+
+4. Import this dashboard JSON:
+
+```text
+testing/grafana/canvas-local-dashboard.json
+```
+
+The dashboard includes:
+
+- request throughput
+- error rate
+- response time percentiles `p50`, `p95`, `p99`
+- VU count
+- Canvas web CPU per pod
+- Canvas web memory per pod
+- Canvas jobs memory per pod
+- live deployment replica count
+- live pod restart count
+- live HPA current and desired replicas
+- stat panels for current p95, error rate, and VUs
+
+Notes:
+
+- The dashboard filters by `testid`, so you can switch between load-test runs.
+- Current live panels rely on metrics exposed by Prometheus, cAdvisor, and `kube-state-metrics`.
+
+## Live Kubernetes state in Grafana
+
+The monitoring stack now deploys `kube-state-metrics`, and Prometheus scrapes it automatically.
+
+This adds live Grafana visibility for:
+
+- deployment replica counts
+- pod restart counts
+- HPA current replicas
+- HPA desired replicas
+
+To apply the updated monitoring stack:
+
+```bash
+./testing/apply-monitoring.sh
+```
+
+You can verify the new component with:
+
+```bash
+kubectl get all -n canvas-monitoring
+```
+
 ## Seed test data
 
 Before load testing, seed data so the API has realistic content.

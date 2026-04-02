@@ -14,9 +14,11 @@ kubectl get nodes >/dev/null
 kubectl apply -f "$SCRIPT_DIR/monitoring/namespace.yaml"
 kubectl apply -f "$SCRIPT_DIR/monitoring/prometheus-config.yaml"
 kubectl apply -f "$SCRIPT_DIR/monitoring/cadvisor.yaml"
+kubectl apply -f "$SCRIPT_DIR/monitoring/kube-state-metrics.yaml"
 kubectl apply -f "$SCRIPT_DIR/monitoring/prometheus.yaml"
 
 kubectl rollout status deployment/prometheus -n canvas-monitoring --timeout=300s
 kubectl rollout status daemonset/cadvisor -n canvas-monitoring --timeout=300s
+kubectl rollout status deployment/kube-state-metrics -n canvas-monitoring --timeout=300s
 
 echo "Prometheus is available at http://127.0.0.1:30090"
