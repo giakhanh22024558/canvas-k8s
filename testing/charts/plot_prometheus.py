@@ -2,6 +2,7 @@ import argparse
 import csv
 import datetime as dt
 from pathlib import Path
+import re
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
@@ -36,6 +37,68 @@ def parse_numeric(value):
     if value in (None, ""):
         return 0.0
     return float(value)
+
+
+def parse_duration_to_seconds(value):
+    if not value:
+        return 0.0
+
+    text = value.strip()
+    if text in {"0", "0.0", "0s", "0ms"}:
+        return 0.0
+
+    total = 0.0
+    for amount, unit in re.findall(r"(\d+(?:\.\d+)?)(ms|s|m|h)", text):
+        number = float(amount)
+        if unit == "ms":
+            total += number / 1000.0
+        elif unit == "s":
+            total += number
+        elif unit == "m":
+            total += number * 60.0
+        elif unit == "h":
+            total += number * 3600.0
+    return total
+
+
+def parse_k6_summary_metrics(path):
+    if not path.exists():
+        return {}
+
+    text = path.read_text(encoding="utf-8", errors="ignore")
+    metrics = {}
+
+    duration_match = re.search(
+        r"http_req_duration\.*:\s+avg=(\S+).*?p\(90\)=(\S+)\s+p\(95\)=(\S+)",
+        text,
+        re.DOTALL,
+    )
+    if duration_match:
+        metrics["avg"] = parse_duration_to_seconds(duration_match.group(1))
+        metrics["p95"] = parse_duration_to_seconds(duration_match.group(3))
+
+    expected_match = re.search(
+        r"\{\s*expected_response:true\s*\}\.*:\s+avg=(\S+).*?p\(90\)=(\S+)\s+p\(95\)=(\S+)",
+        text,
+        re.DOTALL,
+    )
+    if expected_match:
+        metrics["expected_avg"] = parse_duration_to_seconds(expected_match.group(1))
+        metrics["expected_p95"] = parse_duration_to_seconds(expected_match.group(3))
+
+    failed_match = re.search(r"http_req_failed\.*:\s+(\d+(?:\.\d+)?)%", text)
+    if failed_match:
+        metrics["error_rate_percent"] = float(failed_match.group(1))
+
+    reqs_match = re.search(r"http_reqs\.*:\s+\d+\s+(\d+(?:\.\d+)?)\/s", text)
+    if reqs_match:
+        metrics["throughput_rps"] = float(reqs_match.group(1))
+
+    vus_match = re.search(r"vus_max\.*:\s+(\d+(?:\.\d+)?)", text)
+    if vus_match:
+        metrics["max_vus"] = float(vus_match.group(1))
+
+    return metrics
 
 
 def query_range(base_url, query, start, end, step):
@@ -354,6 +417,44 @@ def series_for_metric(base_url, metric_name, selector, start, end, step):
     return select_first_series(query_range(base_url, query, start, end, step))
 
 
+def fallback_latency_series(start, end, step, seconds_value):
+    if seconds_value <= 0:
+        return []
+
+    step_delta = dt.timedelta(seconds=int(step.rstrip("s")) if str(step).endswith("s") else 15)
+    current = start
+    values = []
+    while current <= end:
+        values.append((current, seconds_value))
+        current += step_delta
+    return values
+
+
+def apply_k6_summary_fallbacks(latency, throughput, error_rate, vus, start, end, step, k6_summary_metrics):
+    fallback_used = False
+
+    if not latency["p95"] and k6_summary_metrics.get("p95", 0.0) > 0:
+        latency["p95"] = fallback_latency_series(start, end, step, k6_summary_metrics["p95"])
+        fallback_used = True
+    if not latency["p50"] and k6_summary_metrics.get("avg", 0.0) > 0:
+        latency["p50"] = fallback_latency_series(start, end, step, k6_summary_metrics["avg"])
+        fallback_used = True
+    if not latency["p99"] and k6_summary_metrics.get("p95", 0.0) > 0:
+        latency["p99"] = fallback_latency_series(start, end, step, k6_summary_metrics["p95"])
+        fallback_used = True
+    if not throughput and k6_summary_metrics.get("throughput_rps", 0.0) > 0:
+        throughput = fallback_latency_series(start, end, step, k6_summary_metrics["throughput_rps"])
+        fallback_used = True
+    if not error_rate and k6_summary_metrics.get("error_rate_percent", 0.0) > 0:
+        error_rate = fallback_latency_series(start, end, step, k6_summary_metrics["error_rate_percent"])
+        fallback_used = True
+    if not vus and k6_summary_metrics.get("max_vus", 0.0) > 0:
+        vus = fallback_latency_series(start, end, step, k6_summary_metrics["max_vus"])
+        fallback_used = True
+
+    return latency, throughput, error_rate, vus, fallback_used
+
+
 def run_window(args, run_dir):
     metadata = load_env_file(run_dir / "metadata.env") if run_dir else {}
     if metadata.get("started_at"):
@@ -443,9 +544,13 @@ def main():
         selector = f'{{testid="{args.testid}"}}'
         label = metadata.get("test_type", args.testid)
         snapshots = load_snapshots(run_dir / "k8s-snapshots.csv")
+        k6_summary_metrics = parse_k6_summary_metrics(run_dir / "k6-summary.txt")
 
         latency, throughput, error_rate, vus, web_cpu = collect_run_metrics(
             args.prometheus_url, selector, start, end, args.step
+        )
+        latency, throughput, error_rate, vus, fallback_used = apply_k6_summary_fallbacks(
+            latency, throughput, error_rate, vus, start, end, args.step, k6_summary_metrics
         )
 
         plot_latency_timeline(output_dir, {label: latency})
@@ -466,6 +571,7 @@ def main():
             "max_vus": round(max((value for _, value in vus), default=0), 3),
             "max_web_restart_total": round(max((row["web_restart_total"] for row in snapshots), default=0), 3),
             "max_jobs_restart_total": round(max((row["jobs_restart_total"] for row in snapshots), default=0), 3),
+            "k6_summary_fallback": int(fallback_used),
         }
         summary_metrics.update({key: round(value, 3) if isinstance(value, float) else value for key, value in scaling_summary.items()})
         write_summary(output_dir, label, summary_metrics)
@@ -478,8 +584,12 @@ def main():
         selector = f'{{testid="{testid}"}}'
         label = compare_labels[index] if index < len(compare_labels) else metadata.get("test_type", testid)
         snapshots = load_snapshots(run_dir / "k8s-snapshots.csv")
+        k6_summary_metrics = parse_k6_summary_metrics(run_dir / "k6-summary.txt")
         latency, throughput, error_rate, vus, web_cpu = collect_run_metrics(
             args.prometheus_url, selector, start, end, args.step
+        )
+        latency, throughput, error_rate, vus, _fallback_used = apply_k6_summary_fallbacks(
+            latency, throughput, error_rate, vus, start, end, args.step, k6_summary_metrics
         )
         comparison_rows.append(
             {
