@@ -12,6 +12,7 @@ Deploy Canvas LMS on a single Ubuntu EC2 instance with `k3s`, then run load test
 
 - Canvas: `http://canvas.io.vn`
 - Prometheus: `http://canvas.io.vn:30090`
+- Grafana: `http://canvas.io.vn:30091`
 
 ## EC2 prerequisites
 
@@ -23,6 +24,7 @@ Before using this repo on a fresh Ubuntu EC2 instance, make sure you have:
   - TCP `80`
   - TCP `30080`
   - TCP `30090`
+  - TCP `30091`
 - `k3s` installed
 - `git`, `curl`, and `kubectl` available
 
@@ -248,26 +250,24 @@ Prometheus should be available at:
 http://canvas.io.vn:30090
 ```
 
-## Basic Grafana on your local machine
+## Grafana
 
-If you want live monitoring without watching the terminal, run Grafana on your local machine and connect it to the remote Prometheus instance.
-
-Recommended local Grafana setup:
-
-1. Install Grafana locally.
-2. Open Grafana at:
+Grafana is deployed as part of the monitoring stack and exposed on:
 
 ```text
-http://localhost:3000
+http://canvas.io.vn:30091
 ```
 
-3. Add a Prometheus data source with:
+Default login:
 
 ```text
-URL: http://canvas.io.vn:30090
+username: admin
+password: admin
 ```
 
-4. Import this dashboard JSON:
+The Prometheus data source is provisioned automatically.
+
+To use the Canvas load-testing dashboard, import this JSON:
 
 ```text
 testing/grafana/canvas-local-dashboard.json
@@ -309,7 +309,7 @@ To apply the updated monitoring stack:
 ./testing/apply-monitoring.sh
 ```
 
-You can verify the new component with:
+You can verify the monitoring components with:
 
 ```bash
 kubectl get all -n canvas-monitoring
