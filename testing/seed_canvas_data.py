@@ -101,6 +101,13 @@ DISCUSSION_TOPICS = [
     "Final Reflection",
 ]
 
+ANNOUNCEMENT_TOPICS = [
+    "Course Kickoff",
+    "Assessment Reminder",
+    "Office Hours Update",
+    "Weekly Wrap-Up",
+]
+
 
 def env_int(name: str, default: int) -> int:
     raw = os.environ.get(name, str(default))
@@ -128,6 +135,8 @@ PAGES_PER_COURSE = env_int("PAGES_PER_COURSE", 4)
 DISCUSSIONS_PER_COURSE = env_int("DISCUSSIONS_PER_COURSE", 3)
 MODULES_PER_COURSE = env_int("MODULES_PER_COURSE", 4)
 QUIZZES_PER_COURSE = env_int("QUIZZES_PER_COURSE", 2)
+ANNOUNCEMENTS_PER_COURSE = env_int("ANNOUNCEMENTS_PER_COURSE", 2)
+FAVORITE_SEEDED_COURSES = os.environ.get("FAVORITE_SEEDED_COURSES", "true").lower() == "true"
 REQUEST_TIMEOUT = env_int("REQUEST_TIMEOUT", 30)
 RANDOM_SEED = env_int("RANDOM_SEED", 42)
 
@@ -163,6 +172,14 @@ def api_request(method: str, path: str, params=None):
         raise RuntimeError(f"{method.upper()} {path} failed: HTTP {exc.code} {details}") from exc
     except urllib.error.URLError as exc:
         raise RuntimeError(f"{method.upper()} {path} failed: {exc.reason}") from exc
+
+
+def try_api_request(method: str, path: str, params=None):
+    try:
+        return api_request(method, path, params)
+    except RuntimeError as exc:
+        print(f"Warning: {exc}", file=sys.stderr, flush=True)
+        return None
 
 
 def pick_name(index: int):
@@ -203,6 +220,7 @@ def create_course(index: int):
     params = {
         "course[name]": course_name,
         "course[course_code]": course_code,
+        "course[default_view]": "modules",
         "offer": "true",
     }
     data = api_request("POST", f"/api/v1/accounts/{ACCOUNT_ID}/courses", params)
@@ -234,7 +252,7 @@ def create_assignment(course_id: int, course_name: str, index: int, due_at: date
         "assignment[due_at]": due_at.isoformat().replace("+00:00", "Z"),
         "assignment[submission_types][]": "online_text_entry",
     }
-    api_request("POST", f"/api/v1/courses/{course_id}/assignments", params)
+    return api_request("POST", f"/api/v1/courses/{course_id}/assignments", params)
 
 
 def create_page(course_id: int, course_name: str, index: int):
@@ -246,7 +264,7 @@ def create_page(course_id: int, course_name: str, index: int):
         ),
         "wiki_page[published]": "true",
     }
-    api_request("POST", f"/api/v1/courses/{course_id}/pages", params)
+    return api_request("POST", f"/api/v1/courses/{course_id}/pages", params)
 
 
 def create_discussion(course_id: int, course_name: str, index: int):
@@ -256,7 +274,18 @@ def create_discussion(course_id: int, course_name: str, index: int):
         "message": f"<p>{course_name}: share your thoughts on {topic.lower()}.</p>",
         "published": "true",
     }
-    api_request("POST", f"/api/v1/courses/{course_id}/discussion_topics", params)
+    return api_request("POST", f"/api/v1/courses/{course_id}/discussion_topics", params)
+
+
+def create_announcement(course_id: int, course_name: str, index: int):
+    topic = ANNOUNCEMENT_TOPICS[index % len(ANNOUNCEMENT_TOPICS)]
+    params = {
+        "title": f"{topic} {index + 1}",
+        "message": f"<p>{course_name}: {topic.lower()} for students and staff.</p>",
+        "published": "true",
+        "is_announcement": "true",
+    }
+    return api_request("POST", f"/api/v1/courses/{course_id}/discussion_topics", params)
 
 
 def create_module(course_id: int, index: int):
@@ -264,7 +293,7 @@ def create_module(course_id: int, index: int):
         "module[name]": f"Module {index + 1}",
         "module[published]": "true",
     }
-    api_request("POST", f"/api/v1/courses/{course_id}/modules", params)
+    return api_request("POST", f"/api/v1/courses/{course_id}/modules", params)
 
 
 def create_quiz(course_id: int, course_name: str, index: int):
@@ -276,7 +305,28 @@ def create_quiz(course_id: int, course_name: str, index: int):
         "quiz[time_limit]": str(10 + (index * 5)),
         "quiz[allowed_attempts]": "1",
     }
-    api_request("POST", f"/api/v1/courses/{course_id}/quizzes", params)
+    return api_request("POST", f"/api/v1/courses/{course_id}/quizzes", params)
+
+
+def add_module_item(course_id: int, module_id: int, item_type: str, title: str, content_id=None, page_url=None):
+    params = {
+        "module_item[title]": title,
+        "module_item[type]": item_type,
+        "module_item[published]": "true",
+    }
+    if content_id is not None:
+        params["module_item[content_id]"] = str(content_id)
+    if page_url is not None:
+        params["module_item[page_url]"] = page_url
+    try_api_request("POST", f"/api/v1/courses/{course_id}/modules/{module_id}/items", params)
+
+
+def favorite_course_for_current_user(course_id: int):
+    if not FAVORITE_SEEDED_COURSES:
+        return
+    result = try_api_request("POST", f"/api/v1/users/self/favorites/courses/{course_id}")
+    if result is None:
+        try_api_request("PUT", f"/api/v1/users/self/favorites/courses/{course_id}")
 
 
 def choose_unique(rng: random.Random, pool, count: int):
@@ -309,21 +359,76 @@ def main():
         for student in students:
             enroll_user(course["id"], student["id"], "StudentEnrollment")
 
+        assignments = []
         for assignment_index in range(ASSIGNMENTS_PER_COURSE):
             due_at = start + timedelta(days=(assignment_index + 1) * 7 + course_index)
-            create_assignment(course["id"], course["name"], assignment_index, due_at)
+            assignment = create_assignment(course["id"], course["name"], assignment_index, due_at)
+            assignments.append(assignment)
 
+        pages = []
         for page_index in range(PAGES_PER_COURSE):
-            create_page(course["id"], course["name"], page_index)
+            page = create_page(course["id"], course["name"], page_index)
+            pages.append(page)
 
+        discussions = []
         for discussion_index in range(DISCUSSIONS_PER_COURSE):
-            create_discussion(course["id"], course["name"], discussion_index)
+            discussion = create_discussion(course["id"], course["name"], discussion_index)
+            discussions.append(discussion)
 
+        modules = []
         for module_index in range(MODULES_PER_COURSE):
-            create_module(course["id"], module_index)
+            module = create_module(course["id"], module_index)
+            modules.append(module)
 
+        quizzes = []
         for quiz_index in range(QUIZZES_PER_COURSE):
-            create_quiz(course["id"], course["name"], quiz_index)
+            quiz = create_quiz(course["id"], course["name"], quiz_index)
+            quizzes.append(quiz)
+
+        announcements = []
+        for announcement_index in range(ANNOUNCEMENTS_PER_COURSE):
+            announcement = create_announcement(course["id"], course["name"], announcement_index)
+            announcements.append(announcement)
+
+        for module_index, module in enumerate(modules):
+            if assignments:
+                assignment = assignments[module_index % len(assignments)]
+                add_module_item(
+                    course["id"],
+                    module["id"],
+                    "Assignment",
+                    assignment.get("name", f"Assignment {module_index + 1}"),
+                    content_id=assignment["id"],
+                )
+            if quizzes:
+                quiz = quizzes[module_index % len(quizzes)]
+                add_module_item(
+                    course["id"],
+                    module["id"],
+                    "Quiz",
+                    quiz.get("title", f"Quiz {module_index + 1}"),
+                    content_id=quiz["id"],
+                )
+            if discussions:
+                discussion = discussions[module_index % len(discussions)]
+                add_module_item(
+                    course["id"],
+                    module["id"],
+                    "Discussion",
+                    discussion.get("title", f"Discussion {module_index + 1}"),
+                    content_id=discussion["id"],
+                )
+            if pages:
+                page = pages[module_index % len(pages)]
+                add_module_item(
+                    course["id"],
+                    module["id"],
+                    "Page",
+                    page.get("title", f"Page {module_index + 1}"),
+                    page_url=page.get("url"),
+                )
+
+        favorite_course_for_current_user(course["id"])
 
         print(
             f"Seeded course {course_index + 1}/{COURSE_COUNT}: "
@@ -343,9 +448,11 @@ def main():
         "discussions_per_course": DISCUSSIONS_PER_COURSE,
         "modules_per_course": MODULES_PER_COURSE,
         "quizzes_per_course": QUIZZES_PER_COURSE,
+        "announcements_per_course": ANNOUNCEMENTS_PER_COURSE,
         "base_url": BASE_URL,
         "sample_student_login": student_pool[0]["login"] if student_pool else "",
         "seed_password": PASSWORD,
+        "favorite_seeded_courses": FAVORITE_SEEDED_COURSES,
     }
 
     print(json.dumps(summary, indent=2))
