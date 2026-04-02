@@ -12,6 +12,8 @@ TEST_ID="${TEST_ID:-canvas-$(date +%Y%m%d-%H%M%S)}"
 RESULTS_DIR="${RESULTS_DIR:-$SCRIPT_DIR/results}"
 RUN_DIR="$RESULTS_DIR/$TEST_ID"
 LOG_FILE="$RUN_DIR/k6-summary.txt"
+SNAPSHOT_FILE="$RUN_DIR/k8s-snapshots.csv"
+K8S_SNAPSHOT_PID=""
 
 if ! command -v k6 >/dev/null 2>&1; then
   echo "k6 is required but not installed."
@@ -61,6 +63,15 @@ fi
 
 mkdir -p "$RUN_DIR"
 
+cleanup() {
+  if [[ -n "$K8S_SNAPSHOT_PID" ]] && kill -0 "$K8S_SNAPSHOT_PID" >/dev/null 2>&1; then
+    kill "$K8S_SNAPSHOT_PID" >/dev/null 2>&1 || true
+    wait "$K8S_SNAPSHOT_PID" 2>/dev/null || true
+  fi
+}
+
+trap cleanup EXIT
+
 echo "Starting k6 load test"
 echo "Base URL: $BASE_URL"
 echo "Prometheus write URL: $PROM_URL"
@@ -79,9 +90,24 @@ echo "Submission flow enabled: $submission_enabled"
   echo "started_at=$(date -Is)"
 } > "$RUN_DIR/metadata.env"
 
+if command -v kubectl >/dev/null 2>&1; then
+  ensure_kubeconfig
+  if kubectl get namespace canvas >/dev/null 2>&1; then
+    "$SCRIPT_DIR/collect-k8s-snapshots.sh" "$SNAPSHOT_FILE" &
+    K8S_SNAPSHOT_PID="$!"
+    echo "Collecting Kubernetes snapshots to $SNAPSHOT_FILE"
+  else
+    echo "Skipping Kubernetes snapshot collection because namespace canvas is unavailable."
+  fi
+else
+  echo "Skipping Kubernetes snapshot collection because kubectl is unavailable."
+fi
+
 K6_PROMETHEUS_RW_SERVER_URL="$PROM_URL" \
-K6_PROMETHEUS_RW_TREND_STATS="p(95),p(99),avg,min,max" \
+K6_PROMETHEUS_RW_TREND_STATS="p(50),p(95),p(99),avg,min,max" \
 k6 run -o experimental-prometheus-rw --tag testid="$TEST_ID" "$SCRIPT_DIR/load_test/canvas-load.js" 2>&1 | tee "$LOG_FILE"
+
+echo "ended_at=$(date -Is)" >> "$RUN_DIR/metadata.env"
 
 echo "Finished load test with testid=$TEST_ID"
 echo "Saved run output to $RUN_DIR"
