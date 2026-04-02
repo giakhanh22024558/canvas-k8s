@@ -93,7 +93,7 @@ echo "Submission flow enabled: $submission_enabled"
 if command -v kubectl >/dev/null 2>&1; then
   ensure_kubeconfig
   if kubectl get namespace canvas >/dev/null 2>&1; then
-    "$SCRIPT_DIR/collect-k8s-snapshots.sh" "$SNAPSHOT_FILE" &
+    bash "$SCRIPT_DIR/collect-k8s-snapshots.sh" "$SNAPSHOT_FILE" &
     K8S_SNAPSHOT_PID="$!"
     echo "Collecting Kubernetes snapshots to $SNAPSHOT_FILE"
   else
