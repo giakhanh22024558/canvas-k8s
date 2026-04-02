@@ -16,9 +16,12 @@ kubectl apply -f "$SCRIPT_DIR/monitoring/prometheus-config.yaml"
 kubectl apply -f "$SCRIPT_DIR/monitoring/cadvisor.yaml"
 kubectl apply -f "$SCRIPT_DIR/monitoring/kube-state-metrics.yaml"
 kubectl apply -f "$SCRIPT_DIR/monitoring/prometheus.yaml"
+kubectl apply -f "$SCRIPT_DIR/monitoring/grafana.yaml"
 
 kubectl rollout status deployment/prometheus -n canvas-monitoring --timeout=300s
 kubectl rollout status daemonset/cadvisor -n canvas-monitoring --timeout=300s
 kubectl rollout status deployment/kube-state-metrics -n canvas-monitoring --timeout=300s
+kubectl rollout status deployment/grafana -n canvas-monitoring --timeout=300s
 
 echo "Prometheus is available at http://127.0.0.1:30090"
+echo "Grafana is available at http://127.0.0.1:30091 (admin/admin)"
