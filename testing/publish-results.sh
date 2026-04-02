@@ -28,8 +28,13 @@ if [[ -z "${RUN_DIR:-}" || ! -d "$RUN_DIR" ]]; then
   exit 1
 fi
 
-if [[ ! -d "$CHARTS_DIR" ]]; then
-  echo "Charts directory not found at $CHARTS_DIR. Generate charts first."
+RUN_CHARTS_DIR="$RUN_DIR/charts"
+if [[ -d "$RUN_CHARTS_DIR" ]]; then
+  CHARTS_SOURCE_DIR="$RUN_CHARTS_DIR"
+elif [[ -d "$CHARTS_DIR" ]]; then
+  CHARTS_SOURCE_DIR="$CHARTS_DIR"
+else
+  echo "Charts directory not found at $RUN_CHARTS_DIR or $CHARTS_DIR. Generate charts first."
   exit 1
 fi
 
@@ -46,7 +51,7 @@ mkdir -p "$TARGET_DIR"
 
 rm -rf "$TARGET_DIR/run" "$TARGET_DIR/charts"
 cp -R "$RUN_DIR" "$TARGET_DIR/run"
-cp -R "$CHARTS_DIR" "$TARGET_DIR/charts"
+cp -R "$CHARTS_SOURCE_DIR" "$TARGET_DIR/charts"
 
 cat > "$TARGET_DIR/publish-info.txt" <<EOF
 test_id=$TEST_ID
@@ -54,7 +59,7 @@ published_at=$(date -Is)
 base_url=${BASE_URL:-http://canvas.io.vn}
 prom_url=${PROM_URL:-http://127.0.0.1:30090/api/v1/write}
 source_run_dir=$RUN_DIR
-source_charts_dir=$CHARTS_DIR
+source_charts_dir=$CHARTS_SOURCE_DIR
 EOF
 
 git -C "$RESULTS_REPO_DIR" add "runs/$TEST_ID"

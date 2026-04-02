@@ -181,10 +181,15 @@ Important scripts:
 
 - `testing/setup-env.sh`
 - `testing/apply-monitoring.sh`
+- `testing/collect-k8s-snapshots.sh`
+- `testing/capture-cluster-env.sh`
+- `testing/reset-test-env.sh`
 - `testing/run-seed-data.sh`
 - `testing/run-unseed-data.sh`
 - `testing/run-load-test.sh`
+- `testing/run-experiment-matrix.sh`
 - `testing/charts/setup-python.sh`
+- `testing/charts/analyze_experiments.py`
 - `testing/publish-results.sh`
 
 ## Save local testing config once
@@ -213,12 +218,15 @@ It stores:
 - `BASE_URL`
 - `API_TOKEN`
 - `PROM_URL`
+- `PROMETHEUS_URL`
 - `RESULTS_REPO_URL`
 - `RESULTS_REPO_DIR`
 - `TEST_TYPE`
 - `TEST_LOGIN_EMAIL`
 - `TEST_LOGIN_PASSWORD`
 - `SUBMISSION_API_TOKEN`
+- `RUNS_PER_SCENARIO`
+- `COOLDOWN_SECONDS`
 
 ## Deploy monitoring
 
@@ -353,6 +361,8 @@ Files include:
 
 - `k6-summary.txt`
 - `metadata.env`
+- `k8s-snapshots.csv`
+- `environment.env`
 
 The k6 workload is no longer a single endpoint. It now mixes:
 
@@ -431,11 +441,119 @@ source ./testing/charts/.venv/bin/activate
 python3 testing/charts/plot_prometheus.py --prometheus-url http://127.0.0.1:30090 --minutes 15
 ```
 
+Generate charts for one specific run using its saved run window:
+
+```bash
+source ./testing/charts/.venv/bin/activate
+python3 testing/charts/plot_prometheus.py --prometheus-url http://127.0.0.1:30090 --testid exp01-baseline-load
+```
+
+Generate a comparison chart across multiple runs:
+
+```bash
+source ./testing/charts/.venv/bin/activate
+python3 testing/charts/plot_prometheus.py \
+  --prometheus-url http://127.0.0.1:30090 \
+  --compare-testids exp01-baseline-load,exp02-hpa-load,exp03-baseline-stress,exp04-hpa-stress \
+  --compare-labels baseline_load,hpa_load,baseline_stress,hpa_stress
+```
+
 Charts are written to:
 
 ```text
 testing/charts/output
 ```
+
+Current chart outputs include:
+
+- response time timeline with `p50`, `p95`, `p99`
+- throughput vs error rate
+- VU load profile
+- web CPU with replica count
+- pod restart count
+- scale latency for HPA runs
+- comparison p95 latency summary
+
+The load-test runner also saves `k8s-snapshots.csv` for each run, which records:
+
+- web and jobs replica counts over time
+- HPA current and desired replicas
+- pod restart totals
+
+## Run repeated experiment matrix
+
+This repo can now execute repeated thesis-style experiments and keep a manifest for every run.
+
+Default repeated-run plan:
+
+- `baseline` and `hpa`
+- `smoke`, `load`, `stress`, and `soak`
+- `9` runs per scenario
+
+Use the same seeded dataset for all repeated runs:
+
+```bash
+SEED_PREFIX=thesis-seed-01 ./testing/run-seed-data.sh
+```
+
+Then run the matrix:
+
+```bash
+SEED_PREFIX=thesis-seed-01 EXPERIMENT_NAME=thesis ./testing/run-experiment-matrix.sh
+```
+
+The runner will:
+
+- deploy the correct mode
+- restart application pods between runs
+- optionally flush Redis between runs
+- wait for cooldown
+- verify pod readiness
+- save per-run charts
+- append a row to the experiment manifest
+- run statistical analysis after the matrix finishes
+
+Useful environment variables:
+
+- `RUNS_PER_SCENARIO=9`
+- `COOLDOWN_SECONDS=600`
+- `FLUSH_REDIS_BETWEEN_RUNS=true|false`
+- `MATRIX_MODES=baseline,hpa`
+- `MATRIX_SCENARIOS=smoke,load,stress,soak`
+- `EXPERIMENT_NAME=thesis`
+
+Manifest output:
+
+```text
+testing/results/experiment-manifest-<experiment>.csv
+```
+
+Analysis output:
+
+```text
+testing/results/analysis/<manifest-name>/
+```
+
+Analysis files include:
+
+- `group_summary.csv`
+- `outliers.csv`
+- `t_tests.csv`
+
+The manifest stores:
+
+- experiment name
+- mode
+- scenario
+- run number
+- test ID
+- seed prefix
+- started and ended timestamps
+- acceptance flag
+- notes
+- cooldown setting
+- Redis flush setting
+- basic environment conditions
 
 ## Publish results to the results repo
 
