@@ -22,6 +22,9 @@ spec:
       containers:
         - name: cadvisor
           image: gcr.io/cadvisor/cadvisor:v0.49.1
+          args:
+            - --housekeeping_interval=10s
+            - --docker_only=false
           ports:
             - containerPort: 8080
               name: http
@@ -39,6 +42,18 @@ spec:
             - name: docker
               mountPath: /var/lib/docker
               readOnly: true
+            - name: containerd
+              mountPath: /var/lib/containerd
+              readOnly: true
+            - name: k3s-containerd
+              mountPath: /var/lib/rancher/k3s/agent/containerd
+              readOnly: true
+            - name: run-containerd
+              mountPath: /run/containerd
+              readOnly: true
+            - name: run-k3s-containerd
+              mountPath: /run/k3s/containerd
+              readOnly: true
             - name: disk
               mountPath: /dev/disk
               readOnly: true
@@ -55,6 +70,22 @@ spec:
         - name: docker
           hostPath:
             path: /var/lib/docker
+        - name: containerd
+          hostPath:
+            path: /var/lib/containerd
+            type: DirectoryOrCreate
+        - name: k3s-containerd
+          hostPath:
+            path: /var/lib/rancher/k3s/agent/containerd
+            type: DirectoryOrCreate
+        - name: run-containerd
+          hostPath:
+            path: /run/containerd
+            type: DirectoryOrCreate
+        - name: run-k3s-containerd
+          hostPath:
+            path: /run/k3s/containerd
+            type: DirectoryOrCreate
         - name: disk
           hostPath:
             path: /dev/disk
