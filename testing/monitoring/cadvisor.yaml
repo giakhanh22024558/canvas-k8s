@@ -39,8 +39,14 @@ spec:
             - name: sys
               mountPath: /sys
               readOnly: true
+            - name: sys-fs-cgroup
+              mountPath: /sys/fs/cgroup
+              readOnly: true
             - name: docker
               mountPath: /var/lib/docker
+              readOnly: true
+            - name: kubelet
+              mountPath: /var/lib/kubelet
               readOnly: true
             - name: containerd
               mountPath: /var/lib/containerd
@@ -67,9 +73,17 @@ spec:
         - name: sys
           hostPath:
             path: /sys
+        - name: sys-fs-cgroup
+          hostPath:
+            path: /sys/fs/cgroup
         - name: docker
           hostPath:
             path: /var/lib/docker
+            type: DirectoryOrCreate
+        - name: kubelet
+          hostPath:
+            path: /var/lib/kubelet
+            type: DirectoryOrCreate
         - name: containerd
           hostPath:
             path: /var/lib/containerd
