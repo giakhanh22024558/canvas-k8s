@@ -36,7 +36,13 @@ function buildOptions() {
   const options = { thresholds: defaultThresholds };
 
   if (__ENV.STAGES_JSON) {
-    options.stages = JSON.parse(__ENV.STAGES_JSON);
+    try {
+      options.stages = JSON.parse(__ENV.STAGES_JSON);
+    } catch (_error) {
+      if (preset.stages) {
+        options.stages = preset.stages;
+      }
+    }
   } else if (preset.stages) {
     options.stages = preset.stages;
   } else {
