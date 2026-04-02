@@ -385,8 +385,8 @@ def collect_run_metrics(base_url, selector, start, end, step):
     error_result, _ = try_queries(
         base_url,
         [
-            f"100 * avg(k6_http_req_failed{selector})",
-            f"100 * max(k6_http_req_failed{selector})",
+            f"100 * (avg(k6_http_req_failed{selector}) or avg(k6_http_req_failed_rate{selector}))",
+            f"100 * (max(k6_http_req_failed{selector}) or max(k6_http_req_failed_rate{selector}))",
         ],
         start,
         end,
