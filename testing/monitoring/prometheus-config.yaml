@@ -17,3 +17,7 @@ data:
       - job_name: cadvisor
         static_configs:
           - targets: ["cadvisor.canvas-monitoring.svc.cluster.local:8080"]
+
+      - job_name: kube-state-metrics
+        static_configs:
+          - targets: ["kube-state-metrics.canvas-monitoring.svc.cluster.local:8080"]
