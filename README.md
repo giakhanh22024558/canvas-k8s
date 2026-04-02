@@ -567,6 +567,8 @@ Current chart outputs include:
 - scale latency for HPA runs
 - comparison p95 latency summary
 
+If Prometheus is missing the k6 percentile series for a run, the chart exporter falls back to parsing the saved `k6-summary.txt` so per-run summary CSVs still contain usable latency values.
+
 The load-test runner also saves `k8s-snapshots.csv` for each run, which records:
 
 - web and jobs replica counts over time
