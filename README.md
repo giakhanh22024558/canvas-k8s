@@ -170,7 +170,7 @@ Authorization: Bearer <token>
 Quick verification:
 
 ```bash
-curl -i -H "Authorization: Bearer <token>" http://canvas.io.vn/api/v1/courses
+curl -i -H "Authorization: Bearer <token>" http://canvas.io.vn/api/v1/accounts/self/courses
 ```
 
 Expected result:
@@ -440,7 +440,7 @@ Files include:
 The k6 workload is no longer a single endpoint. It now mixes:
 
 - `GET /api/v1/dashboard/dashboard_cards`
-- `GET /api/v1/courses`
+- `GET /api/v1/accounts/self/courses`
 - `GET /api/v1/courses/{id}/modules`
 - `GET /api/v1/courses/{id}/quizzes`
 - optional `POST /login/canvas`

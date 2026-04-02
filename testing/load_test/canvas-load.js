@@ -10,6 +10,7 @@ const thinkTimeMin = Number(__ENV.THINK_TIME_MIN || 0.5);
 const thinkTimeMax = Number(__ENV.THINK_TIME_MAX || 2.0);
 const maxContextCourses = Number(__ENV.MAX_CONTEXT_COURSES || 8);
 const profileName = (__ENV.TEST_TYPE || "load").toLowerCase();
+const accountCoursePath = "/api/v1/accounts/self/courses";
 
 const defaultThresholds = {
   http_req_failed: ["rate<0.05"],
@@ -100,7 +101,7 @@ function getJson(path, params = {}, token = apiToken) {
 }
 
 function setupCourseContext() {
-  const courses = getJson("/api/v1/courses", {
+  const courses = getJson(accountCoursePath, {
     per_page: maxContextCourses,
     enrollment_state: "active",
   });
@@ -161,7 +162,7 @@ function requestDashboardCards() {
 }
 
 function requestCourseList() {
-  const response = http.get(`${baseUrl}/api/v1/courses?per_page=20&enrollment_state=active`, {
+  const response = http.get(`${baseUrl}${accountCoursePath}?per_page=20&enrollment_state=active`, {
     headers: authHeaders(),
   });
   check(response, {
