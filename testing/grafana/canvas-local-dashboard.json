@@ -259,7 +259,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"canvas\",pod=~\"canvas-web-.*\",container!=\"\",container!=\"POD\"}[1m]))",
+          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"canvas\",pod=~\"canvas-web-.*\",container!=\"\",container!=\"POD\"}[1m])) or label_replace(sum by (container_label_io_kubernetes_pod_name) (rate(container_cpu_usage_seconds_total{container_label_io_kubernetes_pod_namespace=\"canvas\",container_label_io_kubernetes_pod_name=~\"canvas-web-.*\"}[1m])), \"pod\", \"$1\", \"container_label_io_kubernetes_pod_name\", \"(.*)\")",
           "legendFormat": "{{pod}}",
           "refId": "A"
         }
@@ -299,7 +299,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"canvas\",pod=~\"canvas-web-.*\",container!=\"\",container!=\"POD\"}) / 1000000",
+          "expr": "(sum by (pod) (container_memory_working_set_bytes{namespace=\"canvas\",pod=~\"canvas-web-.*\",container!=\"\",container!=\"POD\"}) or label_replace(sum by (container_label_io_kubernetes_pod_name) (container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace=\"canvas\",container_label_io_kubernetes_pod_name=~\"canvas-web-.*\"}), \"pod\", \"$1\", \"container_label_io_kubernetes_pod_name\", \"(.*)\")) / 1000000",
           "legendFormat": "{{pod}}",
           "refId": "A"
         }
@@ -339,7 +339,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"canvas\",pod=~\"canvas-jobs-.*\",container!=\"\",container!=\"POD\"}) / 1000000",
+          "expr": "(sum by (pod) (container_memory_working_set_bytes{namespace=\"canvas\",pod=~\"canvas-jobs-.*\",container!=\"\",container!=\"POD\"}) or label_replace(sum by (container_label_io_kubernetes_pod_name) (container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace=\"canvas\",container_label_io_kubernetes_pod_name=~\"canvas-jobs-.*\"}), \"pod\", \"$1\", \"container_label_io_kubernetes_pod_name\", \"(.*)\")) / 1000000",
           "legendFormat": "{{pod}}",
           "refId": "A"
         }
@@ -521,6 +521,136 @@
       ],
       "title": "Current VUs",
       "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 38
+      },
+      "id": 11,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "kube_deployment_status_replicas_available{namespace=\"canvas\",deployment=~\"canvas-web|canvas-jobs\"}",
+          "legendFormat": "{{deployment}} available",
+          "refId": "A"
+        },
+        {
+          "expr": "kube_deployment_spec_replicas{namespace=\"canvas\",deployment=~\"canvas-web|canvas-jobs\"}",
+          "legendFormat": "{{deployment}} desired",
+          "refId": "B"
+        }
+      ],
+      "title": "Deployment Replicas",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 38
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (pod) (kube_pod_container_status_restarts_total{namespace=\"canvas\",pod=~\"canvas-web-.*|canvas-jobs-.*\"})",
+          "legendFormat": "{{pod}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Pod Restart Count",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 38
+      },
+      "id": 13,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"canvas\",horizontalpodautoscaler=~\"canvas-web|canvas-jobs\"}",
+          "legendFormat": "{{horizontalpodautoscaler}} current",
+          "refId": "A"
+        },
+        {
+          "expr": "kube_horizontalpodautoscaler_status_desired_replicas{namespace=\"canvas\",horizontalpodautoscaler=~\"canvas-web|canvas-jobs\"}",
+          "legendFormat": "{{horizontalpodautoscaler}} desired",
+          "refId": "B"
+        }
+      ],
+      "title": "HPA Status",
+      "type": "timeseries"
     }
   ],
   "refresh": "10s",
