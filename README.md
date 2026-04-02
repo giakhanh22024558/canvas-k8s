@@ -355,6 +355,7 @@ Recommended medium-sized dataset:
 - `DISCUSSIONS_PER_COURSE=3`
 - `MODULES_PER_COURSE=4`
 - `QUIZZES_PER_COURSE=2`
+- `ANNOUNCEMENTS_PER_COURSE=2`
 
 Use a unique prefix for every run to avoid collisions.
 
@@ -366,7 +367,9 @@ The seeded dataset now includes:
 - assignments
 - pages
 - discussion topics
+- announcements
 - modules
+- module items linked to seeded course content
 - quizzes
 
 If you want to exercise the optional session-login flow, use a seeded student account such as:
@@ -379,6 +382,21 @@ with password:
 
 ```text
 ChangeMe123!
+```
+
+If you want a richer dataset for manual API validation, you can scale it up explicitly, for example:
+
+```bash
+SEED_PREFIX=thesis-seed-02 \
+COURSE_COUNT=16 \
+STUDENT_POOL_SIZE=400 \
+ASSIGNMENTS_PER_COURSE=10 \
+PAGES_PER_COURSE=6 \
+DISCUSSIONS_PER_COURSE=4 \
+MODULES_PER_COURSE=6 \
+QUIZZES_PER_COURSE=3 \
+ANNOUNCEMENTS_PER_COURSE=3 \
+./testing/run-seed-data.sh
 ```
 
 ## Remove seeded data
