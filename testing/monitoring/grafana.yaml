@@ -67,12 +67,18 @@ spec:
             - name: grafana-provisioning
               mountPath: /etc/grafana/provisioning/dashboards/dashboards.yaml
               subPath: dashboards.yaml
+            - name: grafana-dashboard
+              mountPath: /var/lib/grafana/dashboards/canvas-local-dashboard.json
+              subPath: canvas-local-dashboard.json
       volumes:
         - name: grafana-storage
           emptyDir: {}
         - name: grafana-provisioning
           configMap:
             name: grafana-provisioning
+        - name: grafana-dashboard
+          configMap:
+            name: grafana-dashboard
 ---
 apiVersion: v1
 kind: Service

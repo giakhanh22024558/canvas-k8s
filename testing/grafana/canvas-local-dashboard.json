@@ -103,7 +103,7 @@
           "color": {
             "mode": "palette-classic"
           },
-          "unit": "percentunit"
+          "unit": "percent"
         },
         "overrides": []
       },
