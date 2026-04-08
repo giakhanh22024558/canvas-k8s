@@ -507,7 +507,8 @@ def collect_run_metrics(base_url, selector, start, end, step):
     cpu_result, _ = try_queries(
         base_url,
         [
-            'sum(rate(container_cpu_usage_seconds_total{namespace="canvas",pod=~"canvas-web-.*",container!="",image!=""}[1m]))',
+            'sum(rate(container_cpu_usage_seconds_total{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"}[1m]))',
+            'sum(rate(container_cpu_usage_seconds_total{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-web-.*"}[1m]))',
         ],
         start,
         end,
