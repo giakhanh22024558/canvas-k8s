@@ -23,6 +23,7 @@ kubectl create configmap grafana-dashboard \
   --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl apply -f "$SCRIPT_DIR/monitoring/grafana.yaml"
+kubectl rollout restart deployment/grafana -n canvas-monitoring
 
 kubectl rollout status deployment/prometheus -n canvas-monitoring --timeout=300s
 kubectl rollout status daemonset/cadvisor -n canvas-monitoring --timeout=300s
