@@ -7,7 +7,6 @@ source "$SCRIPT_DIR/common.sh"
 load_testing_env
 
 RESULTS_DIR="${RESULTS_DIR:-$SCRIPT_DIR/results}"
-PROM_URL="${PROM_URL:-http://127.0.0.1:30090}"
 STEP="${STEP:-15s}"
 TEST_ID="${TEST_ID:-}"
 
@@ -23,29 +22,36 @@ if [[ -z "${RUN_DIR:-}" || ! -d "$RUN_DIR" ]]; then
   exit 1
 fi
 
-echo "Publishing results for test: $TEST_ID"
+PROM_QUERY_URL="$(prometheus_query_url)"
 
-# --- Plot metrics ---
-VENV_PYTHON=""
-for candidate in "$REPO_ROOT/.venv/bin/python3" "$REPO_ROOT/.venv/bin/python" "python3" "python"; do
-  if command -v "$candidate" >/dev/null 2>&1 || [[ -x "$candidate" ]]; then
-    VENV_PYTHON="$candidate"
+echo "Publishing results for test: $TEST_ID"
+echo "Prometheus query URL: $PROM_QUERY_URL"
+
+# --- Find Python in venv or system ---
+PYTHON=""
+for candidate in "$REPO_ROOT/.venv/bin/python3" "$REPO_ROOT/.venv/bin/python" "$(command -v python3 2>/dev/null)" "$(command -v python 2>/dev/null)"; do
+  if [[ -x "$candidate" ]]; then
+    PYTHON="$candidate"
     break
   fi
 done
 
-if [[ -z "$VENV_PYTHON" ]]; then
-  echo "WARNING: Python not found, skipping chart generation."
-else
-  echo "Generating charts with $VENV_PYTHON ..."
-  "$VENV_PYTHON" "$SCRIPT_DIR/charts/plot_prometheus.py" \
-    --testid "$TEST_ID" \
-    --runs-dir "$RESULTS_DIR" \
-    --prometheus-url "$PROM_URL" \
-    --output-dir "$RUN_DIR" \
-    --step "$STEP" \
-    || echo "WARNING: Chart generation failed, continuing with publish."
+if [[ -z "$PYTHON" ]]; then
+  echo "ERROR: Python not found. Activate your venv first: source .venv/bin/activate"
+  exit 1
 fi
+
+echo "Using Python: $PYTHON"
+echo "Generating charts..."
+
+"$PYTHON" "$SCRIPT_DIR/charts/plot_prometheus.py" \
+  --testid "$TEST_ID" \
+  --runs-dir "$RESULTS_DIR" \
+  --prometheus-url "$PROM_QUERY_URL" \
+  --output-dir "$RUN_DIR" \
+  --step "$STEP"
+
+echo "Charts generated in $RUN_DIR"
 
 # --- Commit and push to current repo ---
 cd "$REPO_ROOT"
@@ -53,9 +59,7 @@ cd "$REPO_ROOT"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 
 echo "Pulling latest changes on branch $BRANCH ..."
-git pull origin "$BRANCH" --rebase || {
-  echo "WARNING: git pull failed. Attempting push anyway."
-}
+git pull origin "$BRANCH" --rebase || echo "WARNING: git pull failed. Attempting push anyway."
 
 git add "testing/results/$TEST_ID/"
 
