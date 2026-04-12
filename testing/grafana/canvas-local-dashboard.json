@@ -169,17 +169,17 @@
       },
       "targets": [
         {
-          "expr": "max by (testid) (1000 * k6_http_req_duration_p50{testid=~\"$testid\"})",
+          "expr": "avg by (testid) (1000 * k6_http_req_duration_p50{testid=~\"$testid\"})",
           "legendFormat": "{{testid}} p50",
           "refId": "A"
         },
         {
-          "expr": "max by (testid) (1000 * k6_http_req_duration_p95{testid=~\"$testid\"})",
+          "expr": "avg by (testid) (1000 * k6_http_req_duration_p95{testid=~\"$testid\"})",
           "legendFormat": "{{testid}} p95",
           "refId": "B"
         },
         {
-          "expr": "max by (testid) (1000 * k6_http_req_duration_p99{testid=~\"$testid\"})",
+          "expr": "avg by (testid) (1000 * k6_http_req_duration_p99{testid=~\"$testid\"})",
           "legendFormat": "{{testid}} p99",
           "refId": "C"
         }
@@ -401,7 +401,7 @@
       },
       "targets": [
         {
-          "expr": "max(1000 * k6_http_req_duration_p95{testid=~\"$testid\"})",
+          "expr": "avg(1000 * k6_http_req_duration_p95{testid=~\"$testid\"})",
           "refId": "A"
         }
       ],
