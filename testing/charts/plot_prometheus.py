@@ -469,9 +469,9 @@ def run_window(args, run_dir):
 
 def collect_run_metrics(base_url, selector, start, end, step):
     latency = {
-        "p50": series_for_metric(base_url, "k6_http_req_duration_seconds_p50", selector, start, end, step),
-        "p95": series_for_metric(base_url, "k6_http_req_duration_seconds_p95", selector, start, end, step),
-        "p99": series_for_metric(base_url, "k6_http_req_duration_seconds_p99", selector, start, end, step),
+        "p50": series_for_metric(base_url, "k6_http_req_duration_p50", selector, start, end, step),
+        "p95": series_for_metric(base_url, "k6_http_req_duration_p95", selector, start, end, step),
+        "p99": series_for_metric(base_url, "k6_http_req_duration_p99", selector, start, end, step),
     }
 
     throughput_result, _ = try_queries(
