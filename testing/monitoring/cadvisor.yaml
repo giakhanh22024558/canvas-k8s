@@ -25,6 +25,7 @@ spec:
           args:
             - --housekeeping_interval=10s
             - --docker_only=false
+            - --containerd=/run/k3s/containerd/containerd.sock
           ports:
             - containerPort: 8080
               name: http
