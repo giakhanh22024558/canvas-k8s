@@ -458,8 +458,8 @@ def apply_k6_summary_fallbacks(latency, throughput, error_rate, vus, start, end,
 def run_window(args, run_dir):
     metadata = load_env_file(run_dir / "metadata.env") if run_dir else {}
     if metadata.get("started_at"):
-        start = parse_timestamp(metadata["started_at"]) - dt.timedelta(seconds=15)
-        end = parse_timestamp(metadata.get("ended_at", dt.datetime.now(dt.UTC).isoformat())) + dt.timedelta(seconds=15)
+        start = parse_timestamp(metadata["started_at"])
+        end = parse_timestamp(metadata.get("ended_at", dt.datetime.now(dt.UTC).isoformat()))
         return start.astimezone(dt.UTC), end.astimezone(dt.UTC), metadata
 
     end = dt.datetime.now(dt.UTC)

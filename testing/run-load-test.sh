@@ -68,6 +68,9 @@ cleanup() {
     kill "$K8S_SNAPSHOT_PID" >/dev/null 2>&1 || true
     wait "$K8S_SNAPSHOT_PID" 2>/dev/null || true
   fi
+  if [[ -f "$RUN_DIR/metadata.env" ]] && ! grep -q "^ended_at=" "$RUN_DIR/metadata.env"; then
+    echo "ended_at=$(date -Is)" >> "$RUN_DIR/metadata.env"
+  fi
 }
 
 trap cleanup EXIT
