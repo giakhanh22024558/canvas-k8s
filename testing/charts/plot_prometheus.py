@@ -468,11 +468,16 @@ def run_window(args, run_dir):
 
 
 def collect_run_metrics(base_url, selector, start, end, step):
-    latency = {
-        "p50": select_first_series(query_range(base_url, f"avg(k6_http_req_duration_p50{selector})", start, end, step)),
-        "p95": select_first_series(query_range(base_url, f"avg(k6_http_req_duration_p95{selector})", start, end, step)),
-        "p99": select_first_series(query_range(base_url, f"avg(k6_http_req_duration_p99{selector})", start, end, step)),
-    }
+    latency = {}
+    for pct in ("p50", "p95", "p99"):
+        result, _ = try_queries(
+            base_url,
+            [f"avg(k6_http_req_duration_{pct}{selector})"],
+            start,
+            end,
+            step,
+        )
+        latency[pct] = select_first_series(result)
 
     throughput_result, _ = try_queries(
         base_url,
