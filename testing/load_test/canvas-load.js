@@ -28,6 +28,30 @@ const profilePresets = {
       { duration: "2m", target: 0 },
     ],
   },
+  "long-stress": {
+    stages: [
+      { duration: "2m", target: 10 },
+      { duration: "5m", target: 10 },
+      { duration: "2m", target: 30 },
+      { duration: "5m", target: 30 },
+      { duration: "2m", target: 60 },
+      { duration: "5m", target: 60 },
+      { duration: "2m", target: 0 },
+    ],
+  },
+  breakpoint: {
+    stages: [
+      { duration: "2m", target: 10 },
+      { duration: "2m", target: 20 },
+      { duration: "2m", target: 30 },
+      { duration: "2m", target: 40 },
+      { duration: "2m", target: 50 },
+      { duration: "2m", target: 60 },
+      { duration: "2m", target: 80 },
+      { duration: "2m", target: 100 },
+      { duration: "2m", target: 0 },
+    ],
+  },
   soak: { vus: 15, duration: "30m" },
 };
 
