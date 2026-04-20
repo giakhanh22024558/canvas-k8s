@@ -34,7 +34,7 @@ spec:
           command:
             - sh
             - -c
-            - bundle exec script/delayed_job run --num-jobs 2
+            - bundle exec script/delayed_job run
           volumeMounts:
             - name: canvas-config
               mountPath: /usr/src/app/config/database.yml
