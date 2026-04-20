@@ -30,11 +30,11 @@ spec:
               memory: 1Gi
             limits:
               cpu: "2"
-              memory: 2Gi
+              memory: 3Gi
           command:
             - sh
             - -c
-            - bundle exec script/delayed_job run
+            - bundle exec script/delayed_job run --num-jobs 2
           volumeMounts:
             - name: canvas-config
               mountPath: /usr/src/app/config/database.yml
