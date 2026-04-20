@@ -24,10 +24,18 @@ case "$MODE" in
     DB_MODE="migrate"
     SCALING_MODE="hpa"
     ;;
+  prescaled)
+    # Fixed at HPA-maximum replicas (web=5, jobs=3) with no autoscaler.
+    # Use this to isolate whether HPA's benefit comes from auto-scaling
+    # behaviour or simply from having more pods available.
+    DB_MODE="migrate"
+    SCALING_MODE="prescaled"
+    ;;
   *)
-    echo "Usage: ./deploy.sh [baseline|hpa|bootstrap|migrate]"
-    echo "  baseline: migrate DB, deploy fixed replicas, remove HPAs"
-    echo "  hpa:      migrate DB, deploy with HPAs enabled"
+    echo "Usage: ./deploy.sh [baseline|hpa|prescaled|bootstrap|migrate]"
+    echo "  baseline:  migrate DB, 1 web + 1 jobs pod, no HPA"
+    echo "  hpa:       migrate DB, deploy with HPAs enabled (1-5 web, 1-3 jobs)"
+    echo "  prescaled: migrate DB, fixed 5 web + 3 jobs pods, no HPA"
     echo "  bootstrap: initialize DB, deploy with HPAs enabled"
     echo "  migrate:   alias for hpa"
     echo "Environment:"
@@ -89,6 +97,13 @@ case "$SCALING_MODE" in
   hpa)
     kubectl apply -f deployment/hpa.yaml
     ;;
+  prescaled)
+    # Remove HPA so Kubernetes cannot override the replica counts
+    kubectl delete -f deployment/hpa.yaml --ignore-not-found
+    # Match HPA upper limits: web max=5, jobs max=3
+    kubectl scale deployment/canvas-web  --replicas=5 -n canvas
+    kubectl scale deployment/canvas-jobs --replicas=3 -n canvas
+    ;;
 esac
 
 kubectl apply -f service/
@@ -101,11 +116,22 @@ fi
 if [[ "$SCALING_MODE" == "hpa" ]]; then
   kubectl get hpa -n canvas
 else
-  echo "HPAs removed for baseline mode."
+  echo "HPAs removed — fixed replica counts in effect."
 fi
 
+echo ""
+echo "Current pod state:"
+kubectl get pods -n canvas
+
+echo ""
 echo "Deployment completed with mode: $MODE"
-echo "Database action: $DB_MODE"
-echo "Scaling mode: $SCALING_MODE"
-echo "Baseline disable jobs: $BASELINE_DISABLE_JOBS"
+echo "Database action:  $DB_MODE"
+echo "Scaling mode:     $SCALING_MODE"
+if [[ "$SCALING_MODE" == "baseline" ]]; then
+  echo "Replicas:         web=1, jobs=1 (fixed)"
+elif [[ "$SCALING_MODE" == "prescaled" ]]; then
+  echo "Replicas:         web=5, jobs=3 (fixed, no HPA)"
+elif [[ "$SCALING_MODE" == "hpa" ]]; then
+  echo "Replicas:         web=1-5, jobs=1-3 (HPA managed)"
+fi
 echo "Canvas service URL: http://canvas.io.vn"
