@@ -1,0 +1,12 @@
+metric,value
+test_id,canvas-20260420-134655
+label,smoke
+avg_throughput_rps,0.129
+avg_error_rate_percent,0.0
+avg_p50_ms,228.671
+avg_p95_ms,230.472
+avg_p99_ms,230.655
+max_vus,1.0
+max_web_restart_total,5.0
+max_jobs_restart_total,39.0
+k6_summary_fallback,0
