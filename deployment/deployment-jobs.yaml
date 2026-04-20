@@ -24,6 +24,13 @@ spec:
               value: production
             - name: RAILS_SERVE_STATIC_FILES
               value: "1"
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 3Gi
           command:
             - sh
             - -c

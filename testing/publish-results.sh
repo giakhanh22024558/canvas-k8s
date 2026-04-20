@@ -2,69 +2,75 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 source "$SCRIPT_DIR/common.sh"
 load_testing_env
 
 RESULTS_DIR="${RESULTS_DIR:-$SCRIPT_DIR/results}"
-CHARTS_DIR="${CHARTS_DIR:-$SCRIPT_DIR/charts/output}"
-RESULTS_REPO_URL="${RESULTS_REPO_URL:-https://github.com/giakhanh22024558/canvas-k8s-results.git}"
-RESULTS_REPO_DIR="${RESULTS_REPO_DIR:-$SCRIPT_DIR/results-publish-repo}"
+STEP="${STEP:-15s}"
 TEST_ID="${TEST_ID:-}"
 
-if ! command -v git >/dev/null 2>&1; then
-  echo "git is required but not installed."
-  exit 1
-fi
-
-if [[ -n "$TEST_ID" ]]; then
-  RUN_DIR="$RESULTS_DIR/$TEST_ID"
-else
+if [[ -z "$TEST_ID" ]]; then
   RUN_DIR="$(find "$RESULTS_DIR" -mindepth 1 -maxdepth 1 -type d | sort | tail -n 1)"
   TEST_ID="$(basename "$RUN_DIR")"
+else
+  RUN_DIR="$RESULTS_DIR/$TEST_ID"
 fi
 
 if [[ -z "${RUN_DIR:-}" || ! -d "$RUN_DIR" ]]; then
-  echo "Could not find a load test run directory. Run ./testing/run-load-test.sh first or pass TEST_ID."
+  echo "Could not find a load test run directory. Pass TEST_ID or run ./testing/run-load-test.sh first."
   exit 1
 fi
 
-if [[ ! -d "$CHARTS_DIR" ]]; then
-  echo "Charts directory not found at $CHARTS_DIR. Generate charts first."
+PROM_QUERY_URL="$(prometheus_query_url)"
+
+echo "Publishing results for test: $TEST_ID"
+echo "Prometheus query URL: $PROM_QUERY_URL"
+
+# --- Find Python in venv or system ---
+PYTHON=""
+for candidate in "$REPO_ROOT/.venv/bin/python3" "$REPO_ROOT/.venv/bin/python" "$(command -v python3 2>/dev/null)" "$(command -v python 2>/dev/null)"; do
+  if [[ -x "$candidate" ]]; then
+    PYTHON="$candidate"
+    break
+  fi
+done
+
+if [[ -z "$PYTHON" ]]; then
+  echo "ERROR: Python not found. Activate your venv first: source .venv/bin/activate"
   exit 1
 fi
 
-if [[ ! -d "$RESULTS_REPO_DIR/.git" ]]; then
-  echo "Cloning results repo into $RESULTS_REPO_DIR"
-  git clone "$RESULTS_REPO_URL" "$RESULTS_REPO_DIR"
-else
-  echo "Updating existing results repo in $RESULTS_REPO_DIR"
-  git -C "$RESULTS_REPO_DIR" pull --ff-only
-fi
+echo "Using Python: $PYTHON"
+echo "Generating charts..."
 
-TARGET_DIR="$RESULTS_REPO_DIR/runs/$TEST_ID"
-mkdir -p "$TARGET_DIR"
+"$PYTHON" "$SCRIPT_DIR/charts/plot_prometheus.py" \
+  --testid "$TEST_ID" \
+  --runs-dir "$RESULTS_DIR" \
+  --prometheus-url "$PROM_QUERY_URL" \
+  --output-dir "$RUN_DIR" \
+  --step "$STEP"
 
-rm -rf "$TARGET_DIR/run" "$TARGET_DIR/charts"
-cp -R "$RUN_DIR" "$TARGET_DIR/run"
-cp -R "$CHARTS_DIR" "$TARGET_DIR/charts"
+echo "Charts generated in $RUN_DIR"
 
-cat > "$TARGET_DIR/publish-info.txt" <<EOF
-test_id=$TEST_ID
-published_at=$(date -Is)
-base_url=${BASE_URL:-http://canvas.io.vn}
-prom_url=${PROM_URL:-http://127.0.0.1:30090/api/v1/write}
-source_run_dir=$RUN_DIR
-source_charts_dir=$CHARTS_DIR
-EOF
+# --- Commit and push to current repo ---
+cd "$REPO_ROOT"
 
-git -C "$RESULTS_REPO_DIR" add "runs/$TEST_ID"
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 
-if git -C "$RESULTS_REPO_DIR" diff --cached --quiet; then
-  echo "No result changes to commit for $TEST_ID"
+echo "Pulling latest changes on branch $BRANCH ..."
+git pull origin "$BRANCH" --rebase || echo "WARNING: git pull failed. Attempting push anyway."
+
+git add "testing/results/$TEST_ID/"
+
+if git diff --cached --quiet; then
+  echo "No new result files to commit for $TEST_ID."
   exit 0
 fi
 
-git -C "$RESULTS_REPO_DIR" commit -m "Add test results for $TEST_ID"
-git -C "$RESULTS_REPO_DIR" push
+git commit -m "Add test results for $TEST_ID"
 
-echo "Published results for $TEST_ID to $RESULTS_REPO_URL"
+echo "Pushing to origin/$BRANCH ..."
+git push origin "$BRANCH"
+
+echo "Done. Results for $TEST_ID published to origin/$BRANCH."

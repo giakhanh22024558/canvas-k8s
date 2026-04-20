@@ -12,6 +12,7 @@ Deploy Canvas LMS on a single Ubuntu EC2 instance with `k3s`, then run load test
 
 - Canvas: `http://canvas.io.vn`
 - Prometheus: `http://canvas.io.vn:30090`
+- Grafana: `http://canvas.io.vn:30091`
 
 ## EC2 prerequisites
 
@@ -23,6 +24,7 @@ Before using this repo on a fresh Ubuntu EC2 instance, make sure you have:
   - TCP `80`
   - TCP `30080`
   - TCP `30090`
+  - TCP `30091`
 - `k3s` installed
 - `git`, `curl`, and `kubectl` available
 
@@ -105,7 +107,25 @@ If you do not want to delete the namespace first:
 ./deploy.sh bootstrap
 ```
 
-For later updates:
+For experiment 1 baseline deployment:
+
+```bash
+./deploy.sh baseline
+```
+
+For baseline web-only deployment without delayed jobs:
+
+```bash
+BASELINE_DISABLE_JOBS=true ./deploy.sh baseline
+```
+
+For experiment 2 HPA deployment:
+
+```bash
+./deploy.sh hpa
+```
+
+For later updates with HPA enabled:
 
 ```bash
 ./deploy.sh
@@ -150,7 +170,7 @@ Authorization: Bearer <token>
 Quick verification:
 
 ```bash
-curl -i -H "Authorization: Bearer <token>" http://canvas.io.vn/api/v1/courses
+curl -i -H "Authorization: Bearer <token>" http://canvas.io.vn/api/v1/accounts/self/courses
 ```
 
 Expected result:
@@ -169,10 +189,15 @@ Important scripts:
 
 - `testing/setup-env.sh`
 - `testing/apply-monitoring.sh`
+- `testing/collect-k8s-snapshots.sh`
+- `testing/capture-cluster-env.sh`
+- `testing/reset-test-env.sh`
 - `testing/run-seed-data.sh`
 - `testing/run-unseed-data.sh`
 - `testing/run-load-test.sh`
+- `testing/run-experiment-matrix.sh`
 - `testing/charts/setup-python.sh`
+- `testing/charts/analyze_experiments.py`
 - `testing/publish-results.sh`
 
 ## Save local testing config once
@@ -201,8 +226,15 @@ It stores:
 - `BASE_URL`
 - `API_TOKEN`
 - `PROM_URL`
+- `PROMETHEUS_URL`
 - `RESULTS_REPO_URL`
 - `RESULTS_REPO_DIR`
+- `TEST_TYPE`
+- `TEST_LOGIN_EMAIL`
+- `TEST_LOGIN_PASSWORD`
+- `SUBMISSION_API_TOKEN`
+- `RUNS_PER_SCENARIO`
+- `COOLDOWN_SECONDS`
 
 ## Deploy monitoring
 
@@ -222,6 +254,71 @@ Prometheus should be available at:
 
 ```text
 http://canvas.io.vn:30090
+```
+
+## Grafana
+
+Grafana is deployed as part of the monitoring stack and exposed on:
+
+```text
+http://canvas.io.vn:30091
+```
+
+Default login:
+
+```text
+username: admin
+password: admin
+```
+
+The Prometheus data source is provisioned automatically.
+
+To use the Canvas load-testing dashboard, import this JSON:
+
+```text
+testing/grafana/canvas-local-dashboard.json
+```
+
+The dashboard includes:
+
+- request throughput
+- error rate
+- response time percentiles `p50`, `p95`, `p99`
+- VU count
+- Canvas web CPU per pod
+- Canvas web memory per pod
+- Canvas jobs memory per pod
+- live deployment replica count
+- live pod restart count
+- live HPA current and desired replicas
+- stat panels for current p95, error rate, and VUs
+
+Notes:
+
+- The dashboard filters by `testid`, so you can switch between load-test runs.
+- Current live panels rely on metrics exposed by Prometheus, cAdvisor, and `kube-state-metrics`.
+
+## Live Kubernetes state in Grafana
+
+The monitoring stack now deploys `kube-state-metrics`, and Prometheus scrapes it automatically.
+
+This adds live Grafana visibility for:
+
+- deployment replica counts
+- pod restart counts
+- HPA current replicas
+- HPA desired replicas
+
+To apply the updated monitoring stack:
+
+```bash
+./testing/apply-monitoring.sh
+```
+
+You can verify the monitoring components with:
+
+```bash
+kubectl get all -n canvas-monitoring
 ```
 
 ## Seed test data
@@ -256,8 +353,51 @@ Recommended medium-sized dataset:
 - `ASSIGNMENTS_PER_COURSE=8`
 - `PAGES_PER_COURSE=4`
 - `DISCUSSIONS_PER_COURSE=3`
+- `MODULES_PER_COURSE=4`
+- `QUIZZES_PER_COURSE=2`
+- `ANNOUNCEMENTS_PER_COURSE=2`
 
 Use a unique prefix for every run to avoid collisions.
+
+The seeded dataset now includes:
+
+- users for teacher and student pools
+- published courses
+- enrollments
+- assignments
+- pages
+- discussion topics
+- announcements
+- modules
+- module items linked to seeded course content
+- quizzes
+
+If you want to exercise the optional session-login flow, use a seeded student account such as:
+
+```text
+<seed-prefix>-student-001@seed.local
+```
+
+with password:
+
+```text
+ChangeMe123!
+```
+
+If you want a richer dataset for manual API validation, you can scale it up explicitly, for example:
+
+```bash
+SEED_PREFIX=thesis-seed-02 \
+COURSE_COUNT=16 \
+STUDENT_POOL_SIZE=400 \
+ASSIGNMENTS_PER_COURSE=10 \
+PAGES_PER_COURSE=6 \
+DISCUSSIONS_PER_COURSE=4 \
+MODULES_PER_COURSE=6 \
+QUIZZES_PER_COURSE=3 \
+ANNOUNCEMENTS_PER_COURSE=3 \
+./testing/run-seed-data.sh
+```
 
 ## Remove seeded data
 
@@ -277,10 +417,20 @@ Run:
 ./testing/run-load-test.sh
 ```
 
+Or choose a named profile:
+
+```bash
+TEST_TYPE=smoke ./testing/run-load-test.sh
+TEST_TYPE=load ./testing/run-load-test.sh
+TEST_TYPE=stress ./testing/run-load-test.sh
+TEST_TYPE=soak ./testing/run-load-test.sh
+```
+
 The script:
 
 - loads `testing/testing.env`
 - uses your saved API token
+- applies a named test profile
 - sends metrics to Prometheus remote write
 - saves run output locally
 
@@ -288,6 +438,7 @@ During startup it prints:
 
 - base URL
 - Prometheus write URL
+- test profile
 - test ID
 - masked token preview
 
@@ -301,6 +452,60 @@ Files include:
 
 - `k6-summary.txt`
 - `metadata.env`
+- `k8s-snapshots.csv`
+- `environment.env`
+
+The k6 workload is no longer a single endpoint. It now mixes:
+
+- `GET /api/v1/dashboard/dashboard_cards`
+- `GET /api/v1/accounts/self/courses`
+- `GET /api/v1/courses/{id}/modules`
+- `GET /api/v1/courses/{id}/quizzes`
+- optional `POST /login/canvas`
+- optional `POST /api/v1/courses/{id}/assignments/{id}/submissions`
+
+Optional flows:
+
+- set `TEST_LOGIN_EMAIL` and `TEST_LOGIN_PASSWORD` to enable session login checks
+- set `SUBMISSION_API_TOKEN` to enable assignment submission traffic with a student-scoped token
+
+## Horizontal Pod Autoscaling
+
+This repo now includes simple CPU-based HPAs for:
+
+- `canvas-web`
+- `canvas-jobs`
+
+Deployment modes:
+
+- `./deploy.sh baseline`: migrate DB, deploy fixed replicas, remove HPAs
+- `BASELINE_DISABLE_JOBS=true ./deploy.sh baseline`: same as baseline, but scales `canvas-jobs` to `0`
+- `./deploy.sh hpa`: migrate DB, deploy with HPAs enabled
+- `./deploy.sh`: same as `./deploy.sh hpa`
+- `./deploy.sh bootstrap`: initialize DB, then deploy with HPAs enabled
+
+The HPA manifest used by `hpa` mode is:
+
+```text
+deployment/hpa.yaml
+```
+
+To verify after deployment:
+
+```bash
+kubectl get hpa -n canvas
+```
+
+Note:
+
+- HPA requires Kubernetes metrics collection such as `metrics-server`
+
+Suggested thesis experiment set:
+
+- baseline with `./deploy.sh baseline`
+- baseline web-only with `BASELINE_DISABLE_JOBS=true ./deploy.sh baseline` if delayed jobs destabilize the single-node host
+- HPA enabled under the same workload profile with `./deploy.sh hpa`
+- compare latency, throughput, and pod CPU over time
 
 ## Generate charts
 
@@ -329,11 +534,121 @@ source ./testing/charts/.venv/bin/activate
 python3 testing/charts/plot_prometheus.py --prometheus-url http://127.0.0.1:30090 --minutes 15
 ```
 
+Generate charts for one specific run using its saved run window:
+
+```bash
+source ./testing/charts/.venv/bin/activate
+python3 testing/charts/plot_prometheus.py --prometheus-url http://127.0.0.1:30090 --testid exp01-baseline-load
+```
+
+Generate a comparison chart across multiple runs:
+
+```bash
+source ./testing/charts/.venv/bin/activate
+python3 testing/charts/plot_prometheus.py \
+  --prometheus-url http://127.0.0.1:30090 \
+  --compare-testids exp01-baseline-load,exp02-hpa-load,exp03-baseline-stress,exp04-hpa-stress \
+  --compare-labels baseline_load,hpa_load,baseline_stress,hpa_stress
+```
+
 Charts are written to:
 
 ```text
 testing/charts/output
 ```
+
+Current chart outputs include:
+
+- response time timeline with `p50`, `p95`, `p99`
+- throughput vs error rate
+- VU load profile
+- web CPU with replica count
+- pod restart count
+- scale latency for HPA runs
+- comparison p95 latency summary
+
+If Prometheus is missing the k6 percentile series for a run, the chart exporter falls back to parsing the saved `k6-summary.txt` so per-run summary CSVs still contain usable latency values.
+
+The load-test runner also saves `k8s-snapshots.csv` for each run, which records:
+
+- web and jobs replica counts over time
+- HPA current and desired replicas
+- pod restart totals
+
+## Run repeated experiment matrix
+
+This repo can now execute repeated thesis-style experiments and keep a manifest for every run.
+
+Default repeated-run plan:
+
+- `baseline` and `hpa`
+- `smoke`, `load`, `stress`, and `soak`
+- `9` runs per scenario
+
+Use the same seeded dataset for all repeated runs:
+
+```bash
+SEED_PREFIX=thesis-seed-01 ./testing/run-seed-data.sh
+```
+
+Then run the matrix:
+
+```bash
+SEED_PREFIX=thesis-seed-01 EXPERIMENT_NAME=thesis ./testing/run-experiment-matrix.sh
+```
+
+The runner will:
+
+- deploy the correct mode
+- restart application pods between runs
+- optionally flush Redis between runs
+- wait for cooldown
+- verify pod readiness
+- save per-run charts
+- append a row to the experiment manifest
+- run statistical analysis after the matrix finishes
+
+Useful environment variables:
+
+- `RUNS_PER_SCENARIO=9`
+- `COOLDOWN_SECONDS=600`
+- `FLUSH_REDIS_BETWEEN_RUNS=true|false`
+- `MATRIX_MODES=baseline,hpa`
+- `MATRIX_SCENARIOS=smoke,load,stress,soak`
+- `EXPERIMENT_NAME=thesis`
+
+Manifest output:
+
+```text
+testing/results/experiment-manifest-<experiment>.csv
+```
+
+Analysis output:
+
+```text
+testing/results/analysis/<manifest-name>/
+```
+
+Analysis files include:
+
+- `group_summary.csv`
+- `outliers.csv`
+- `t_tests.csv`
+
+The manifest stores:
+
+- experiment name
+- mode
+- scenario
+- run number
+- test ID
+- seed prefix
+- started and ended timestamps
+- acceptance flag
+- notes
+- cooldown setting
+- Redis flush setting
+- basic environment conditions
 
 ## Publish results to the results repo
 

@@ -14,9 +14,21 @@ kubectl get nodes >/dev/null
 kubectl apply -f "$SCRIPT_DIR/monitoring/namespace.yaml"
 kubectl apply -f "$SCRIPT_DIR/monitoring/prometheus-config.yaml"
 kubectl apply -f "$SCRIPT_DIR/monitoring/cadvisor.yaml"
+kubectl apply -f "$SCRIPT_DIR/monitoring/kube-state-metrics.yaml"
 kubectl apply -f "$SCRIPT_DIR/monitoring/prometheus.yaml"
+
+kubectl create configmap grafana-dashboard \
+  --from-file=canvas-local-dashboard.json="$SCRIPT_DIR/grafana/canvas-local-dashboard.json" \
+  -n canvas-monitoring \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl apply -f "$SCRIPT_DIR/monitoring/grafana.yaml"
+kubectl rollout restart deployment/grafana -n canvas-monitoring
 
 kubectl rollout status deployment/prometheus -n canvas-monitoring --timeout=300s
 kubectl rollout status daemonset/cadvisor -n canvas-monitoring --timeout=300s
+kubectl rollout status deployment/kube-state-metrics -n canvas-monitoring --timeout=300s
+kubectl rollout status deployment/grafana -n canvas-monitoring --timeout=300s
 
 echo "Prometheus is available at http://127.0.0.1:30090"
+echo "Grafana is available at http://127.0.0.1:30091 (admin/admin)"
