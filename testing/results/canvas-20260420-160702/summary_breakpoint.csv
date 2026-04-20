@@ -1,0 +1,12 @@
+metric,value
+test_id,canvas-20260420-160702
+label,breakpoint
+avg_throughput_rps,22.278
+avg_error_rate_percent,39.502
+avg_p50_ms,474.292
+avg_p95_ms,11189.325
+avg_p99_ms,19039.158
+max_vus,99.0
+max_web_restart_total,6.0
+max_jobs_restart_total,0.0
+k6_summary_fallback,0
