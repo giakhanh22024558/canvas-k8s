@@ -455,11 +455,29 @@ def apply_k6_summary_fallbacks(latency, throughput, error_rate, vus, start, end,
     return latency, throughput, error_rate, vus, fallback_used
 
 
+MAX_PROMETHEUS_POINTS = 10000
+
+
+def safe_step(start, end, requested_step_str):
+    """Return a step string that keeps data points under MAX_PROMETHEUS_POINTS."""
+    try:
+        step_seconds = int(requested_step_str.rstrip("s")) if requested_step_str.endswith("s") else 15
+    except ValueError:
+        step_seconds = 15
+    range_seconds = (end - start).total_seconds()
+    min_step = max(step_seconds, int(range_seconds / MAX_PROMETHEUS_POINTS) + 1)
+    return f"{min_step}s"
+
+
 def run_window(args, run_dir):
     metadata = load_env_file(run_dir / "metadata.env") if run_dir else {}
     if metadata.get("started_at"):
-        start = parse_timestamp(metadata["started_at"]) - dt.timedelta(seconds=15)
-        end = parse_timestamp(metadata.get("ended_at", dt.datetime.now(dt.UTC).isoformat())) + dt.timedelta(seconds=15)
+        start = parse_timestamp(metadata["started_at"])
+        if metadata.get("ended_at"):
+            end = parse_timestamp(metadata["ended_at"])
+        else:
+            # No ended_at — cap to 2 hours after start to avoid Prometheus resolution errors
+            end = min(start + dt.timedelta(hours=2), dt.datetime.now(dt.UTC))
         return start.astimezone(dt.UTC), end.astimezone(dt.UTC), metadata
 
     end = dt.datetime.now(dt.UTC)
@@ -468,11 +486,16 @@ def run_window(args, run_dir):
 
 
 def collect_run_metrics(base_url, selector, start, end, step):
-    latency = {
-        "p50": series_for_metric(base_url, "k6_http_req_duration_seconds_p50", selector, start, end, step),
-        "p95": series_for_metric(base_url, "k6_http_req_duration_seconds_p95", selector, start, end, step),
-        "p99": series_for_metric(base_url, "k6_http_req_duration_seconds_p99", selector, start, end, step),
-    }
+    latency = {}
+    for pct in ("p50", "p95", "p99"):
+        result, _ = try_queries(
+            base_url,
+            [f"avg(k6_http_req_duration_{pct}{selector})"],
+            start,
+            end,
+            step,
+        )
+        latency[pct] = select_first_series(result)
 
     throughput_result, _ = try_queries(
         base_url,
@@ -507,7 +530,8 @@ def collect_run_metrics(base_url, selector, start, end, step):
     cpu_result, _ = try_queries(
         base_url,
         [
-            'sum(rate(container_cpu_usage_seconds_total{namespace="canvas",pod=~"canvas-web-.*",container!="",image!=""}[1m]))',
+            'sum(rate(container_cpu_usage_seconds_total{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"}[1m]))',
+            'sum(rate(container_cpu_usage_seconds_total{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-web-.*"}[1m]))',
         ],
         start,
         end,
@@ -541,16 +565,17 @@ def main():
     if args.testid:
         run_dir = Path(args.runs_dir) / args.testid
         start, end, metadata = run_window(args, run_dir)
+        step = safe_step(start, end, args.step)
         selector = f'{{testid="{args.testid}"}}'
         label = metadata.get("test_type", args.testid)
         snapshots = load_snapshots(run_dir / "k8s-snapshots.csv")
         k6_summary_metrics = parse_k6_summary_metrics(run_dir / "k6-summary.txt")
 
         latency, throughput, error_rate, vus, web_cpu = collect_run_metrics(
-            args.prometheus_url, selector, start, end, args.step
+            args.prometheus_url, selector, start, end, step
         )
         latency, throughput, error_rate, vus, fallback_used = apply_k6_summary_fallbacks(
-            latency, throughput, error_rate, vus, start, end, args.step, k6_summary_metrics
+            latency, throughput, error_rate, vus, start, end, step, k6_summary_metrics
         )
 
         plot_latency_timeline(output_dir, {label: latency})

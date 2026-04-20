@@ -68,6 +68,9 @@ cleanup() {
     kill "$K8S_SNAPSHOT_PID" >/dev/null 2>&1 || true
     wait "$K8S_SNAPSHOT_PID" 2>/dev/null || true
   fi
+  if [[ -f "$RUN_DIR/metadata.env" ]] && ! grep -q "^ended_at=" "$RUN_DIR/metadata.env"; then
+    echo "ended_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$RUN_DIR/metadata.env"
+  fi
 }
 
 trap cleanup EXIT
@@ -87,7 +90,7 @@ echo "Submission flow enabled: $submission_enabled"
   echo "test_type=$TEST_TYPE"
   echo "login_flow_enabled=$login_enabled"
   echo "submission_flow_enabled=$submission_enabled"
-  echo "started_at=$(date -Is)"
+  echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 } > "$RUN_DIR/metadata.env"
 
 if command -v kubectl >/dev/null 2>&1; then
@@ -107,7 +110,9 @@ K6_PROMETHEUS_RW_SERVER_URL="$PROM_URL" \
 K6_PROMETHEUS_RW_TREND_STATS="p(50),p(95),p(99),avg,min,max" \
 k6 run -o experimental-prometheus-rw --tag testid="$TEST_ID" "$SCRIPT_DIR/load_test/canvas-load.js" 2>&1 | tee "$LOG_FILE"
 
-echo "ended_at=$(date -Is)" >> "$RUN_DIR/metadata.env"
+echo "ended_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$RUN_DIR/metadata.env"
 
 echo "Finished load test with testid=$TEST_ID"
 echo "Saved run output to $RUN_DIR"
+
+TEST_ID="$TEST_ID" RESULTS_DIR="$RESULTS_DIR" bash "$SCRIPT_DIR/publish-results.sh"

@@ -25,6 +25,8 @@ spec:
           args:
             - --housekeeping_interval=10s
             - --docker_only=false
+            - --containerd=/run/k3s/containerd/containerd.sock
+            - --containerd-namespace=k8s.io
           ports:
             - containerPort: 8080
               name: http
