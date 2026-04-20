@@ -1,0 +1,98 @@
+#!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$SCRIPT_DIR/common.sh"
+load_testing_env
+ensure_kubeconfig
+
+RUNS_PER_SCENARIO="${RUNS_PER_SCENARIO:-9}"
+EXPERIMENT_NAME="${EXPERIMENT_NAME:-thesis}"
+MATRIX_MODES="${MATRIX_MODES:-baseline,hpa}"
+MATRIX_SCENARIOS="${MATRIX_SCENARIOS:-smoke,load,stress,soak}"
+RESULTS_DIR="${RESULTS_DIR:-$SCRIPT_DIR/results}"
+COOLDOWN_SECONDS="${COOLDOWN_SECONDS:-600}"
+MANIFEST_FILE="${MANIFEST_FILE:-$RESULTS_DIR/experiment-manifest-${EXPERIMENT_NAME}.csv}"
+NOTES_DEFAULT="${NOTES_DEFAULT:-}"
+
+if [[ -z "${SEED_PREFIX:-}" ]]; then
+  echo "SEED_PREFIX is required so all repeated runs use the same seed dataset."
+  exit 1
+fi
+
+if [[ "$RUNS_PER_SCENARIO" -lt 1 ]]; then
+  echo "RUNS_PER_SCENARIO must be >= 1"
+  exit 1
+fi
+
+mkdir -p "$RESULTS_DIR"
+
+if [[ ! -f "$MANIFEST_FILE" ]]; then
+  echo "experiment_name,mode,scenario,run_number,test_id,seed_prefix,started_at,ended_at,accepted,notes,cooldown_seconds,flush_redis_between_runs,git_commit,node_count,web_memory_limit,jobs_memory_limit" > "$MANIFEST_FILE"
+fi
+
+find_python() {
+  if command -v python3 >/dev/null 2>&1; then
+    echo python3
+  elif command -v python >/dev/null 2>&1; then
+    echo python
+  else
+    echo ""
+  fi
+}
+
+PYTHON_BIN="$(find_python)"
+PROMETHEUS_QUERY_URL="$(prometheus_query_url)"
+CURRENT_MODE=""
+IFS=',' read -r -a MODES <<< "$MATRIX_MODES"
+IFS=',' read -r -a SCENARIOS <<< "$MATRIX_SCENARIOS"
+
+for mode in "${MODES[@]}"; do
+  for scenario in "${SCENARIOS[@]}"; do
+    for run_number in $(seq 1 "$RUNS_PER_SCENARIO"); do
+      if [[ "$CURRENT_MODE" != "$mode" ]]; then
+        echo "Deploying mode: $mode"
+        "$ROOT_DIR/deploy.sh" "$mode"
+        CURRENT_MODE="$mode"
+      fi
+
+      echo "Resetting environment before $mode/$scenario run $run_number..."
+      COOLDOWN_SECONDS="$COOLDOWN_SECONDS" "$SCRIPT_DIR/reset-test-env.sh"
+
+      TEST_ID="${EXPERIMENT_NAME}-${mode}-${scenario}-run$(printf "%02d" "$run_number")"
+      RUN_DIR="$RESULTS_DIR/$TEST_ID"
+      mkdir -p "$RUN_DIR"
+
+      "$SCRIPT_DIR/capture-cluster-env.sh" "$RUN_DIR/environment.env"
+
+      echo "Starting $TEST_ID"
+      TEST_TYPE="$scenario" TEST_ID="$TEST_ID" "$SCRIPT_DIR/run-load-test.sh"
+
+      if [[ -n "$PYTHON_BIN" ]]; then
+        "$PYTHON_BIN" "$SCRIPT_DIR/charts/plot_prometheus.py" \
+          --prometheus-url "$PROMETHEUS_QUERY_URL" \
+          --testid "$TEST_ID" \
+          --runs-dir "$RESULTS_DIR" \
+          --output-dir "$RUN_DIR/charts"
+      fi
+
+      started_at="$(grep '^started_at=' "$RUN_DIR/metadata.env" | cut -d= -f2- || true)"
+      ended_at="$(grep '^ended_at=' "$RUN_DIR/metadata.env" | cut -d= -f2- || true)"
+      git_commit="$(grep '^git_commit=' "$RUN_DIR/environment.env" | cut -d= -f2- || true)"
+      node_count="$(grep '^node_count=' "$RUN_DIR/environment.env" | cut -d= -f2- || true)"
+      web_memory_limit="$(grep '^web_memory_limit=' "$RUN_DIR/environment.env" | cut -d= -f2- || true)"
+      jobs_memory_limit="$(grep '^jobs_memory_limit=' "$RUN_DIR/environment.env" | cut -d= -f2- || true)"
+      flush_redis_value="${FLUSH_REDIS_BETWEEN_RUNS:-false}"
+
+      echo "${EXPERIMENT_NAME},${mode},${scenario},${run_number},${TEST_ID},${SEED_PREFIX},${started_at},${ended_at},yes,${NOTES_DEFAULT},${COOLDOWN_SECONDS},${flush_redis_value},${git_commit},${node_count},${web_memory_limit},${jobs_memory_limit}" >> "$MANIFEST_FILE"
+    done
+  done
+done
+
+if [[ -n "$PYTHON_BIN" ]]; then
+  "$PYTHON_BIN" "$SCRIPT_DIR/charts/analyze_experiments.py" --manifest "$MANIFEST_FILE" --results-dir "$RESULTS_DIR"
+fi
+
+echo "Experiment matrix completed."
+echo "Manifest: $MANIFEST_FILE"
