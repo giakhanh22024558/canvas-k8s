@@ -41,6 +41,11 @@ case "$TEST_TYPE" in
     export VUS="${VUS:-15}"
     export DURATION="${DURATION:-30m}"
     ;;
+  long-stress)
+    # Extended stress test — holds each VU level long enough for HPA to scale and stabilize
+    # Total ~23 minutes: ramp to 10 → hold 5m → ramp to 30 → hold 5m → ramp to 60 → hold 5m → ramp down
+    export STAGES_JSON="${STAGES_JSON:-[{\"duration\":\"2m\",\"target\":10},{\"duration\":\"5m\",\"target\":10},{\"duration\":\"2m\",\"target\":30},{\"duration\":\"5m\",\"target\":30},{\"duration\":\"2m\",\"target\":60},{\"duration\":\"5m\",\"target\":60},{\"duration\":\"2m\",\"target\":0}]}"
+    ;;
   breakpoint)
     # Slowly ramp VUs until the system breaks — finds the saturation point
     # Ramps from 1 to 100 VUs over 20 minutes, holding each level for 2 minutes
@@ -48,7 +53,7 @@ case "$TEST_TYPE" in
     ;;
   *)
     echo "Unsupported TEST_TYPE: $TEST_TYPE"
-    echo "Use one of: smoke, load, stress, soak, breakpoint"
+    echo "Use one of: smoke, load, stress, soak, long-stress, breakpoint"
     exit 1
     ;;
 esac
