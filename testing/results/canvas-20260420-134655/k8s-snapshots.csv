@@ -1,0 +1,8 @@
+timestamp,web_ready_replicas,web_available_replicas,web_spec_replicas,jobs_ready_replicas,jobs_available_replicas,jobs_spec_replicas,web_hpa_current_replicas,web_hpa_desired_replicas,jobs_hpa_current_replicas,jobs_hpa_desired_replicas,web_restart_total,jobs_restart_total
+2026-04-20T13:46:55+00:00,1,1,1,3,3,3,1,1,3,3,5,39
+2026-04-20T13:47:01+00:00,1,1,1,3,3,3,1,1,3,3,5,39
+2026-04-20T13:47:07+00:00,1,1,1,3,3,3,1,1,3,3,5,39
+2026-04-20T13:47:13+00:00,1,1,1,2,2,3,1,1,3,3,5,39
+2026-04-20T13:47:19+00:00,1,1,1,1,1,3,1,1,3,3,5,39
+2026-04-20T13:47:25+00:00,1,1,1,1,1,3,1,1,3,3,5,39
+2026-04-20T13:47:31+00:00,1,1,1,1,1,3,1,1,3,3,5,39
