@@ -103,9 +103,41 @@ echo "Submission flow enabled: $submission_enabled"
   echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 } > "$RUN_DIR/metadata.env"
 
+hpa_clean_start() {
+  # Detect if HPA is active in the canvas namespace
+  local hpa_count
+  hpa_count=$(kubectl get hpa -n canvas --no-headers 2>/dev/null | wc -l)
+  if [[ "$hpa_count" -eq 0 ]]; then
+    echo "HPA not detected — skipping clean-start reset."
+    return 0
+  fi
+
+  echo "HPA detected — performing clean start (scale to 1 replica + pod restart)..."
+
+  # Force replicas back to 1 immediately (bypasses HPA scale-down cooldown)
+  kubectl scale deployment canvas-web  -n canvas --replicas=1 2>/dev/null || true
+  kubectl scale deployment canvas-jobs -n canvas --replicas=1 2>/dev/null || true
+
+  # Restart pods so restart counters reset to 0 in snapshots
+  kubectl rollout restart deployment/canvas-web  -n canvas
+  kubectl rollout restart deployment/canvas-jobs -n canvas
+
+  # Wait until pods are fully ready before starting the test
+  echo "Waiting for canvas-web rollout..."
+  kubectl rollout status deployment/canvas-web  -n canvas --timeout=120s
+  echo "Waiting for canvas-jobs rollout..."
+  kubectl rollout status deployment/canvas-jobs -n canvas --timeout=120s
+
+  echo "Clean start complete. Current pod state:"
+  kubectl get pods -n canvas
+  echo "Current HPA state:"
+  kubectl get hpa  -n canvas
+}
+
 if command -v kubectl >/dev/null 2>&1; then
   ensure_kubeconfig
   if kubectl get namespace canvas >/dev/null 2>&1; then
+    hpa_clean_start
     bash "$SCRIPT_DIR/collect-k8s-snapshots.sh" "$SNAPSHOT_FILE" &
     K8S_SNAPSHOT_PID="$!"
     echo "Collecting Kubernetes snapshots to $SNAPSHOT_FILE"
