@@ -1,0 +1,63 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: /home/ubuntu/canvas-k8s/testing/load_test/canvas-load.js
+        output: Prometheus remote write (http://127.0.0.1:30090/api/v1/write)
+
+     scenarios: (100.00%) 1 scenario, 100 max VUs, 18m30s max duration (incl. graceful stop):
+              * default: Up to 100 looping VUs for 18m0s over 9 stages (gracefulRampDown: 30s, gracefulStop: 30s)
+
+
+Run       [ 100% ] setup()
+default   [   0% ]
+
+Run       [ 100% ] setup()
+default   [   0% ]
+
+running (00m03.0s), 001/100 VUs, 0 complete and 0 interrupted iterations
+default   [   0% ] 001/100 VUs  00m00.7s/18m00.0s
+
+running (00m04.0s), 001/100 VUs, 1 complete and 0 interrupted iterations
+default   [   0% ] 001/100 VUs  00m01.7s/18m00.0s
+
+running (00m05.0s), 001/100 VUs, 3 complete and 0 interrupted iterations
+default   [   0% ] 001/100 VUs  00m02.7s/18m00.0s
+
+running (00m06.0s), 001/100 VUs, 3 complete and 0 interrupted iterations
+default   [   0% ] 001/100 VUs  00m03.7s/18m00.0s
+
+running (00m07.0s), 001/100 VUs, 4 complete and 0 interrupted iterations
+default   [   0% ] 001/100 VUs  00m04.7s/18m00.0s
+
+running (00m08.0s), 001/100 VUs, 5 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m05.7s/18m00.0s
+
+running (00m09.0s), 001/100 VUs, 5 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m06.7s/18m00.0s
+
+running (00m10.0s), 001/100 VUs, 6 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m07.7s/18m00.0s
+
+running (00m11.0s), 001/100 VUs, 7 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m08.7s/18m00.0s
+
+running (00m12.0s), 001/100 VUs, 7 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m09.7s/18m00.0s
+
+running (00m13.0s), 001/100 VUs, 8 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m10.7s/18m00.0s
+
+running (00m14.0s), 001/100 VUs, 9 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m11.7s/18m00.0s
+
+running (00m15.0s), 001/100 VUs, 9 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m12.7s/18m00.0s
+
+running (00m16.0s), 002/100 VUs, 10 complete and 0 interrupted iterations
+default   [   1% ] 002/100 VUs  00m13.7s/18m00.0s
