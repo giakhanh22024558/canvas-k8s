@@ -41,9 +41,14 @@ case "$TEST_TYPE" in
     export VUS="${VUS:-15}"
     export DURATION="${DURATION:-30m}"
     ;;
+  breakpoint)
+    # Slowly ramp VUs until the system breaks — finds the saturation point
+    # Ramps from 1 to 100 VUs over 20 minutes, holding each level for 2 minutes
+    export STAGES_JSON="${STAGES_JSON:-[{\"duration\":\"2m\",\"target\":10},{\"duration\":\"2m\",\"target\":20},{\"duration\":\"2m\",\"target\":30},{\"duration\":\"2m\",\"target\":40},{\"duration\":\"2m\",\"target\":50},{\"duration\":\"2m\",\"target\":60},{\"duration\":\"2m\",\"target\":80},{\"duration\":\"2m\",\"target\":100},{\"duration\":\"2m\",\"target\":0}]}"
+    ;;
   *)
     echo "Unsupported TEST_TYPE: $TEST_TYPE"
-    echo "Use one of: smoke, load, stress, soak"
+    echo "Use one of: smoke, load, stress, soak, breakpoint"
     exit 1
     ;;
 esac
