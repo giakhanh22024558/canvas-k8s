@@ -57,7 +57,7 @@ const profilePresets = {
 
 function buildOptions() {
   const preset = profilePresets[profileName] || profilePresets.load;
-  const options = { thresholds: defaultThresholds };
+  const options = { thresholds: defaultThresholds, setupTimeout: "120s" };
 
   if (__ENV.STAGES_JSON) {
     try {
