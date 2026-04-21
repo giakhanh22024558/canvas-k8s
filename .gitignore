@@ -1,2 +1,3 @@
 testing/testing.env
 testing/results-publish-repo/
+.claude/settings.local.json
