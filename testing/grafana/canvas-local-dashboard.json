@@ -651,6 +651,66 @@
       ],
       "title": "HPA Status",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 150
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "HPA Trigger (70%)" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } },
+              { "id": "custom.lineWidth", "value": 2 },
+              { "id": "custom.lineStyle", "value": { "dash": [8, 4], "fill": "dash" } }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 46
+      },
+      "id": 14,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "100 * sum(rate(container_cpu_usage_seconds_total{namespace=\"canvas\",pod=~\"canvas-web-.*\",container!=\"\",container!=\"POD\"}[1m]) * on(pod) group_left() kube_pod_status_phase{namespace=\"canvas\",phase=\"Running\"}) / sum(kube_pod_container_resource_requests{namespace=\"canvas\",pod=~\"canvas-web-.*\",resource=\"cpu\",container!=\"\",container!=\"POD\"})",
+          "legendFormat": "canvas-web CPU % of request",
+          "refId": "A"
+        },
+        {
+          "expr": "70",
+          "legendFormat": "HPA Trigger (70%)",
+          "refId": "B"
+        }
+      ],
+      "title": "HPA CPU Utilization % (vs Request)",
+      "description": "Shows actual CPU usage as a percentage of the requested CPU. HPA scales out when this exceeds 70%. With request=1500m, the trigger fires at ~1050m CPU usage.",
+      "type": "timeseries"
     }
   ],
   "refresh": "10s",
