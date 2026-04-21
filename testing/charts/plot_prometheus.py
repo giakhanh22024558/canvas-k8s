@@ -585,11 +585,23 @@ def main():
         plot_restart_counts(output_dir, label, snapshots)
         scaling_summary = plot_scale_latency(output_dir, label, snapshots) or {}
 
+        # Prefer the k6 final-summary error rate when available — it is computed
+        # as (failed_requests / total_requests) × 100 over the whole test and
+        # therefore excludes the setup() phase, which can inflate the
+        # Prometheus time-average when course/assignment prefetch requests fail
+        # during pod warmup at the start of the test.
+        k6_error_rate = k6_summary_metrics.get("error_rate_percent")
+        avg_error_rate = (
+            round(k6_error_rate, 3)
+            if k6_error_rate is not None
+            else round(average_value(error_rate), 3)
+        )
+
         summary_metrics = {
             "test_id": args.testid,
             "label": label,
             "avg_throughput_rps": round(average_value(throughput), 3),
-            "avg_error_rate_percent": round(average_value(error_rate), 3),
+            "avg_error_rate_percent": avg_error_rate,
             "avg_p50_ms": round(average_value(latency["p50"]) * 1000, 3),
             "avg_p95_ms": round(average_value(latency["p95"]) * 1000, 3),
             "avg_p99_ms": round(average_value(latency["p99"]) * 1000, 3),
