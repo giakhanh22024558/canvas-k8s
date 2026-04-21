@@ -114,6 +114,13 @@ hpa_clean_start() {
 
   echo "HPA detected — performing clean start (scale to 1 replica + pod restart)..."
 
+  # Clamp HPA maxReplicas to 1 BEFORE scaling down.
+  # Without this, HPA reads stale high-CPU metrics from the previous test
+  # and immediately re-scales back to 5 pods, defeating the clean start.
+  echo "Clamping HPA maxReplicas to 1 to prevent scale-up during warmup..."
+  kubectl patch hpa canvas-web  -n canvas -p '{"spec":{"maxReplicas":1}}' 2>/dev/null || true
+  kubectl patch hpa canvas-jobs -n canvas -p '{"spec":{"maxReplicas":1}}' 2>/dev/null || true
+
   # Force replicas back to 1 immediately (bypasses HPA scale-down cooldown)
   kubectl scale deployment canvas-web  -n canvas --replicas=1 2>/dev/null || true
   kubectl scale deployment canvas-jobs -n canvas --replicas=1 2>/dev/null || true
@@ -128,17 +135,22 @@ hpa_clean_start() {
   echo "Waiting for canvas-jobs rollout..."
   kubectl rollout status deployment/canvas-jobs -n canvas --timeout=120s
 
-  echo "Clean start complete. Current pod state:"
-  kubectl get pods -n canvas
-  echo "Current HPA state:"
-  kubectl get hpa  -n canvas
-
   # Readiness probe passing ≠ Rails fully warmed up. A Canvas pod needs
   # time after becoming "Ready" to finish loading gems, open DB connection
   # pools, and compile routes. Without this sleep, k6 setup() hits a
   # half-warm pod and retries, inflating early error metrics.
   echo "Waiting 2 minutes for Rails to warm up after restart..."
   sleep 120
+
+  # Restore HPA maxReplicas so it can scale freely during the actual test
+  echo "Restoring HPA maxReplicas (web=5, jobs=3)..."
+  kubectl patch hpa canvas-web  -n canvas -p '{"spec":{"maxReplicas":5}}' 2>/dev/null || true
+  kubectl patch hpa canvas-jobs -n canvas -p '{"spec":{"maxReplicas":3}}' 2>/dev/null || true
+
+  echo "Clean start complete. Current pod state:"
+  kubectl get pods -n canvas
+  echo "Current HPA state:"
+  kubectl get hpa  -n canvas
   echo "Warmup complete — starting test."
 }
 
