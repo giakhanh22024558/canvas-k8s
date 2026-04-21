@@ -132,6 +132,14 @@ hpa_clean_start() {
   kubectl get pods -n canvas
   echo "Current HPA state:"
   kubectl get hpa  -n canvas
+
+  # Readiness probe passing ≠ Rails fully warmed up. A Canvas pod needs
+  # ~60 s after becoming "Ready" to finish loading gems, open DB connection
+  # pools, and compile routes. Without this sleep, k6 setup() hits a
+  # half-warm pod and retries, inflating early error metrics.
+  echo "Waiting 60s for Rails to warm up after restart..."
+  sleep 60
+  echo "Warmup complete — starting test."
 }
 
 if command -v kubectl >/dev/null 2>&1; then
