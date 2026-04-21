@@ -137,8 +137,8 @@ hpa_clean_start() {
   # time after becoming "Ready" to finish loading gems, open DB connection
   # pools, and compile routes. Without this sleep, k6 setup() hits a
   # half-warm pod and retries, inflating early error metrics.
-  echo "Waiting 3 minutes for Rails to warm up after restart..."
-  sleep 180
+  echo "Waiting 2 minutes for Rails to warm up after restart..."
+  sleep 120
   echo "Warmup complete — starting test."
 }
 
