@@ -259,7 +259,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"canvas\",pod=~\"canvas-web-.*\",container!=\"\",container!=\"POD\"}[1m]))",
+          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"canvas\",pod=~\"canvas-web-.*\",container!=\"\",container!=\"POD\"}[1m]) * on(pod) group_left() kube_pod_status_phase{namespace=\"canvas\",phase=\"Running\"})",
           "legendFormat": "{{pod}}",
           "refId": "A"
         }
@@ -299,7 +299,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"canvas\",pod=~\"canvas-web-.*\",container!=\"\",container!=\"POD\"}) / 1000000",
+          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"canvas\",pod=~\"canvas-web-.*\",container!=\"\",container!=\"POD\"} * on(pod) group_left() kube_pod_status_phase{namespace=\"canvas\",phase=\"Running\"}) / 1000000",
           "legendFormat": "{{pod}}",
           "refId": "A"
         }
@@ -339,7 +339,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"canvas\",pod=~\"canvas-jobs-.*\",container!=\"\",container!=\"POD\"}) / 1000000",
+          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"canvas\",pod=~\"canvas-jobs-.*\",container!=\"\",container!=\"POD\"} * on(pod) group_left() kube_pod_status_phase{namespace=\"canvas\",phase=\"Running\"}) / 1000000",
           "legendFormat": "{{pod}}",
           "refId": "A"
         }
@@ -599,7 +599,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (pod) (kube_pod_container_status_restarts_total{namespace=\"canvas\",pod=~\"canvas-web-.*|canvas-jobs-.*\"})",
+          "expr": "sum by (pod) (kube_pod_container_status_restarts_total{namespace=\"canvas\",pod=~\"canvas-web-.*|canvas-jobs-.*\"} * on(pod) group_left() kube_pod_status_phase{namespace=\"canvas\",phase=\"Running\"})",
           "legendFormat": "{{pod}}",
           "refId": "A"
         }
