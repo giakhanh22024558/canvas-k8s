@@ -129,8 +129,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 * (avg(k6_http_req_failed{testid=~\"$testid\"}) or avg(k6_http_req_failed_rate{testid=~\"$testid\"}))",
-          "legendFormat": "error rate",
+          "expr": "100 * avg by (testid) (avg_over_time(k6_http_req_failed{testid=~\"$testid\"}[2m]))",
+          "legendFormat": "{{testid}}",
           "refId": "A"
         }
       ],
@@ -462,7 +462,7 @@
       },
       "targets": [
         {
-          "expr": "100 * (avg(k6_http_req_failed{testid=~\"$testid\"}) or avg(k6_http_req_failed_rate{testid=~\"$testid\"}))",
+          "expr": "100 * avg_over_time(k6_http_req_failed{testid=~\"$testid\"}[$__range])",
           "refId": "A"
         }
       ],
