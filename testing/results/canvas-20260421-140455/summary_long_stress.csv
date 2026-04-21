@@ -1,0 +1,12 @@
+metric,value
+test_id,canvas-20260421-140455
+label,long-stress
+avg_throughput_rps,22.143
+avg_error_rate_percent,23.698
+avg_p50_ms,99.388
+avg_p95_ms,139.227
+avg_p99_ms,255.259
+max_vus,60.0
+max_web_restart_total,0.0
+max_jobs_restart_total,1.0
+k6_summary_fallback,0
