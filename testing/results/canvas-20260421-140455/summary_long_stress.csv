@@ -1,10 +1,10 @@
 metric,value
 test_id,canvas-20260421-140455
 label,long-stress
-avg_throughput_rps,22.143
+avg_throughput_rps,22.41
 avg_error_rate_percent,0.29
-avg_p50_ms,99.388
-avg_p95_ms,139.227
+avg_p50_ms,60.02
+avg_p95_ms,168.21
 avg_p99_ms,255.259
 max_vus,60.0
 max_web_restart_total,0.0
