@@ -68,14 +68,17 @@ def parse_k6_summary_metrics(path):
     text = path.read_text(encoding="utf-8", errors="ignore")
     metrics = {}
 
+    # k6 summary line format:
+    # http_req_duration...: avg=96ms min=1ms med=60ms max=35s p(90)=127ms p(95)=168ms
     duration_match = re.search(
-        r"http_req_duration\.*:\s+avg=(\S+).*?p\(90\)=(\S+)\s+p\(95\)=(\S+)",
+        r"http_req_duration\.*:\s+avg=(\S+)\s+min=\S+\s+med=(\S+).*?p\(90\)=(\S+)\s+p\(95\)=(\S+)",
         text,
         re.DOTALL,
     )
     if duration_match:
-        metrics["avg"] = parse_duration_to_seconds(duration_match.group(1))
-        metrics["p95"] = parse_duration_to_seconds(duration_match.group(3))
+        metrics["avg"]  = parse_duration_to_seconds(duration_match.group(1))
+        metrics["p50"]  = parse_duration_to_seconds(duration_match.group(2))  # median = p50
+        metrics["p95"]  = parse_duration_to_seconds(duration_match.group(4))
 
     expected_match = re.search(
         r"\{\s*expected_response:true\s*\}\.*:\s+avg=(\S+).*?p\(90\)=(\S+)\s+p\(95\)=(\S+)",
@@ -585,30 +588,30 @@ def main():
         plot_restart_counts(output_dir, label, snapshots)
         scaling_summary = plot_scale_latency(output_dir, label, snapshots) or {}
 
-        # Prefer the k6 final-summary error rate when available — it is computed
-        # as (failed_requests / total_requests) × 100 over the whole test and
-        # therefore excludes the setup() phase, which can inflate the
-        # Prometheus time-average when course/assignment prefetch requests fail
-        # during pod warmup at the start of the test.
-        k6_error_rate = k6_summary_metrics.get("error_rate_percent")
-        avg_error_rate = (
-            round(k6_error_rate, 3)
-            if k6_error_rate is not None
-            else round(average_value(error_rate), 3)
-        )
+        # For summary CSV values prefer the k6 final-summary numbers when
+        # available. They are computed over every request in the test
+        # (failed/total, global percentile) and are unaffected by the setup()
+        # phase or the equal-weight time-averaging that Prometheus applies.
+        # Prometheus data is still used for all time-series charts.
+        # p99 is not present in the k6 summary output so always comes from
+        # Prometheus; throughput differs by ~1% but we prefer k6 for consistency.
+        def _k6_or_prom(k6_key, prom_value, scale=1.0):
+            v = k6_summary_metrics.get(k6_key)
+            return round(v * scale, 3) if v is not None else round(prom_value, 3)
 
         summary_metrics = {
             "test_id": args.testid,
             "label": label,
-            "avg_throughput_rps": round(average_value(throughput), 3),
-            "avg_error_rate_percent": avg_error_rate,
-            "avg_p50_ms": round(average_value(latency["p50"]) * 1000, 3),
-            "avg_p95_ms": round(average_value(latency["p95"]) * 1000, 3),
-            "avg_p99_ms": round(average_value(latency["p99"]) * 1000, 3),
-            "max_vus": round(max((value for _, value in vus), default=0), 3),
-            "max_web_restart_total": round(max((row["web_restart_total"] for row in snapshots), default=0), 3),
-            "max_jobs_restart_total": round(max((row["jobs_restart_total"] for row in snapshots), default=0), 3),
-            "k6_summary_fallback": int(fallback_used),
+            "avg_throughput_rps":    _k6_or_prom("throughput_rps", average_value(throughput)),
+            "avg_error_rate_percent":_k6_or_prom("error_rate_percent", average_value(error_rate)),
+            "avg_p50_ms":            _k6_or_prom("p50",  average_value(latency["p50"]), scale=1000),
+            "avg_p95_ms":            _k6_or_prom("p95",  average_value(latency["p95"]), scale=1000),
+            # p99 is not in the k6 summary — Prometheus time-average is the only source
+            "avg_p99_ms":            round(average_value(latency["p99"]) * 1000, 3),
+            "max_vus":               round(max((value for _, value in vus), default=0), 3),
+            "max_web_restart_total": round(max((row["web_restart_total"]  for row in snapshots), default=0), 3),
+            "max_jobs_restart_total":round(max((row["jobs_restart_total"] for row in snapshots), default=0), 3),
+            "k6_summary_fallback":   int(fallback_used),
         }
         summary_metrics.update({key: round(value, 3) if isinstance(value, float) else value for key, value in scaling_summary.items()})
         write_summary(output_dir, label, summary_metrics)
