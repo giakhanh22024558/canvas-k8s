@@ -165,7 +165,7 @@ function chooseRandom(items) {
 
 function chooseOperation(context) {
   const operations = [
-    "dashboardCards",
+    "assignments",
     "courseList",
     "modules",
     "quizzes",
@@ -182,13 +182,13 @@ function chooseOperation(context) {
   return chooseRandom(operations);
 }
 
-function requestDashboardCards() {
-  const response = http.get(`${baseUrl}/api/v1/dashboard/dashboard_cards`, {
+function requestAssignments(course) {
+  const response = http.get(`${baseUrl}/api/v1/courses/${course.id}/assignments?per_page=10`, {
     headers: authHeaders(),
   });
   check(response, {
-    "dashboard cards status is 200": (res) => res.status === 200,
-  }) || logFailure("dashboard-cards", response);
+    "assignments status is 200": (res) => res.status === 200,
+  }) || logFailure("assignments", response);
 }
 
 function requestCourseList() {
@@ -290,8 +290,12 @@ export default function (context) {
   const operation = chooseOperation(context);
 
   switch (operation) {
-    case "dashboardCards":
-      requestDashboardCards();
+    case "assignments":
+      if (course) {
+        requestAssignments(course);
+      } else {
+        requestCourseList();
+      }
       break;
     case "courseList":
       requestCourseList();
