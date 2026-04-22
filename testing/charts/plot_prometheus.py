@@ -390,6 +390,34 @@ def average_value(values):
     return sum(value for _, value in values) / len(values)
 
 
+def infer_scaling_mode(snapshots):
+    """Infer baseline / hpa / prescaled from k8s snapshot data."""
+    if not snapshots:
+        return "unknown"
+    web_specs = [row["web_spec_replicas"] for row in snapshots]
+    min_spec = int(min(web_specs))
+    max_spec = int(max(web_specs))
+    has_hpa = any(row.get("web_hpa_desired_replicas", 0) > 0 for row in snapshots)
+    if min_spec == 1 and max_spec == 1:
+        return "baseline"
+    if min_spec == 5 and max_spec == 5 and not has_hpa:
+        return "prescaled"
+    if has_hpa or (min_spec < max_spec):
+        return "hpa"
+    return "unknown"
+
+
+def k6_or_prom(k6_summary, k6_key, prom_value, scale=1.0):
+    """Prefer k6 final-summary value over Prometheus time-average.
+
+    k6 summary metrics (error rate, p50, p95, throughput) are computed
+    over every request in the test and are unaffected by the setup() phase
+    or equal-weight time-averaging that Prometheus applies.
+    """
+    v = k6_summary.get(k6_key)
+    return round(v * scale, 3) if v is not None else round(prom_value, 3)
+
+
 def plot_comparison_p95(output_dir, comparison_rows):
     if not comparison_rows:
         return
@@ -512,8 +540,10 @@ def collect_run_metrics(base_url, selector, start, end, step):
     error_result, _ = try_queries(
         base_url,
         [
-            f"100 * (avg(k6_http_req_failed{selector}) or avg(k6_http_req_failed_rate{selector}))",
-            f"100 * (max(k6_http_req_failed{selector}) or max(k6_http_req_failed_rate{selector}))",
+            # 2-minute rolling average removes scrape-interval noise (46%→5% jumps)
+            # while still showing genuine trends as load increases.
+            f"100 * avg_over_time(k6_http_req_failed{selector}[2m])",
+            f"100 * avg_over_time(k6_http_req_failed_rate{selector}[2m])",
         ],
         start,
         end,
@@ -594,24 +624,21 @@ def main():
         # phase or the equal-weight time-averaging that Prometheus applies.
         # Prometheus data is still used for all time-series charts.
         # p99 is not present in the k6 summary output so always comes from
-        # Prometheus; throughput differs by ~1% but we prefer k6 for consistency.
-        def _k6_or_prom(k6_key, prom_value, scale=1.0):
-            v = k6_summary_metrics.get(k6_key)
-            return round(v * scale, 3) if v is not None else round(prom_value, 3)
-
+        # Prometheus (noted in the CSV as a limitation).
         summary_metrics = {
-            "test_id": args.testid,
-            "label": label,
-            "avg_throughput_rps":    _k6_or_prom("throughput_rps", average_value(throughput)),
-            "avg_error_rate_percent":_k6_or_prom("error_rate_percent", average_value(error_rate)),
-            "avg_p50_ms":            _k6_or_prom("p50",  average_value(latency["p50"]), scale=1000),
-            "avg_p95_ms":            _k6_or_prom("p95",  average_value(latency["p95"]), scale=1000),
-            # p99 is not in the k6 summary — Prometheus time-average is the only source
+            "test_id":               args.testid,
+            "label":                 label,
+            "scaling_mode":          infer_scaling_mode(snapshots),
+            "avg_throughput_rps":    k6_or_prom(k6_summary_metrics, "throughput_rps",    average_value(throughput)),
+            "avg_error_rate_percent":k6_or_prom(k6_summary_metrics, "error_rate_percent", average_value(error_rate)),
+            "avg_p50_ms":            k6_or_prom(k6_summary_metrics, "p50",  average_value(latency["p50"]), scale=1000),
+            "avg_p95_ms":            k6_or_prom(k6_summary_metrics, "p95",  average_value(latency["p95"]), scale=1000),
+            # p99 is not in k6 summary — Prometheus time-average only (caveat: averages per-interval p99s)
             "avg_p99_ms":            round(average_value(latency["p99"]) * 1000, 3),
             "max_vus":               round(max((value for _, value in vus), default=0), 3),
             "max_web_restart_total": round(max((row["web_restart_total"]  for row in snapshots), default=0), 3),
             "max_jobs_restart_total":round(max((row["jobs_restart_total"] for row in snapshots), default=0), 3),
-            "k6_summary_fallback":   int(fallback_used),
+            "prom_fallback_used":    int(fallback_used),
         }
         summary_metrics.update({key: round(value, 3) if isinstance(value, float) else value for key, value in scaling_summary.items()})
         write_summary(output_dir, label, summary_metrics)
@@ -633,16 +660,17 @@ def main():
         )
         comparison_rows.append(
             {
-                "test_id": testid,
-                "label": label,
-                "avg_throughput_rps": round(average_value(throughput), 3),
-                "avg_error_rate_percent": round(average_value(error_rate), 3),
-                "avg_p50_ms": round(average_value(latency["p50"]) * 1000, 3),
-                "avg_p95_ms": round(average_value(latency["p95"]) * 1000, 3),
-                "avg_p99_ms": round(average_value(latency["p99"]) * 1000, 3),
-                "max_vus": round(max((value for _, value in vus), default=0), 3),
+                "test_id":               testid,
+                "label":                 label,
+                "scaling_mode":          infer_scaling_mode(snapshots),
+                "avg_throughput_rps":    k6_or_prom(k6_summary_metrics, "throughput_rps",    average_value(throughput)),
+                "avg_error_rate_percent":k6_or_prom(k6_summary_metrics, "error_rate_percent", average_value(error_rate)),
+                "avg_p50_ms":            k6_or_prom(k6_summary_metrics, "p50",  average_value(latency["p50"]), scale=1000),
+                "avg_p95_ms":            k6_or_prom(k6_summary_metrics, "p95",  average_value(latency["p95"]), scale=1000),
+                "avg_p99_ms":            round(average_value(latency["p99"]) * 1000, 3),
+                "max_vus":               round(max((value for _, value in vus), default=0), 3),
                 "max_web_restart_total": round(max((row["web_restart_total"] for row in snapshots), default=0), 3),
-                "max_jobs_restart_total": round(max((row["jobs_restart_total"] for row in snapshots), default=0), 3),
+                "max_jobs_restart_total":round(max((row["jobs_restart_total"] for row in snapshots), default=0), 3),
             }
         )
         latency_overlays[label] = latency
