@@ -698,8 +698,8 @@
       },
       "targets": [
         {
-          "expr": "100 * sum(rate(container_cpu_usage_seconds_total{namespace=\"canvas\",pod=~\"canvas-web-.*\",container!=\"\",container!=\"POD\"}[1m]) * on(pod) group_left() kube_pod_status_phase{namespace=\"canvas\",phase=\"Running\"}) / sum(kube_pod_container_resource_requests{namespace=\"canvas\",pod=~\"canvas-web-.*\",resource=\"cpu\",container!=\"\",container!=\"POD\"})",
-          "legendFormat": "canvas-web CPU % of request",
+          "expr": "kube_horizontalpodautoscaler_status_current_metrics_average_utilization{namespace=\"canvas\",horizontalpodautoscaler=\"canvas-web\"}",
+          "legendFormat": "canvas-web CPU % (HPA view)",
           "refId": "A"
         },
         {
@@ -709,7 +709,7 @@
         }
       ],
       "title": "HPA CPU Utilization % (vs Request)",
-      "description": "Shows actual CPU usage as a percentage of the requested CPU. HPA scales out when this exceeds 70%. With request=1500m, the trigger fires at ~1050m CPU usage.",
+      "description": "CPU utilization % as seen by the HPA controller — matches kubectl get hpa output exactly. Source: kube-state-metrics. Scales out when > 70%.",
       "type": "timeseries"
     }
   ],
