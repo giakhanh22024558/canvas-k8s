@@ -32,8 +32,10 @@ spec:
         value: 1
         periodSeconds: 120
     scaleUp:
-      # React to load increases immediately (no stabilization delay on scale-out).
-      stabilizationWindowSeconds: 0
+      # 30s window filters out single-scrape CPU spikes (e.g. Rails/Passenger
+      # startup, GC pauses) without meaningfully delaying response to real load.
+      # Without this, a 15s startup spike is enough to cascade to maxReplicas.
+      stabilizationWindowSeconds: 30
       policies:
       - type: Pods
         value: 2
@@ -66,7 +68,7 @@ spec:
         value: 1
         periodSeconds: 120
     scaleUp:
-      stabilizationWindowSeconds: 0
+      stabilizationWindowSeconds: 30
       policies:
       - type: Pods
         value: 2

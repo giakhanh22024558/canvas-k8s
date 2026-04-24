@@ -35,6 +35,33 @@ spec:
             limits:
               cpu: "4"        # VPA upper bound
               memory: 8Gi     # VPA upper bound
+          # startupProbe gates readiness during the long Rails/Passenger
+          # initialization (gem loading, worker fork, DB connect).
+          # Until this passes the pod stays NotReady → HPA excludes it from
+          # CPU calculations → no false scale-out on cluster start.
+          # 60 failures × 10s = up to 600s (10 min) allowed for first start.
+          startupProbe:
+            httpGet:
+              path: /health_check
+              port: 80
+            failureThreshold: 60
+            periodSeconds: 10
+          # readinessProbe keeps the pod out of the load-balancer (and HPA
+          # denominator) if Passenger workers become saturated mid-run.
+          readinessProbe:
+            httpGet:
+              path: /health_check
+              port: 80
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health_check
+              port: 80
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            failureThreshold: 5
           ports:
             - containerPort: 80
           volumeMounts:

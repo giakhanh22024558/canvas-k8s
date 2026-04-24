@@ -201,7 +201,7 @@ def plot_throughput_error(output_dir, label, throughput_values, error_values, k6
     if error_values:
         xs = [x for x, _ in error_values]
         ys = [y for _, y in error_values]
-        ax2.plot(xs, ys, color="#d62728", label="Error rate (Prom, per-window)", linewidth=1.5, alpha=0.6)
+        ax2.plot(xs, ys, color="#d62728", label="Error rate (1-min rolling, %)", linewidth=1.5, alpha=0.6)
 
     # Always fix the error rate axis to 0-100% so crash spikes are in context
     # and stable near-zero phases are visible. Without this matplotlib
@@ -613,11 +613,19 @@ def collect_run_metrics(base_url, selector, start, end, step):
     )
     throughput = select_first_series(throughput_result)
 
+    # Counter-based rate: k6_http_reqs_total is a proper Prometheus counter so
+    # rate() gives genuine per-window resolution and shows real spikes when
+    # errors cluster (e.g. during pod crash windows or HPA scale-in).
+    # The gauge-based avg_over_time query is kept as a fallback — it always has
+    # data but produces a near-flat line because k6 pre-aggregates the value
+    # before shipping it to Prometheus.
+    testid_val = selector.strip("{}").split('"')[1] if selector else ""
     error_result, _ = try_queries(
         base_url,
         [
-            # 2-minute rolling average removes scrape-interval noise (46%→5% jumps)
-            # while still showing genuine trends as load increases.
+            # Primary: counter-based — shows real variation over time
+            f'100 * sum(rate(k6_http_reqs_total{{expected_response="false",testid="{testid_val}"}}[1m])) / sum(rate(k6_http_reqs_total{{testid="{testid_val}"}}[1m]))',
+            # Fallback: gauge-based (flat but always populated)
             f"100 * avg_over_time(k6_http_req_failed{selector}[2m])",
             f"100 * avg_over_time(k6_http_req_failed_rate{selector}[2m])",
         ],
