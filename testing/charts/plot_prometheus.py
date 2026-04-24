@@ -303,6 +303,63 @@ def plot_cpu_replicas(output_dir, label, cpu_values, snapshots):
     plt.close(fig)
 
 
+def plot_memory(output_dir, label, web_memory_values, jobs_memory_values):
+    """Memory working-set (MB) for canvas-web and canvas-jobs over time.
+
+    Matches Grafana panels 6 and 7 — same metric, same unit (MB decimal),
+    same Running-pod-only filter applied during collection.
+    """
+    if not web_memory_values and not jobs_memory_values:
+        return
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+    if web_memory_values:
+        xs = [x for x, _ in web_memory_values]
+        ys = [y for _, y in web_memory_values]
+        ax.plot(xs, ys, color="#1f77b4", label="canvas-web (MB)", linewidth=2)
+    if jobs_memory_values:
+        xs = [x for x, _ in jobs_memory_values]
+        ys = [y for _, y in jobs_memory_values]
+        ax.plot(xs, ys, color="#ff7f0e", label="canvas-jobs (MB)", linewidth=2)
+
+    ax.set_title(f"Memory Working Set ({label})")
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Memory (MB)")
+    ax.legend()
+    ax.grid(alpha=0.25)
+    apply_time_axis(ax)
+    fig.tight_layout()
+    fig.savefig(output_dir / f"memory_{slugify(label)}.png")
+    plt.close(fig)
+
+
+def plot_hpa_cpu(output_dir, label, hpa_cpu_values):
+    """HPA CPU utilisation % with 70 % scale-out threshold line.
+
+    Matches Grafana panel 14 exactly — same metric
+    (kube_horizontalpodautoscaler_status_current_metrics_average_utilization),
+    same 70 % reference line, same y-axis range 0–150 %.
+    """
+    if not hpa_cpu_values:
+        return
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+    xs = [x for x, _ in hpa_cpu_values]
+    ys = [y for _, y in hpa_cpu_values]
+    ax.plot(xs, ys, color="#2ca02c", label="canvas-web CPU % (HPA view)", linewidth=2)
+    ax.axhline(y=70, color="#d62728", linewidth=2, linestyle="--", label="Scale-out threshold (70%)")
+    ax.set_title(f"HPA CPU Utilisation % ({label})")
+    ax.set_xlabel("Time")
+    ax.set_ylabel("CPU utilisation (%)")
+    ax.set_ylim(0, 150)
+    ax.legend()
+    ax.grid(alpha=0.25)
+    apply_time_axis(ax)
+    fig.tight_layout()
+    fig.savefig(output_dir / f"hpa_cpu_{slugify(label)}.png")
+    plt.close(fig)
+
+
 def plot_restart_counts(output_dir, label, snapshots):
     if not snapshots:
         return
@@ -579,10 +636,14 @@ def collect_run_metrics(base_url, selector, start, end, step):
     )
     vus = select_first_series(vus_result)
 
+    # CPU query: filter to Running pods only (matches Grafana panel exactly).
+    # Without the phase join, Terminating / CrashLoopBackOff pods are included,
+    # which inflates the CPU reading during pod-crash windows.
     cpu_result, _ = try_queries(
         base_url,
         [
-            'sum(rate(container_cpu_usage_seconds_total{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"}[1m]))',
+            'sum(rate(container_cpu_usage_seconds_total{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"}[1m]) * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"})',
+            # Fallback for older k3s/cAdvisor label schemes (pre-namespace label)
             'sum(rate(container_cpu_usage_seconds_total{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-web-.*"}[1m]))',
         ],
         start,
@@ -591,7 +652,48 @@ def collect_run_metrics(base_url, selector, start, end, step):
     )
     web_cpu = select_first_series(cpu_result)
 
-    return latency, throughput, error_rate, vus, web_cpu
+    # Memory — working set bytes (excludes file cache, matches kubectl top).
+    # Divide by 1 000 000 → MB (decimal, matches Grafana unit "decmbytes").
+    web_memory_result, _ = try_queries(
+        base_url,
+        [
+            'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"} * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}) / 1000000',
+            # Fallback for older k3s/cAdvisor label schemes (no namespace label)
+            'sum(container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-web-.*"}) / 1000000',
+        ],
+        start,
+        end,
+        step,
+    )
+    web_memory = select_first_series(web_memory_result)
+
+    jobs_memory_result, _ = try_queries(
+        base_url,
+        [
+            'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-jobs-.*",container!="",container!="POD"} * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}) / 1000000',
+            'sum(container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-jobs-.*"}) / 1000000',
+        ],
+        start,
+        end,
+        step,
+    )
+    jobs_memory = select_first_series(jobs_memory_result)
+
+    # HPA CPU utilisation % — same metric Grafana panel 14 uses.
+    # This is the value the HPA controller actually reads to decide when to scale;
+    # it matches `kubectl get hpa` output exactly.
+    hpa_cpu_result, _ = try_queries(
+        base_url,
+        [
+            'kube_horizontalpodautoscaler_status_current_metrics_average_utilization{namespace="canvas",horizontalpodautoscaler="canvas-web"}',
+        ],
+        start,
+        end,
+        step,
+    )
+    hpa_cpu = select_first_series(hpa_cpu_result)
+
+    return latency, throughput, error_rate, vus, web_cpu, web_memory, jobs_memory, hpa_cpu
 
 
 def main():
@@ -623,7 +725,7 @@ def main():
         snapshots = load_snapshots(run_dir / "k8s-snapshots.csv")
         k6_summary_metrics = parse_k6_summary_metrics(run_dir / "k6-summary.txt")
 
-        latency, throughput, error_rate, vus, web_cpu = collect_run_metrics(
+        latency, throughput, error_rate, vus, web_cpu, web_memory, jobs_memory, hpa_cpu = collect_run_metrics(
             args.prometheus_url, selector, start, end, step
         )
         latency, throughput, error_rate, vus, fallback_used = apply_k6_summary_fallbacks(
@@ -634,6 +736,8 @@ def main():
         plot_throughput_error(output_dir, label, throughput, error_rate, k6_error_rate_percent=k6_summary_metrics.get("error_rate_percent"))
         plot_vu_profile(output_dir, label, vus)
         plot_cpu_replicas(output_dir, label, web_cpu, snapshots)
+        plot_memory(output_dir, label, web_memory, jobs_memory)
+        plot_hpa_cpu(output_dir, label, hpa_cpu)
         plot_restart_counts(output_dir, label, snapshots)
         scaling_summary = plot_scale_latency(output_dir, label, snapshots) or {}
 
@@ -657,6 +761,9 @@ def main():
             "max_vus":               round(max((value for _, value in vus), default=0), 3),
             "max_web_restart_total": round(max((row["web_restart_total"]  for row in snapshots), default=0), 3),
             "max_jobs_restart_total":round(max((row["jobs_restart_total"] for row in snapshots), default=0), 3),
+            "avg_web_memory_mb":     round(average_value(web_memory), 3),
+            "avg_jobs_memory_mb":    round(average_value(jobs_memory), 3),
+            "max_hpa_cpu_percent":   round(max((v for _, v in hpa_cpu), default=0), 3),
             "prom_fallback_used":    int(fallback_used),
         }
         summary_metrics.update({key: round(value, 3) if isinstance(value, float) else value for key, value in scaling_summary.items()})
@@ -671,7 +778,7 @@ def main():
         label = compare_labels[index] if index < len(compare_labels) else metadata.get("test_type", testid)
         snapshots = load_snapshots(run_dir / "k8s-snapshots.csv")
         k6_summary_metrics = parse_k6_summary_metrics(run_dir / "k6-summary.txt")
-        latency, throughput, error_rate, vus, web_cpu = collect_run_metrics(
+        latency, throughput, error_rate, vus, web_cpu, web_memory, jobs_memory, hpa_cpu = collect_run_metrics(
             args.prometheus_url, selector, start, end, args.step
         )
         latency, throughput, error_rate, vus, _fallback_used = apply_k6_summary_fallbacks(
