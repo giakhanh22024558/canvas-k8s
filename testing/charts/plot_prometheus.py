@@ -679,12 +679,18 @@ def collect_run_metrics(base_url, selector, start, end, step):
     )
     jobs_memory = select_first_series(jobs_memory_result)
 
-    # HPA CPU utilisation % — same metric Grafana panel 14 uses.
-    # This is the value the HPA controller actually reads to decide when to scale;
-    # it matches `kubectl get hpa` output exactly.
+    # HPA CPU utilisation % — calculated directly from cAdvisor.
+    # Formula: sum(actualCPU) / sum(cpuRequest) * 100
+    # This is mathematically identical to what the HPA controller uses and
+    # produces a continuous time-series (unlike the kube-state-metrics metric
+    # which is only emitted when the HPA controller is actively sampling).
+    # The KSM metric is kept as a cross-check fallback only.
     hpa_cpu_result, _ = try_queries(
         base_url,
         [
+            # Primary: cAdvisor-based calculation — always has data
+            '100 * sum(rate(container_cpu_usage_seconds_total{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"}[2m]) * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}) / sum(kube_pod_container_resource_requests{namespace="canvas",resource="cpu",pod=~"canvas-web-.*",container!="",container!="POD"})',
+            # Fallback: KSM official HPA metric (sparse — only emitted when HPA is sampling)
             'kube_horizontalpodautoscaler_status_current_metrics_average_utilization{namespace="canvas",horizontalpodautoscaler="canvas-web"}',
         ],
         start,
