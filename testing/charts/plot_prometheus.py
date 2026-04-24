@@ -179,7 +179,7 @@ def plot_latency_timeline(output_dir, metrics_by_label):
     plt.close(fig)
 
 
-def plot_throughput_error(output_dir, label, throughput_values, error_values):
+def plot_throughput_error(output_dir, label, throughput_values, error_values, k6_error_rate_percent=None):
     if not throughput_values and not error_values:
         return
 
@@ -201,9 +201,28 @@ def plot_throughput_error(output_dir, label, throughput_values, error_values):
     if error_values:
         xs = [x for x, _ in error_values]
         ys = [y for _, y in error_values]
-        ax2.plot(xs, ys, color="#d62728", label="Error rate", linewidth=2)
+        ax2.plot(xs, ys, color="#d62728", label="Error rate (Prom, per-window)", linewidth=1.5, alpha=0.6)
+
+    # Always fix the error rate axis to 0-100% so crash spikes are in context
+    # and stable near-zero phases are visible. Without this matplotlib
+    # autoscales to e.g. 96-104% when crash windows dominate, hiding the
+    # stable baseline and making the chart unreadable.
+    ax2.set_ylim(0, 100)
     ax2.set_ylabel("Error rate (%)", color="#d62728")
     ax2.tick_params(axis="y", labelcolor="#d62728")
+
+    # Overlay k6 final-summary error rate as a dashed horizontal line.
+    # This is the ground-truth value (computed over every request in the test)
+    # and should be used for reporting. The Prometheus time-series above shows
+    # how error rate evolved during the test; this line anchors it to reality.
+    if k6_error_rate_percent is not None:
+        ax2.axhline(
+            y=k6_error_rate_percent,
+            color="#d62728",
+            linewidth=2,
+            linestyle="--",
+            label=f"Error rate (k6 summary: {k6_error_rate_percent:.2f}%)",
+        )
 
     handles = ax1.get_lines() + ax2.get_lines()
     if handles:
@@ -612,7 +631,7 @@ def main():
         )
 
         plot_latency_timeline(output_dir, {label: latency})
-        plot_throughput_error(output_dir, label, throughput, error_rate)
+        plot_throughput_error(output_dir, label, throughput, error_rate, k6_error_rate_percent=k6_summary_metrics.get("error_rate_percent"))
         plot_vu_profile(output_dir, label, vus)
         plot_cpu_replicas(output_dir, label, web_cpu, snapshots)
         plot_restart_counts(output_dir, label, snapshots)
