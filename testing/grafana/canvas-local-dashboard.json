@@ -44,133 +44,235 @@
   },
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "graphTooltip": 0,
+  "graphTooltip": 2,
   "id": null,
   "links": [],
   "liveNow": false,
   "panels": [
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 20,
+      "title": "📊 Quick Summary",
+      "type": "row"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
           },
-          "unit": "reqps"
+          "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 0
-      },
-      "id": 1,
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 1 },
+      "id": 10,
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom"
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "mode": "multi"
-        }
+        "textMode": "auto"
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum(rate(k6_http_reqs_total{testid=~\"$testid\"}[1m]))",
-          "legendFormat": "request rate",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "max(k6_vus{testid=~\"$testid\"})",
           "refId": "A"
         }
       ],
-      "title": "Throughput",
-      "type": "timeseries"
+      "title": "Active Virtual Users",
+      "type": "stat"
     },
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "unit": "percent",
-          "min": 0,
-          "max": 100,
-          "custom": {
-            "scaleDistribution": { "type": "linear" }
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 0
-      },
-      "id": 2,
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "100 * avg by (testid) (\n  avg_over_time(k6_http_req_failed{testid=~\"$testid\"}[2m])\n  or\n  avg_over_time(k6_http_req_failed_rate{testid=~\"$testid\"}[2m])\n)",
-          "legendFormat": "{{testid}} error %",
-          "refId": "A"
-        }
-      ],
-      "title": "Error Rate",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 500 },
+              { "color": "red", "value": 1000 }
+            ]
           },
           "unit": "ms"
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 8
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 1 },
+      "id": 8,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
       },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "avg(1000 * k6_http_req_duration_p95{testid=~\"$testid\"})",
+          "refId": "A"
+        }
+      ],
+      "title": "P95 Response Time",
+      "type": "stat"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 1 },
+      "id": 9,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "100 * avg (\n  avg_over_time(k6_http_req_failed{testid=~\"$testid\"}[$__range])\n  or\n  avg_over_time(k6_http_req_failed_rate{testid=~\"$testid\"}[$__range])\n)",
+          "refId": "A"
+        }
+      ],
+      "title": "Overall Error Rate",
+      "type": "stat"
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 21,
+      "title": "📈 Load & Performance",
+      "type": "row"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "reqps",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 1,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(k6_http_reqs_total{testid=~\"$testid\"}[1m]))",
+          "legendFormat": "request rate",
+          "refId": "A"
+        }
+      ],
+      "title": "Throughput (req/s)",
+      "type": "timeseries"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "scaleDistribution": { "type": "linear" }
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "id": 2,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "100 * avg by (testid) (\n  avg_over_time(k6_http_req_failed{testid=~\"$testid\"}[2m])\n  or\n  avg_over_time(k6_http_req_failed_rate{testid=~\"$testid\"}[2m])\n)",
+          "legendFormat": "{{testid}} error %",
+          "refId": "A"
+        }
+      ],
+      "title": "Error Rate (%)",
+      "type": "timeseries"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "ms",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 5
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
       "id": 3,
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
+        "legend": { "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "targets": [
         {
@@ -189,381 +291,71 @@
           "refId": "C"
         }
       ],
-      "title": "Response Time Percentiles",
+      "title": "Response Time Percentiles (ms)",
       "type": "timeseries"
     },
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+      "id": 22,
+      "title": "⚖️ Scaling Behavior",
+      "type": "row"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "unit": "short"
+          "color": { "mode": "palette-classic" },
+          "unit": "short",
+          "custom": { "lineWidth": 2, "fillOpacity": 5 }
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 16
-      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 23 },
       "id": 4,
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
+        "legend": { "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "none" }
       },
       "targets": [
         {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "max(k6_vus{testid=~\"$testid\"})",
-          "legendFormat": "VUs",
+          "legendFormat": "Virtual Users",
           "refId": "A"
         }
       ],
-      "title": "Virtual Users",
+      "title": "Virtual Users (Load)",
       "type": "timeseries"
     },
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "unit": "cores"
+          "color": { "mode": "palette-classic" },
+          "unit": "short",
+          "custom": { "lineWidth": 2, "fillOpacity": 5 }
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 16
-      },
-      "id": 5,
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "targets": [
-        {
-          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"canvas\",pod=~\"canvas-web-.*\",container!=\"\",container!=\"POD\"}[1m]) * on(pod) group_left() kube_pod_status_phase{namespace=\"canvas\",phase=\"Running\"})",
-          "legendFormat": "{{pod}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Canvas Web CPU per Pod",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "unit": "decmbytes"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 24
-      },
-      "id": 6,
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "targets": [
-        {
-          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"canvas\",pod=~\"canvas-web-.*\",container!=\"\",container!=\"POD\"} * on(pod) group_left() kube_pod_status_phase{namespace=\"canvas\",phase=\"Running\"}) / 1000000",
-          "legendFormat": "{{pod}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Canvas Web Memory per Pod",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "unit": "decmbytes"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 24
-      },
-      "id": 7,
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "targets": [
-        {
-          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"canvas\",pod=~\"canvas-jobs-.*\",container!=\"\",container!=\"POD\"} * on(pod) group_left() kube_pod_status_phase{namespace=\"canvas\",phase=\"Running\"}) / 1000000",
-          "legendFormat": "{{pod}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Canvas Jobs Memory per Pod",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 500
-              },
-              {
-                "color": "red",
-                "value": 1000
-              }
-            ]
-          },
-          "unit": "ms"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 8,
-        "x": 0,
-        "y": 32
-      },
-      "id": 8,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "expr": "avg(1000 * k6_http_req_duration_p95{testid=~\"$testid\"})",
-          "refId": "A"
-        }
-      ],
-      "title": "Current P95",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 1
-              },
-              {
-                "color": "red",
-                "value": 5
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 8,
-        "x": 8,
-        "y": 32
-      },
-      "id": 9,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "expr": "100 * avg (\n  avg_over_time(k6_http_req_failed{testid=~\"$testid\"}[$__range])\n  or\n  avg_over_time(k6_http_req_failed_rate{testid=~\"$testid\"}[$__range])\n)",
-          "refId": "A"
-        }
-      ],
-      "title": "Current Error Rate",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 8,
-        "x": 16,
-        "y": 32
-      },
-      "id": 10,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "targets": [
-        {
-          "expr": "max(k6_vus{testid=~\"$testid\"})",
-          "refId": "A"
-        }
-      ],
-      "title": "Current VUs",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 0,
-        "y": 38
-      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 23 },
       "id": 11,
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
+        "legend": { "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "none" }
       },
       "targets": [
         {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "kube_deployment_status_replicas_available{namespace=\"canvas\",deployment=~\"canvas-web|canvas-jobs\"}",
           "legendFormat": "{{deployment}} available",
           "refId": "A"
         },
         {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "kube_deployment_spec_replicas{namespace=\"canvas\",deployment=~\"canvas-web|canvas-jobs\"}",
           "legendFormat": "{{deployment}} desired",
           "refId": "B"
@@ -572,104 +364,48 @@
       "title": "Deployment Replicas",
       "type": "timeseries"
     },
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "unit": "short"
+          "color": { "mode": "palette-classic" },
+          "unit": "short",
+          "custom": { "lineWidth": 2, "fillOpacity": 5 }
         },
         "overrides": []
       },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 8,
-        "y": 38
-      },
-      "id": 12,
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
-      },
-      "targets": [
-        {
-          "expr": "sum by (pod) (kube_pod_container_status_restarts_total{namespace=\"canvas\",pod=~\"canvas-web-.*|canvas-jobs-.*\"} * on(pod) group_left() kube_pod_status_phase{namespace=\"canvas\",phase=\"Running\"})",
-          "legendFormat": "{{pod}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Pod Restart Count",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 16,
-        "y": 38
-      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 23 },
       "id": 13,
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
+        "legend": { "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "none" }
       },
       "targets": [
         {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"canvas\",horizontalpodautoscaler=~\"canvas-web|canvas-jobs\"}",
           "legendFormat": "{{horizontalpodautoscaler}} current",
           "refId": "A"
         },
         {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "kube_horizontalpodautoscaler_status_desired_replicas{namespace=\"canvas\",horizontalpodautoscaler=~\"canvas-web|canvas-jobs\"}",
           "legendFormat": "{{horizontalpodautoscaler}} desired",
           "refId": "B"
         }
       ],
-      "title": "HPA Status",
+      "title": "HPA Replica Status",
       "type": "timeseries"
     },
+
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "CPU utilization % as seen by the HPA controller — matches kubectl get hpa output exactly. Source: kube-state-metrics. Scales out when > 70%.",
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "lineWidth": 2
-          },
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 5 },
           "unit": "percent",
           "min": 0,
           "max": 150
@@ -680,52 +416,161 @@
             "properties": [
               { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } },
               { "id": "custom.lineWidth", "value": 2 },
-              { "id": "custom.lineStyle", "value": { "dash": [8, 4], "fill": "dash" } }
+              { "id": "custom.lineStyle", "value": { "dash": [8, 4], "fill": "dash" } },
+              { "id": "custom.fillOpacity", "value": 0 }
             ]
           }
         ]
       },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 46
-      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 31 },
       "id": 14,
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "multi"
-        }
+        "legend": { "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "none" }
       },
       "targets": [
         {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "kube_horizontalpodautoscaler_status_current_metrics_average_utilization{namespace=\"canvas\",horizontalpodautoscaler=\"canvas-web\"}",
           "legendFormat": "canvas-web CPU % (HPA view)",
           "refId": "A"
         },
         {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "70",
           "legendFormat": "HPA Trigger (70%)",
           "refId": "B"
         }
       ],
-      "title": "HPA CPU Utilization % (vs Request)",
-      "description": "CPU utilization % as seen by the HPA controller — matches kubectl get hpa output exactly. Source: kube-state-metrics. Scales out when > 70%.",
+      "title": "HPA CPU Utilization % (vs Request) — Scale-out threshold: 70%",
+      "type": "timeseries"
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 39 },
+      "id": 23,
+      "title": "🖥️ Infrastructure & Health",
+      "type": "row"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "cores",
+          "custom": { "lineWidth": 2, "fillOpacity": 5 }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 40 },
+      "id": 5,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"canvas\",pod=~\"canvas-web-.*\",container!=\"\",container!=\"POD\"}[1m]) * on(pod) group_left() kube_pod_status_phase{namespace=\"canvas\",phase=\"Running\"})",
+          "legendFormat": "{{pod}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Canvas Web CPU per Pod",
+      "type": "timeseries"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "decmbytes",
+          "custom": { "lineWidth": 2, "fillOpacity": 5 }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 40 },
+      "id": 6,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"canvas\",pod=~\"canvas-web-.*\",container!=\"\",container!=\"POD\"} * on(pod) group_left() kube_pod_status_phase{namespace=\"canvas\",phase=\"Running\"}) / 1000000",
+          "legendFormat": "{{pod}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Canvas Web Memory per Pod",
+      "type": "timeseries"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "decmbytes",
+          "custom": { "lineWidth": 2, "fillOpacity": 5 }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 40 },
+      "id": 7,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"canvas\",pod=~\"canvas-jobs-.*\",container!=\"\",container!=\"POD\"} * on(pod) group_left() kube_pod_status_phase{namespace=\"canvas\",phase=\"Running\"}) / 1000000",
+          "legendFormat": "{{pod}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Canvas Jobs Memory per Pod",
+      "type": "timeseries"
+    },
+
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 48 },
+      "id": 12,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (pod) (kube_pod_container_status_restarts_total{namespace=\"canvas\",pod=~\"canvas-web-.*|canvas-jobs-.*\"} * on(pod) group_left() kube_pod_status_phase{namespace=\"canvas\",phase=\"Running\"})",
+          "legendFormat": "{{pod}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Pod Restart Count (OOM / Crash Indicator)",
       "type": "timeseries"
     }
+
   ],
   "refresh": "10s",
   "schemaVersion": 39,
   "style": "dark",
-  "tags": [
-    "canvas",
-    "k6",
-    "prometheus"
-  ],
+  "tags": ["canvas", "k6", "prometheus"],
   "templating": {
     "list": [
       {
@@ -758,14 +603,11 @@
       }
     ]
   },
-  "time": {
-    "from": "now-30m",
-    "to": "now"
-  },
+  "time": { "from": "now-30m", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
   "title": "Canvas Load Testing",
   "uid": "canvas-load-testing",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
