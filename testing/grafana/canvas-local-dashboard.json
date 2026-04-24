@@ -174,7 +174,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "100 * avg (\n  avg_over_time(k6_http_req_failed{testid=~\"$testid\"}[$__range])\n  or\n  avg_over_time(k6_http_req_failed_rate{testid=~\"$testid\"}[$__range])\n)",
+          "expr": "100 * sum(increase(k6_http_reqs_total{expected_response=\"false\",testid=~\"$testid\"}[$__range])) / sum(increase(k6_http_reqs_total{testid=~\"$testid\"}[$__range]))",
           "refId": "A"
         }
       ],
