@@ -103,7 +103,12 @@
           "color": {
             "mode": "palette-classic"
           },
-          "unit": "percent"
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "scaleDistribution": { "type": "linear" }
+          }
         },
         "overrides": []
       },
@@ -129,8 +134,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 * avg by (testid) (avg_over_time(k6_http_req_failed{testid=~\"$testid\"}[2m]))",
-          "legendFormat": "{{testid}}",
+          "expr": "100 * avg by (testid) (\n  avg_over_time(k6_http_req_failed{testid=~\"$testid\"}[2m])\n  or\n  avg_over_time(k6_http_req_failed_rate{testid=~\"$testid\"}[2m])\n)",
+          "legendFormat": "{{testid}} error %",
           "refId": "A"
         }
       ],
@@ -462,7 +467,7 @@
       },
       "targets": [
         {
-          "expr": "100 * avg_over_time(k6_http_req_failed{testid=~\"$testid\"}[$__range])",
+          "expr": "100 * avg (\n  avg_over_time(k6_http_req_failed{testid=~\"$testid\"}[$__range])\n  or\n  avg_over_time(k6_http_req_failed_rate{testid=~\"$testid\"}[$__range])\n)",
           "refId": "A"
         }
       ],
