@@ -401,7 +401,7 @@
 
     {
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "description": "CPU utilization % as seen by the HPA controller — matches kubectl get hpa output exactly. Source: kube-state-metrics. Scales out when > 70%.",
+      "description": "CPU utilization % relative to the pod's CPU request (800m). HPA scales out when this exceeds 70%.\n\nQuery A (solid): calculated from cAdvisor — sum(actualCPU) / sum(cpuRequest) × 100. Continuous, always has data. Identical formula to what the HPA controller uses.\n\nQuery B (dotted): kube-state-metrics official HPA metric — sparse (only emitted when HPA is actively sampling). Cross-check against A to confirm correctness.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -419,6 +419,14 @@
               { "id": "custom.lineStyle", "value": { "dash": [8, 4], "fill": "dash" } },
               { "id": "custom.fillOpacity", "value": 0 }
             ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "canvas-web CPU % (KSM official, sparse)" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "dash": [4, 4], "fill": "dash" } },
+              { "id": "custom.lineWidth", "value": 1 },
+              { "id": "custom.fillOpacity", "value": 0 }
+            ]
           }
         ]
       },
@@ -431,15 +439,21 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "kube_horizontalpodautoscaler_status_current_metrics_average_utilization{namespace=\"canvas\",horizontalpodautoscaler=\"canvas-web\"}",
-          "legendFormat": "canvas-web CPU % (HPA view)",
+          "expr": "100 * sum(rate(container_cpu_usage_seconds_total{namespace=\"canvas\",pod=~\"canvas-web-.*\",container!=\"\",container!=\"POD\"}[2m]) * on(pod) group_left() kube_pod_status_phase{namespace=\"canvas\",phase=\"Running\"}) / sum(kube_pod_container_resource_requests{namespace=\"canvas\",resource=\"cpu\",pod=~\"canvas-web-.*\",container!=\"\",container!=\"POD\"})",
+          "legendFormat": "canvas-web CPU % (calculated, continuous)",
           "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "kube_horizontalpodautoscaler_status_current_metrics_average_utilization{namespace=\"canvas\",horizontalpodautoscaler=\"canvas-web\"}",
+          "legendFormat": "canvas-web CPU % (KSM official, sparse)",
+          "refId": "B"
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "expr": "70",
           "legendFormat": "HPA Trigger (70%)",
-          "refId": "B"
+          "refId": "C"
         }
       ],
       "title": "HPA CPU Utilization % (vs Request) — Scale-out threshold: 70%",
