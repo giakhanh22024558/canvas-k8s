@@ -34,7 +34,7 @@ spec:
               memory: 1Gi
             limits:
               cpu: "2"
-              memory: 2Gi
+              memory: 3Gi
           ports:
             - containerPort: 80
           volumeMounts:
