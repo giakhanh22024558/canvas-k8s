@@ -1,0 +1,177 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: /home/ubuntu/canvas-k8s/testing/load_test/canvas-load.js
+        output: Prometheus remote write (http://127.0.0.1:30090/api/v1/write)
+
+     scenarios: (100.00%) 1 scenario, 1 max VUs, 1m0s max duration (incl. graceful stop):
+              * default: 1 looping VUs for 30s (gracefulStop: 30s)
+
+
+Run       [ 100% ] setup()
+default   [   0% ]
+
+Run       [ 100% ] setup()
+default   [   0% ]
+
+Run       [ 100% ] setup()
+default   [   0% ]
+
+Run       [ 100% ] setup()
+default   [   0% ]
+
+running (0m05.0s), 1/1 VUs, 0 complete and 0 interrupted iterations
+default   [   3% ] 1 VUs  00.8s/30s
+
+running (0m06.0s), 1/1 VUs, 1 complete and 0 interrupted iterations
+default   [   6% ] 1 VUs  01.8s/30s
+
+running (0m07.0s), 1/1 VUs, 1 complete and 0 interrupted iterations
+default   [   9% ] 1 VUs  02.8s/30s
+
+running (0m08.0s), 1/1 VUs, 2 complete and 0 interrupted iterations
+default   [  13% ] 1 VUs  03.8s/30s
+
+running (0m09.0s), 1/1 VUs, 2 complete and 0 interrupted iterations
+default   [  16% ] 1 VUs  04.8s/30s
+
+running (0m10.0s), 1/1 VUs, 3 complete and 0 interrupted iterations
+default   [  19% ] 1 VUs  05.8s/30s
+
+running (0m11.0s), 1/1 VUs, 3 complete and 0 interrupted iterations
+default   [  23% ] 1 VUs  06.8s/30s
+
+running (0m12.0s), 1/1 VUs, 4 complete and 0 interrupted iterations
+default   [  26% ] 1 VUs  07.8s/30s
+
+running (0m13.0s), 1/1 VUs, 5 complete and 0 interrupted iterations
+default   [  29% ] 1 VUs  08.8s/30s
+
+running (0m14.0s), 1/1 VUs, 5 complete and 0 interrupted iterations
+default   [  33% ] 1 VUs  09.8s/30s
+
+running (0m15.0s), 1/1 VUs, 6 complete and 0 interrupted iterations
+default   [  36% ] 1 VUs  10.8s/30s
+
+running (0m16.0s), 1/1 VUs, 6 complete and 0 interrupted iterations
+default   [  39% ] 1 VUs  11.8s/30s
+
+running (0m17.0s), 1/1 VUs, 7 complete and 0 interrupted iterations
+default   [  43% ] 1 VUs  12.8s/30s
+
+running (0m18.0s), 1/1 VUs, 8 complete and 0 interrupted iterations
+default   [  46% ] 1 VUs  13.8s/30s
+
+running (0m19.0s), 1/1 VUs, 9 complete and 0 interrupted iterations
+default   [  49% ] 1 VUs  14.8s/30s
+
+running (0m20.0s), 1/1 VUs, 10 complete and 0 interrupted iterations
+default   [  53% ] 1 VUs  15.8s/30s
+
+running (0m21.0s), 1/1 VUs, 10 complete and 0 interrupted iterations
+default   [  56% ] 1 VUs  16.8s/30s
+
+running (0m22.0s), 1/1 VUs, 11 complete and 0 interrupted iterations
+default   [  59% ] 1 VUs  17.8s/30s
+
+running (0m23.0s), 1/1 VUs, 12 complete and 0 interrupted iterations
+default   [  63% ] 1 VUs  18.8s/30s
+
+running (0m24.0s), 1/1 VUs, 13 complete and 0 interrupted iterations
+default   [  66% ] 1 VUs  19.8s/30s
+
+running (0m25.0s), 1/1 VUs, 14 complete and 0 interrupted iterations
+default   [  69% ] 1 VUs  20.8s/30s
+
+running (0m26.0s), 1/1 VUs, 15 complete and 0 interrupted iterations
+default   [  73% ] 1 VUs  21.8s/30s
+
+running (0m27.0s), 1/1 VUs, 16 complete and 0 interrupted iterations
+default   [  76% ] 1 VUs  22.8s/30s
+
+running (0m28.0s), 1/1 VUs, 17 complete and 0 interrupted iterations
+default   [  79% ] 1 VUs  23.8s/30s
+
+running (0m29.0s), 1/1 VUs, 18 complete and 0 interrupted iterations
+default   [  83% ] 1 VUs  24.8s/30s
+
+running (0m30.0s), 1/1 VUs, 18 complete and 0 interrupted iterations
+default   [  86% ] 1 VUs  25.8s/30s
+
+running (0m31.0s), 1/1 VUs, 19 complete and 0 interrupted iterations
+default   [  89% ] 1 VUs  26.8s/30s
+
+running (0m32.0s), 1/1 VUs, 20 complete and 0 interrupted iterations
+default   [  93% ] 1 VUs  27.8s/30s
+
+running (0m33.0s), 1/1 VUs, 21 complete and 0 interrupted iterations
+default   [  96% ] 1 VUs  28.8s/30s
+
+running (0m34.0s), 1/1 VUs, 22 complete and 0 interrupted iterations
+default   [  99% ] 1 VUs  29.8s/30s
+
+
+  █ THRESHOLDS 
+
+    http_req_duration
+    ✓ 'p(95)<3000' p(95)=274.03ms
+
+    http_req_failed
+    ✓ 'rate<0.05' rate=0.00%
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 40      1.163086/s
+    checks_succeeded...: 100.00% 40 out of 40
+    checks_failed......: 0.00%   0 out of 40
+
+    ✓ /api/v1/accounts/self/courses status is 200
+    ✓ /api/v1/courses/15/assignments status is 200
+    ✓ /api/v1/courses/15/quizzes status is 200
+    ✓ /api/v1/courses/16/assignments status is 200
+    ✓ /api/v1/courses/16/quizzes status is 200
+    ✓ /api/v1/courses/17/assignments status is 200
+    ✓ /api/v1/courses/17/quizzes status is 200
+    ✓ /api/v1/courses/18/assignments status is 200
+    ✓ /api/v1/courses/18/quizzes status is 200
+    ✓ /api/v1/courses/19/assignments status is 200
+    ✓ /api/v1/courses/19/quizzes status is 200
+    ✓ /api/v1/courses/20/assignments status is 200
+    ✓ /api/v1/courses/20/quizzes status is 200
+    ✓ /api/v1/courses/21/assignments status is 200
+    ✓ /api/v1/courses/21/quizzes status is 200
+    ✓ /api/v1/courses/22/assignments status is 200
+    ✓ /api/v1/courses/22/quizzes status is 200
+    ✓ assignments status is 200
+    ✓ modules status is 200
+    ✓ quizzes status is 200
+    ✓ courses status is 200
+
+    HTTP
+    http_req_duration..............: avg=146.47ms min=31.39ms med=148.69ms max=610ms p(90)=251.95ms p(95)=274.03ms
+      { expected_response:true }...: avg=146.47ms min=31.39ms med=148.69ms max=610ms p(90)=251.95ms p(95)=274.03ms
+    http_req_failed................: 0.00%  0 out of 40
+    http_reqs......................: 40     1.163086/s
+
+    EXECUTION
+    iteration_duration.............: avg=1.31s    min=633.2ms med=1.16s    max=1.99s p(90)=1.89s    p(95)=1.91s   
+    iterations.....................: 23     0.668775/s
+    vus............................: 1      min=0       max=1
+    vus_max........................: 1      min=1       max=1
+
+    NETWORK
+    data_received..................: 575 kB 17 kB/s
+    data_sent......................: 15 kB  434 B/s
+
+
+
+
+running (0m34.4s), 0/1 VUs, 23 complete and 0 interrupted iterations
+default ✓ [ 100% ] 1 VUs  30s
