@@ -30,11 +30,11 @@ spec:
               value: "1"
           resources:
             requests:
-              cpu: 800m
-              memory: 1Gi
+              cpu: 1200m      # VPA target: 1168m → rounded to 1200m
+              memory: 3500Mi  # VPA target: ~3.4Gi
             limits:
-              cpu: "2"
-              memory: 3Gi
+              cpu: "4"        # VPA upper bound
+              memory: 8Gi     # VPA upper bound
           ports:
             - containerPort: 80
           volumeMounts:
