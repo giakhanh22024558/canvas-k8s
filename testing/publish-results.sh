@@ -11,7 +11,11 @@ STEP="${STEP:-15s}"
 TEST_ID="${TEST_ID:-}"
 
 if [[ -z "$TEST_ID" ]]; then
-  RUN_DIR="$(find "$RESULTS_DIR" -mindepth 1 -maxdepth 1 -type d | sort | tail -n 1)"
+  # Only consider timestamped run folders (canvas-YYYYMMDD-HHMMSS).
+  # Plain `sort` works here because the date+time format is lexicographically
+  # ordered — the most recent run always sorts last.
+  # Non-timestamped folders like grafana-stress-check are excluded.
+  RUN_DIR="$(find "$RESULTS_DIR" -mindepth 1 -maxdepth 1 -type d -name 'canvas-*' | sort | tail -n 1)"
   TEST_ID="$(basename "$RUN_DIR")"
 else
   RUN_DIR="$RESULTS_DIR/$TEST_ID"
