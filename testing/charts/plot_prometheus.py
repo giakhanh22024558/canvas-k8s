@@ -290,7 +290,10 @@ def plot_cpu_replicas(output_dir, label, cpu_values, snapshots):
     if snapshots:
         xs = [row["timestamp"] for row in snapshots]
         ys = [row["web_ready_replicas"] or row["web_spec_replicas"] for row in snapshots]
-        ax2.step(xs, ys, where="post", color="#9467bd", linewidth=2, label="Ready replicas")
+        # Only draw replica line if it actually changes — flat lines (baseline=1,
+        # prescaled=5) carry no information and clutter the chart.
+        if len(set(ys)) > 1:
+            ax2.step(xs, ys, where="post", color="#9467bd", linewidth=2, label="Ready replicas")
     ax2.set_ylabel("Replica count", color="#9467bd")
     ax2.tick_params(axis="y", labelcolor="#9467bd")
 
@@ -303,11 +306,34 @@ def plot_cpu_replicas(output_dir, label, cpu_values, snapshots):
     plt.close(fig)
 
 
-def plot_memory(output_dir, label, web_memory_values, jobs_memory_values):
+def parse_memory_limit_mb(limit_str):
+    """Convert a Kubernetes memory limit string (e.g. '3Gi', '3500Mi', '2Gi') to decimal MB.
+
+    Uses bytes / 1_000_000 to match the Prometheus query which divides by 1_000_000.
+    """
+    if not limit_str:
+        return None
+    limit_str = limit_str.strip()
+    try:
+        if limit_str.endswith("Gi"):
+            return int(limit_str[:-2]) * 1024 ** 3 / 1_000_000
+        if limit_str.endswith("Mi"):
+            return int(limit_str[:-2]) * 1024 ** 2 / 1_000_000
+        if limit_str.endswith("Ki"):
+            return int(limit_str[:-2]) * 1024 / 1_000_000
+        return int(limit_str) / 1_000_000
+    except ValueError:
+        return None
+
+
+def plot_memory(output_dir, label, web_memory_values, jobs_memory_values, web_memory_limit_mb=None):
     """Memory working-set (MB) for canvas-web and canvas-jobs over time.
 
     Matches Grafana panels 6 and 7 — same metric, same unit (MB decimal),
     same Running-pod-only filter applied during collection.
+
+    web_memory_limit_mb: if provided, draws a red dashed line showing the
+    container memory limit so OOMKill risk is immediately visible.
     """
     if not web_memory_values and not jobs_memory_values:
         return
@@ -321,6 +347,15 @@ def plot_memory(output_dir, label, web_memory_values, jobs_memory_values):
         xs = [x for x, _ in jobs_memory_values]
         ys = [y for _, y in jobs_memory_values]
         ax.plot(xs, ys, color="#ff7f0e", label="canvas-jobs (MB)", linewidth=2)
+
+    if web_memory_limit_mb is not None:
+        ax.axhline(
+            y=web_memory_limit_mb,
+            color="#d62728",
+            linewidth=2,
+            linestyle="--",
+            label=f"Web memory limit ({web_memory_limit_mb/1024:.1f} GiB)",
+        )
 
     ax.set_title(f"Memory Working Set ({label})")
     ax.set_xlabel("Time")
@@ -746,11 +781,18 @@ def main():
             latency, throughput, error_rate, vus, start, end, step, k6_summary_metrics
         )
 
+        # Parse memory limit from environment snapshot so the memory chart can
+        # draw a red limit line — makes OOMKill risk immediately visible.
+        env_snapshot = load_env_file(run_dir / "environment.env")
+        web_mem_limit_mb = parse_memory_limit_mb(env_snapshot.get("web_memory_limit", ""))
+
         plot_latency_timeline(output_dir, {label: latency})
         plot_throughput_error(output_dir, label, throughput, error_rate, k6_error_rate_percent=k6_summary_metrics.get("error_rate_percent"))
-        plot_vu_profile(output_dir, label, vus)
+        # VU profile is identical for all long-stress runs (same stages every time)
+        # so it is omitted from per-run output. Generate once for thesis methodology.
+        # plot_vu_profile(output_dir, label, vus)
         plot_cpu_replicas(output_dir, label, web_cpu, snapshots)
-        plot_memory(output_dir, label, web_memory, jobs_memory)
+        plot_memory(output_dir, label, web_memory, jobs_memory, web_memory_limit_mb=web_mem_limit_mb)
         plot_hpa_cpu(output_dir, label, hpa_cpu)
         plot_restart_counts(output_dir, label, snapshots)
         scaling_summary = plot_scale_latency(output_dir, label, snapshots) or {}
