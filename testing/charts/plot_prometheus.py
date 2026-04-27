@@ -290,6 +290,7 @@ def plot_cpu_replicas(output_dir, label, cpu_values, snapshots):
     apply_time_axis(ax1)
 
     ax2 = ax1.twinx()
+    replica_line_drawn = False
     if snapshots:
         xs = [row["timestamp"] for row in snapshots]
         ys = [row["web_ready_replicas"] or row["web_spec_replicas"] for row in snapshots]
@@ -297,8 +298,15 @@ def plot_cpu_replicas(output_dir, label, cpu_values, snapshots):
         # prescaled=5) carry no information and clutter the chart.
         if len(set(ys)) > 1:
             ax2.step(xs, ys, where="post", color="#9467bd", linewidth=2, label="Ready replicas")
-    ax2.set_ylabel("Replica count", color="#9467bd")
-    ax2.tick_params(axis="y", labelcolor="#9467bd")
+            replica_line_drawn = True
+    if replica_line_drawn:
+        ax2.set_ylabel("Replica count", color="#9467bd")
+        ax2.tick_params(axis="y", labelcolor="#9467bd")
+    else:
+        # Hide the right axis entirely when the replica line is suppressed so
+        # the chart doesn't show a confusing empty purple axis.
+        ax2.set_yticks([])
+        ax2.set_ylabel("")
 
     handles = ax1.get_lines() + ax2.get_lines()
     if handles:
@@ -872,7 +880,9 @@ def main():
 
     if len(latency_overlays) > 1:
         plot_latency_timeline(output_dir, latency_overlays)
-    if comparison_rows:
+    # Comparison bar charts only make sense when there are 2+ runs to compare.
+    # A single-run bar chart has no reference point and just wastes a figure.
+    if len(comparison_rows) > 1:
         plot_comparison_p95(output_dir, comparison_rows)
         write_summary(output_dir, "comparison", {row["label"]: row["avg_p95_ms"] for row in comparison_rows})
 
