@@ -14,6 +14,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 source "$SCRIPT_DIR/common.sh"
 load_testing_env
 
@@ -29,22 +30,24 @@ if [[ -z "$EXPERIMENT_NAME" ]]; then
   exit 1
 fi
 
-# ── Find Python ───────────────────────────────────────────────────────────────
-find_python() {
-  if command -v python3 >/dev/null 2>&1; then
-    echo python3
-  elif command -v python >/dev/null 2>&1; then
-    echo python
-  else
-    echo ""
+# ── Find Python (venv first, then system) ────────────────────────────────────
+PYTHON=""
+for candidate in \
+  "$ROOT_DIR/.venv/bin/python3" \
+  "$ROOT_DIR/.venv/bin/python" \
+  "$(command -v python3 2>/dev/null)" \
+  "$(command -v python  2>/dev/null)"; do
+  if [[ -x "$candidate" ]]; then
+    PYTHON="$candidate"
+    break
   fi
-}
+done
 
-PYTHON="$(find_python)"
 if [[ -z "$PYTHON" ]]; then
-  echo "ERROR: Python 3 is required but not found."
+  echo "ERROR: Python 3 not found. Activate your venv: source .venv/bin/activate"
   exit 1
 fi
+echo "Using Python: $PYTHON"
 
 # ── Pull latest code so charts use most recent plotting logic ─────────────────
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
