@@ -4,7 +4,7 @@ label,long-stress
 scaling_mode,baseline
 avg_throughput_rps,14.593
 avg_error_rate_percent,65.99
-avg_p50_ms,0.0
+avg_p50_ms,0.465
 avg_p95_ms,2150.0
 avg_p99_ms,11979.832
 max_vus,60.0
