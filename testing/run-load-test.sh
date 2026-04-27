@@ -139,8 +139,13 @@ hpa_clean_start() {
   # time after becoming "Ready" to finish loading gems, open DB connection
   # pools, and compile routes. Without this sleep, k6 setup() hits a
   # half-warm pod and retries, inflating early error metrics.
-  echo "Waiting 2 minutes for Rails to warm up after restart..."
-  sleep 120
+  #
+  # 4 minutes (was 2): the extra time lets HPA evaluate at least 4 scrape
+  # cycles of near-zero CPU before load starts, so the baseline is clean.
+  # It also prevents the pod from being overwhelmed at the very first VU
+  # ramp before HPA has had any chance to collect metrics and scale out.
+  echo "Waiting 4 minutes for Rails to warm up after restart..."
+  sleep 240
 
   # Restore HPA maxReplicas so it can scale freely during the actual test
   echo "Restoring HPA maxReplicas (web=5, jobs=3)..."
