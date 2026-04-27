@@ -48,9 +48,11 @@ def parse_duration_to_seconds(value):
         return 0.0
 
     total = 0.0
-    for amount, unit in re.findall(r"(\d+(?:\.\d+)?)(ms|s|m|h)", text):
+    for amount, unit in re.findall(r"(\d+(?:\.\d+)?)(µs|us|ms|s|m|h)", text):
         number = float(amount)
-        if unit == "ms":
+        if unit in ("µs", "us"):
+            total += number / 1_000_000.0
+        elif unit == "ms":
             total += number / 1000.0
         elif unit == "s":
             total += number
@@ -701,8 +703,10 @@ def collect_run_metrics(base_url, selector, start, end, step):
         base_url,
         [
             'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"} * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}) / 1000000',
-            # Fallback for older k3s/cAdvisor label schemes (no namespace label)
-            'sum(container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-web-.*"}) / 1000000',
+            # Fallback for older k3s/cAdvisor label schemes (no namespace label).
+            # Must include container!="" and container!="POD" to avoid double-counting
+            # the pod-level rollup metric that cAdvisor emits alongside container metrics.
+            'sum(container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-web-.*",container!="",container!="POD"}) / 1000000',
         ],
         start,
         end,
@@ -714,7 +718,7 @@ def collect_run_metrics(base_url, selector, start, end, step):
         base_url,
         [
             'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-jobs-.*",container!="",container!="POD"} * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}) / 1000000',
-            'sum(container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-jobs-.*"}) / 1000000',
+            'sum(container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-jobs-.*",container!="",container!="POD"}) / 1000000',
         ],
         start,
         end,
@@ -786,6 +790,8 @@ def main():
         env_snapshot = load_env_file(run_dir / "environment.env")
         web_mem_limit_mb = parse_memory_limit_mb(env_snapshot.get("web_memory_limit", ""))
 
+        scaling_mode = infer_scaling_mode(snapshots)
+
         plot_latency_timeline(output_dir, {label: latency})
         plot_throughput_error(output_dir, label, throughput, error_rate, k6_error_rate_percent=k6_summary_metrics.get("error_rate_percent"))
         # VU profile is identical for all long-stress runs (same stages every time)
@@ -793,7 +799,13 @@ def main():
         # plot_vu_profile(output_dir, label, vus)
         plot_cpu_replicas(output_dir, label, web_cpu, snapshots)
         plot_memory(output_dir, label, web_memory, jobs_memory, web_memory_limit_mb=web_mem_limit_mb)
-        plot_hpa_cpu(output_dir, label, hpa_cpu)
+        # HPA CPU chart is only meaningful when an HPA is actually active.
+        # For baseline (1 pod fixed) and prescaled (N pods fixed) the metric is
+        # still computable via cAdvisor, but the 70 % threshold line is
+        # meaningless and the chart would mislead readers into thinking HPA was
+        # operating. Suppress it for non-HPA modes.
+        if scaling_mode == "hpa":
+            plot_hpa_cpu(output_dir, label, hpa_cpu)
         plot_restart_counts(output_dir, label, snapshots)
         scaling_summary = plot_scale_latency(output_dir, label, snapshots) or {}
 
@@ -807,7 +819,7 @@ def main():
         summary_metrics = {
             "test_id":               args.testid,
             "label":                 label,
-            "scaling_mode":          infer_scaling_mode(snapshots),
+            "scaling_mode":          scaling_mode,
             "avg_throughput_rps":    k6_or_prom(k6_summary_metrics, "throughput_rps",    average_value(throughput)),
             "avg_error_rate_percent":k6_or_prom(k6_summary_metrics, "error_rate_percent", average_value(error_rate)),
             "avg_p50_ms":            k6_or_prom(k6_summary_metrics, "p50",  average_value(latency["p50"]), scale=1000),
