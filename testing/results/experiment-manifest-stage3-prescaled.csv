@@ -1,0 +1,6 @@
+experiment_name,mode,scenario,run_number,test_id,seed_prefix,started_at,ended_at,accepted,notes,cooldown_seconds,flush_redis_between_runs,git_commit,node_count,web_memory_limit,jobs_memory_limit
+stage3-prescaled,prescaled,long-stress,1,stage3-prescaled-prescaled-long-stress-run01,thesis,2026-04-27T11:18:11Z,2026-04-27T11:41:15Z,yes,,300,false,41b1cc9,1,8Gi,4Gi
+stage3-prescaled,prescaled,long-stress,2,stage3-prescaled-prescaled-long-stress-run02,thesis,2026-04-27T12:15:09Z,2026-04-27T12:38:14Z,yes,,300,false,2c6e0dc,1,8Gi,4Gi
+stage3-prescaled,prescaled,long-stress,3,stage3-prescaled-prescaled-long-stress-run03,thesis,2026-04-27T12:45:16Z,2026-04-27T13:08:21Z,yes,,300,false,2c6e0dc,1,8Gi,4Gi
+stage3-prescaled,prescaled,long-stress,4,stage3-prescaled-prescaled-long-stress-run04,thesis,2026-04-27T13:30:49Z,2026-04-27T13:53:54Z,yes,,300,false,ad166c1,1,8Gi,4Gi
+stage3-prescaled,prescaled,long-stress,5,stage3-prescaled-prescaled-long-stress-run05,thesis,2026-04-27T14:00:36Z,2026-04-27T14:23:40Z,yes,,300,false,ad166c1,1,8Gi,4Gi
