@@ -73,6 +73,18 @@ fi
 
 mkdir -p "$RUN_DIR"
 
+# Capture cluster state immediately — before any pod restarts, cooldowns, or
+# test activity mutates the environment. This is the ground truth snapshot:
+# resource limits, HPA config, replica counts, and git commit at test time.
+# The plotting script reads environment.env to draw the memory limit line.
+if command -v kubectl >/dev/null 2>&1; then
+  ensure_kubeconfig
+  echo "Capturing cluster snapshot to $RUN_DIR/environment.env ..."
+  bash "$SCRIPT_DIR/capture-cluster-env.sh" "$RUN_DIR/environment.env" || true
+else
+  echo "kubectl not available — skipping cluster snapshot."
+fi
+
 cleanup() {
   if [[ -n "$K8S_SNAPSHOT_PID" ]] && kill -0 "$K8S_SNAPSHOT_PID" >/dev/null 2>&1; then
     kill "$K8S_SNAPSHOT_PID" >/dev/null 2>&1 || true
@@ -162,10 +174,6 @@ hpa_clean_start() {
 if command -v kubectl >/dev/null 2>&1; then
   ensure_kubeconfig
   if kubectl get namespace canvas >/dev/null 2>&1; then
-    # Capture cluster state (resource limits, HPA config, git commit) before
-    # the test mutates anything. The plotting script reads environment.env to
-    # draw the memory limit line and annotate summary CSVs.
-    bash "$SCRIPT_DIR/capture-cluster-env.sh" "$RUN_DIR/environment.env" || true
     hpa_clean_start
     bash "$SCRIPT_DIR/collect-k8s-snapshots.sh" "$SNAPSHOT_FILE" &
     K8S_SNAPSHOT_PID="$!"
