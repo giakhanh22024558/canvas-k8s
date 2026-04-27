@@ -172,9 +172,9 @@ hpa_clean_start() {
   sleep 240
 
   # Restore HPA maxReplicas so it can scale freely during the actual test
-  echo "Restoring HPA maxReplicas (web=5, jobs=1)..."
+  echo "Restoring HPA maxReplicas (web=5, jobs=3)..."
   kubectl patch hpa canvas-web  -n canvas -p '{"spec":{"maxReplicas":5}}' 2>/dev/null || true
-  kubectl patch hpa canvas-jobs -n canvas -p '{"spec":{"maxReplicas":1}}' 2>/dev/null || true
+  kubectl patch hpa canvas-jobs -n canvas -p '{"spec":{"maxReplicas":3}}' 2>/dev/null || true
 
   echo "Clean start complete. Current pod state:"
   kubectl get pods -n canvas
