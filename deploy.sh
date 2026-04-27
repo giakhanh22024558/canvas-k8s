@@ -82,7 +82,25 @@ case "$DB_MODE" in
 esac
 
 kubectl apply -f deployment/deployment-web.yaml
+
+# canvas-jobs rollout can deadlock on a single node when old pods + new pod
+# exceed available memory (old pods stay Running while new pod is Pending).
+# Fix: scale to 0 first to clear all old pods, then apply and scale back up.
+# This is safe because jobs pods are background workers — brief downtime during
+# a redeploy is acceptable and preferable to a stuck rollout.
+jobs_desired=$(grep '^\s*replicas:' deployment/deployment-jobs.yaml | awk '{print $2}' | head -1)
+jobs_desired="${jobs_desired:-1}"
+current_jobs=$(kubectl get deployment canvas-jobs -n canvas -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "0")
+if [[ "$current_jobs" -gt 0 ]]; then
+  echo "Scaling canvas-jobs to 0 to avoid single-node rollout deadlock..."
+  kubectl scale deployment canvas-jobs -n canvas --replicas=0
+  kubectl wait --for=delete pod -l app=canvas-jobs -n canvas --timeout=120s || true
+fi
 kubectl apply -f deployment/deployment-jobs.yaml
+if [[ "$jobs_desired" -gt 0 ]]; then
+  echo "Scaling canvas-jobs back to $jobs_desired replicas..."
+  kubectl scale deployment canvas-jobs -n canvas --replicas="$jobs_desired"
+fi
 
 case "$SCALING_MODE" in
   baseline)
@@ -100,11 +118,10 @@ case "$SCALING_MODE" in
   prescaled)
     # Remove HPA so Kubernetes cannot override the replica counts
     kubectl delete -f deployment/hpa.yaml --ignore-not-found
-    # web=5 (max replicas for thesis comparison), jobs=1 (load tests do not
-    # exercise the submission/job flow so 3 idle jobs pods waste 8.7 GiB
-    # of the 31.7 GiB single-node budget and caused rollout deadlocks)
+    # web=5 (max replicas for thesis comparison), jobs=3 (matches HPA max so
+    # prescaled vs HPA comparison is apples-to-apples on total pod count)
     kubectl scale deployment/canvas-web  --replicas=5 -n canvas
-    kubectl scale deployment/canvas-jobs --replicas=1 -n canvas
+    kubectl scale deployment/canvas-jobs --replicas=3 -n canvas
     ;;
 esac
 
