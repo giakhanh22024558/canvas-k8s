@@ -197,9 +197,12 @@ else
   echo "Skipping Kubernetes snapshot collection because kubectl is unavailable."
 fi
 
+# k6 exits non-zero when thresholds fail (exit code 108) — expected under stress
+# conditions where error rate is high. Use || true so the matrix continues to
+# the next run instead of stopping after the first threshold breach.
 K6_PROMETHEUS_RW_SERVER_URL="$PROM_URL" \
 K6_PROMETHEUS_RW_TREND_STATS="p(50),p(95),p(99),avg,min,max" \
-k6 run -o experimental-prometheus-rw --tag testid="$TEST_ID" "$SCRIPT_DIR/load_test/canvas-load.js" 2>&1 | tee "$LOG_FILE"
+k6 run -o experimental-prometheus-rw --tag testid="$TEST_ID" "$SCRIPT_DIR/load_test/canvas-load.js" 2>&1 | tee "$LOG_FILE" || true
 
 echo "ended_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$RUN_DIR/metadata.env"
 
