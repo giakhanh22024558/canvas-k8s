@@ -93,9 +93,20 @@ for mode in "${MODES[@]}"; do
   done
 done
 
-if [[ -n "$PYTHON_BIN" ]]; then
-  "$PYTHON_BIN" "$SCRIPT_DIR/charts/analyze_experiments.py" --manifest "$MANIFEST_FILE" --results-dir "$RESULTS_DIR"
-fi
-
 echo "Experiment matrix completed."
 echo "Manifest: $MANIFEST_FILE"
+echo ""
+echo "Pushing raw results to git..."
+cd "$ROOT_DIR"
+git pull origin "$(git rev-parse --abbrev-ref HEAD)" --rebase || true
+git add "testing/results/" "$MANIFEST_FILE"
+if git diff --cached --quiet; then
+  echo "Nothing new to commit."
+else
+  git commit -m "Add raw results for experiment: $EXPERIMENT_NAME"
+  git push origin "$(git rev-parse --abbrev-ref HEAD)"
+  echo "Results pushed."
+fi
+echo ""
+echo "To generate charts for a run, on EC2 run:"
+echo "  TEST_ID=<run-id> bash testing/publish-results.sh"

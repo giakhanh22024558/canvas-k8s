@@ -206,8 +206,9 @@ echo "ended_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$RUN_DIR/metadata.env"
 echo "Finished load test with testid=$TEST_ID"
 echo "Saved run output to $RUN_DIR"
 
-# publish-results.sh generates charts and pushes to git.
-# Run with || true so a chart/git failure never aborts a matrix run —
-# the raw k6 data and k8s snapshots are already saved and are what matters.
-TEST_ID="$TEST_ID" RESULTS_DIR="$RESULTS_DIR" bash "$SCRIPT_DIR/publish-results.sh" || \
-  echo "WARNING: publish-results.sh failed — raw data saved in $RUN_DIR, charts can be regenerated later."
+# Chart generation and git push are NOT done here — call publish-results.sh
+# manually after all matrix runs complete:
+#   TEST_ID=<id> bash testing/publish-results.sh
+echo "Raw data saved to $RUN_DIR"
+echo "  k6-summary.txt, k8s-snapshots.csv, metadata.env, environment.env"
+echo "Run 'TEST_ID=$TEST_ID bash testing/publish-results.sh' to generate charts."
