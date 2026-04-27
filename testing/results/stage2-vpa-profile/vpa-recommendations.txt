@@ -1,0 +1,21 @@
+VPA Resource Recommendations
+Captured: 2026-04-27T10:55:11Z
+Namespace: canvas
+Profiled under: long-stress load test with naive resources (800m/1Gi web, 500m/1Gi jobs)
+
+Deployment    Bound                   CPU             Memory        
+────────────────────────────────────────────────────────────
+canvas-web    lower bound             200m            2.4Gi         
+canvas-web    target                  2281m           4.2Gi         
+canvas-web    upper bound             4               8Gi           
+────────────────────────────────────────────────────────────
+canvas-jobs   lower bound             100m            1.9Gi         
+canvas-jobs   target                  100m            2.8Gi         
+canvas-jobs   upper bound             179m            4Gi           
+
+Applied to deployment manifests:
+  canvas-web:  requests cpu=1200m memory=4300Mi  limits cpu=4 memory=8Gi
+  canvas-jobs: requests cpu=100m  memory=2900Mi  limits cpu=180m memory=4Gi
+
+Note: web CPU request capped at 1200m (VPA target 2281m observed under
+single-pod full load; 5x1200m=6 CPU fits on 8-vCPU single-node cluster).
