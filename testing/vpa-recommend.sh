@@ -79,15 +79,25 @@ cmd_setup() {
 extract_json() {
   # Usage: extract_json <vpa-name> <containerIndex> <bound> <resource>
   # bound: lowerBound | target | upperBound
+  # Memory values from VPA are raw bytes — convert to human-readable Mi/Gi.
   local vpa="$1" idx="$2" bound="$3" res="$4"
   kubectl get vpa "$vpa" -n "$NAMESPACE" -o json 2>/dev/null \
     | python3 -c "
-import sys, json
+import sys, json, re
 try:
     data = json.load(sys.stdin)
     recs = data['status']['recommendation']['containerRecommendations']
     val = recs[$idx]['$bound'].get('$res', '?')
-    print(val)
+    # Convert raw byte integers to human-readable Mi/Gi
+    if '$res' == 'memory' and isinstance(val, str) and re.match(r'^\d+$', val):
+        b = int(val)
+        mib = b / (1024 * 1024)
+        if mib >= 1024:
+            print(f'{mib/1024:.1f}Gi')
+        else:
+            print(f'{int(mib)}Mi')
+    else:
+        print(val)
 except Exception:
     print('?')
 "
