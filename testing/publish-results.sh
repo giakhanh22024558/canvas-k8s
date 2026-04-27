@@ -53,11 +53,12 @@ BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 echo "Pulling latest changes on branch $BRANCH ..."
 git pull origin "$BRANCH" --rebase || echo "WARNING: git pull failed. Continuing with local code."
 
-# Remove stale chart PNGs before regenerating so files that the new code no
-# longer produces (e.g. hpa_cpu for baseline, comparison bar for single run)
+# Remove stale generated files before regenerating so files that the new code
+# no longer produces (e.g. hpa_cpu for baseline, comparison bar for single run)
 # don't linger in the results directory and mislead readers.
 echo "Cleaning stale chart files in $RUN_DIR ..."
 rm -f "$RUN_DIR"/*.png
+rm -f "$RUN_DIR"/summary_comparison.csv
 
 echo "Generating charts..."
 
