@@ -25,6 +25,17 @@ if [[ "$FLUSH_REDIS_BETWEEN_RUNS" == "true" ]]; then
 fi
 
 if [[ "$COOLDOWN_SECONDS" -gt 0 ]]; then
+  echo ""
+  echo "============================================================"
+  echo "  CLUSTER STATE — before cooldown"
+  echo "============================================================"
+  kubectl get pods -n "$NAMESPACE" --no-headers \
+    | awk '{printf "  %-45s %-12s %s\n", $1, $3, $4}' 2>/dev/null || true
+  echo "------------------------------------------------------------"
+  kubectl top pods -n "$NAMESPACE" --no-headers 2>/dev/null \
+    | awk '{printf "  %-45s %-10s %s\n", $1, $2, $3}' || true
+  echo "============================================================"
+  echo ""
   echo "Cooling down for ${COOLDOWN_SECONDS}s..."
   sleep "$COOLDOWN_SECONDS"
 fi
