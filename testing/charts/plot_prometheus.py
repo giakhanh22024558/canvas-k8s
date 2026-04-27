@@ -156,6 +156,145 @@ def apply_time_axis(ax):
     ax.tick_params(axis="x", rotation=20)
 
 
+def annotate_saturation(axes, saturation_time, saturation_vu, end_time=None):
+    """Draw a vertical dashed line + shaded collapse region on one or more axes.
+
+    axes         — single Axes or list of Axes to annotate
+    saturation_time — datetime of first OOMKill
+    saturation_vu   — VU count at saturation (may be None)
+    end_time        — right edge for the shaded region (defaults to axes xlim max)
+    """
+    if saturation_time is None:
+        return
+    if not isinstance(axes, (list, tuple)):
+        axes = [axes]
+
+    vu_str = f"≈{int(round(saturation_vu))} VU" if saturation_vu else ""
+    label_text = f"Saturation point\n{vu_str}" if vu_str else "Saturation point"
+
+    for i, ax in enumerate(axes):
+        ax.axvline(saturation_time, color="#d62728", linewidth=2,
+                   linestyle="--", alpha=0.85, zorder=5)
+        xlim = ax.get_xlim()
+        right = end_time if end_time is not None else mdates.num2date(xlim[1])
+        ax.axvspan(saturation_time, right, alpha=0.07, color="#d62728", zorder=0)
+        # Only label on the first (topmost) axis to avoid clutter
+        if i == 0:
+            ylim = ax.get_ylim()
+            ax.text(
+                saturation_time, ylim[1] * 0.97,
+                label_text,
+                ha="left", va="top", fontsize=8.5, color="#b02020",
+                bbox=dict(boxstyle="round,pad=0.25", facecolor="white",
+                          edgecolor="#d62728", alpha=0.85),
+                zorder=6,
+            )
+
+
+def detect_saturation_point(snapshots, vus_values):
+    """Return (saturation_datetime, vu_at_saturation) for breakpoint tests.
+
+    Saturation is defined as the moment web_restart_total first increments
+    from 0 — i.e. the first OOMKill. VU count is interpolated from the k6
+    VU time-series at the nearest timestamp.
+
+    Returns (None, None) if no restart is detected.
+    """
+    sat_time = None
+    for i, row in enumerate(snapshots[1:], start=1):
+        if row["web_restart_total"] > snapshots[i - 1]["web_restart_total"]:
+            sat_time = row["timestamp"]
+            break
+
+    if sat_time is None:
+        return None, None
+
+    # Nearest VU sample to the saturation timestamp
+    sat_vu = None
+    if vus_values:
+        closest = min(vus_values, key=lambda tv: abs((tv[0] - sat_time).total_seconds()))
+        sat_vu = closest[1]
+
+    return sat_time, sat_vu
+
+
+def plot_breakpoint_saturation(output_dir, label, throughput, error_rate,
+                               vus, snapshots, saturation_time, saturation_vu):
+    """Dedicated composite chart for breakpoint tests.
+
+    Panel 1 (top):  VU ramp — shows the load being applied over time.
+    Panel 2 (bottom): Throughput (req/s) and error rate (%) together.
+
+    A vertical red dashed line marks the saturation point in both panels,
+    with a shaded region highlighting the collapse zone.
+    """
+    if not throughput and not error_rate and not vus:
+        return
+
+    fig, (ax_top, ax_bot) = plt.subplots(
+        2, 1, figsize=(12, 8), sharex=True,
+        gridspec_kw={"height_ratios": [1, 2]},
+    )
+
+    # ── Top panel: VU ramp ────────────────────────────────────────────────────
+    if vus:
+        xs = [x for x, _ in vus]
+        ys = [y for _, y in vus]
+        ax_top.fill_between(xs, ys, alpha=0.25, color="#1f77b4")
+        ax_top.plot(xs, ys, color="#1f77b4", linewidth=2, label="Virtual Users")
+    ax_top.set_ylabel("Virtual Users")
+    ax_top.set_title(f"Breakpoint Test — Load Profile & System Response ({label})",
+                     fontsize=12)
+    ax_top.grid(alpha=0.25)
+    ax_top.legend(loc="upper left", fontsize=9)
+    ax_top.set_ylim(bottom=0)
+
+    # ── Bottom panel: Throughput + error rate ─────────────────────────────────
+    ax_err = ax_bot.twinx()
+
+    if throughput:
+        xs = [x for x, _ in throughput]
+        ys = [y for _, y in throughput]
+        ax_bot.plot(xs, ys, color="#1f77b4", linewidth=2, label="Throughput (req/s)")
+
+    if error_rate:
+        xs = [x for x, _ in error_rate]
+        ys = [y for _, y in error_rate]
+        ax_err.plot(xs, ys, color="#d62728", linewidth=1.5, alpha=0.7,
+                    label="Error rate (1-min rolling, %)")
+    ax_err.set_ylim(0, 110)
+
+    ax_bot.set_ylabel("Requests/sec", color="#1f77b4")
+    ax_bot.tick_params(axis="y", labelcolor="#1f77b4")
+    ax_err.set_ylabel("Error rate (%)", color="#d62728")
+    ax_err.tick_params(axis="y", labelcolor="#d62728")
+    ax_bot.set_xlabel("Time")
+    ax_bot.grid(alpha=0.25)
+
+    handles = ax_bot.get_lines() + ax_err.get_lines()
+    if handles:
+        ax_bot.legend(handles, [ln.get_label() for ln in handles],
+                      loc="upper left", fontsize=9)
+
+    # ── Saturation annotations on both panels ─────────────────────────────────
+    end_time = None
+    if throughput:
+        end_time = throughput[-1][0]
+    elif vus:
+        end_time = vus[-1][0]
+
+    apply_time_axis(ax_bot)
+    fig.tight_layout()
+
+    # Draw annotations AFTER tight_layout so axis limits are finalised
+    annotate_saturation([ax_top, ax_bot], saturation_time, saturation_vu, end_time)
+
+    out = output_dir / f"breakpoint_saturation_{slugify(label)}.png"
+    fig.savefig(out, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
 def plot_latency_timeline(output_dir, metrics_by_label):
     fig, ax = plt.subplots(figsize=(12, 5))
     colors = {"p50": "#1f77b4", "p95": "#ff7f0e", "p99": "#d62728"}
@@ -181,7 +320,9 @@ def plot_latency_timeline(output_dir, metrics_by_label):
     plt.close(fig)
 
 
-def plot_throughput_error(output_dir, label, throughput_values, error_values, k6_error_rate_percent=None):
+def plot_throughput_error(output_dir, label, throughput_values, error_values,
+                          k6_error_rate_percent=None, vus_values=None,
+                          saturation_time=None, saturation_vu=None):
     if not throughput_values and not error_values:
         return
 
@@ -191,6 +332,20 @@ def plot_throughput_error(output_dir, label, throughput_values, error_values, k6
         xs = [x for x, _ in throughput_values]
         ys = [y for _, y in throughput_values]
         ax1.plot(xs, ys, color="#1f77b4", label="Throughput", linewidth=2)
+
+    # For breakpoint tests: overlay VU ramp as a shaded area so the reader
+    # can directly see which VU level triggered the collapse.
+    if vus_values:
+        ax_vu = ax1.twinx()
+        ax_vu.spines["right"].set_position(("outward", 60))
+        xs_vu = [x for x, _ in vus_values]
+        ys_vu = [y for _, y in vus_values]
+        ax_vu.fill_between(xs_vu, ys_vu, alpha=0.12, color="#7db7e8")
+        ax_vu.plot(xs_vu, ys_vu, color="#7db7e8", linewidth=1.5,
+                   linestyle="--", label="Virtual Users", alpha=0.8)
+        ax_vu.set_ylabel("Virtual Users", color="#7db7e8")
+        ax_vu.tick_params(axis="y", labelcolor="#7db7e8")
+        ax_vu.set_ylim(bottom=0)
 
     ax1.set_title(f"Throughput vs Error Rate ({label})")
     ax1.set_xlabel("Time")
@@ -227,12 +382,17 @@ def plot_throughput_error(output_dir, label, throughput_values, error_values, k6
             label=f"Error rate (k6 summary: {k6_error_rate_percent:.2f}%)",
         )
 
-    handles = ax1.get_lines() + ax2.get_lines()
-    if handles:
-        ax1.legend(handles, [line.get_label() for line in handles], loc="upper left")
+    # Collect all line handles for legend (including VU axis if present)
+    all_lines = ax1.get_lines() + ax2.get_lines()
+    if vus_values:
+        all_lines += ax_vu.get_lines()
+    if all_lines:
+        ax1.legend(all_lines, [ln.get_label() for ln in all_lines], loc="upper left")
 
+    end_time = throughput_values[-1][0] if throughput_values else None
     fig.tight_layout()
-    fig.savefig(output_dir / f"throughput_error_rate_{slugify(label)}.png")
+    annotate_saturation(ax1, saturation_time, saturation_vu, end_time)
+    fig.savefig(output_dir / f"throughput_error_rate_{slugify(label)}.png", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -337,7 +497,8 @@ def parse_memory_limit_mb(limit_str):
         return None
 
 
-def plot_memory(output_dir, label, web_memory_values, jobs_memory_values, web_memory_limit_mb=None):
+def plot_memory(output_dir, label, web_memory_values, jobs_memory_values,
+               web_memory_limit_mb=None, saturation_time=None, saturation_vu=None):
     """Memory working-set (MB) for canvas-web and canvas-jobs over time.
 
     Matches Grafana panels 6 and 7 — same metric, same unit (MB decimal),
@@ -374,8 +535,10 @@ def plot_memory(output_dir, label, web_memory_values, jobs_memory_values, web_me
     ax.legend()
     ax.grid(alpha=0.25)
     apply_time_axis(ax)
+    end_time = web_memory_values[-1][0] if web_memory_values else None
     fig.tight_layout()
-    fig.savefig(output_dir / f"memory_{slugify(label)}.png")
+    annotate_saturation(ax, saturation_time, saturation_vu, end_time)
+    fig.savefig(output_dir / f"memory_{slugify(label)}.png", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -406,7 +569,8 @@ def plot_hpa_cpu(output_dir, label, hpa_cpu_values):
     plt.close(fig)
 
 
-def plot_restart_counts(output_dir, label, snapshots):
+def plot_restart_counts(output_dir, label, snapshots,
+                        saturation_time=None, saturation_vu=None):
     if not snapshots:
         return
 
@@ -420,8 +584,10 @@ def plot_restart_counts(output_dir, label, snapshots):
     ax.legend()
     ax.grid(alpha=0.25)
     apply_time_axis(ax)
+    end_time = xs[-1] if xs else None
     fig.tight_layout()
-    fig.savefig(output_dir / f"pod_restart_count_{slugify(label)}.png")
+    annotate_saturation(ax, saturation_time, saturation_vu, end_time)
+    fig.savefig(output_dir / f"pod_restart_count_{slugify(label)}.png", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -800,14 +966,39 @@ def main():
         web_mem_limit_mb = parse_memory_limit_mb(env_snapshot.get("web_memory_limit", ""))
 
         scaling_mode = infer_scaling_mode(snapshots)
+        is_breakpoint = (label == "breakpoint")
+
+        # For breakpoint tests, detect the saturation point (first OOMKill)
+        # and the VU count at that moment — used to annotate all charts.
+        saturation_time, saturation_vu = (None, None)
+        if is_breakpoint:
+            saturation_time, saturation_vu = detect_saturation_point(snapshots, vus)
 
         plot_latency_timeline(output_dir, {label: latency})
-        plot_throughput_error(output_dir, label, throughput, error_rate, k6_error_rate_percent=k6_summary_metrics.get("error_rate_percent"))
-        # VU profile is identical for all long-stress runs (same stages every time)
-        # so it is omitted from per-run output. Generate once for thesis methodology.
-        # plot_vu_profile(output_dir, label, vus)
+        plot_throughput_error(
+            output_dir, label, throughput, error_rate,
+            k6_error_rate_percent=k6_summary_metrics.get("error_rate_percent"),
+            vus_values=vus if is_breakpoint else None,
+            saturation_time=saturation_time,
+            saturation_vu=saturation_vu,
+        )
+        # For breakpoint: also generate the dedicated composite saturation chart
+        if is_breakpoint:
+            plot_breakpoint_saturation(
+                output_dir, label, throughput, error_rate, vus,
+                snapshots, saturation_time, saturation_vu,
+            )
+        else:
+            # VU profile is identical for all long-stress runs (same stages every time)
+            # so it is omitted from per-run output. Generate once for thesis methodology.
+            pass  # plot_vu_profile(output_dir, label, vus)
         plot_cpu_replicas(output_dir, label, web_cpu, snapshots)
-        plot_memory(output_dir, label, web_memory, jobs_memory, web_memory_limit_mb=web_mem_limit_mb)
+        plot_memory(
+            output_dir, label, web_memory, jobs_memory,
+            web_memory_limit_mb=web_mem_limit_mb,
+            saturation_time=saturation_time,
+            saturation_vu=saturation_vu,
+        )
         # HPA CPU chart is only meaningful when an HPA is actually active.
         # For baseline (1 pod fixed) and prescaled (N pods fixed) the metric is
         # still computable via cAdvisor, but the 70 % threshold line is
@@ -815,7 +1006,11 @@ def main():
         # operating. Suppress it for non-HPA modes.
         if scaling_mode == "hpa":
             plot_hpa_cpu(output_dir, label, hpa_cpu)
-        plot_restart_counts(output_dir, label, snapshots)
+        plot_restart_counts(
+            output_dir, label, snapshots,
+            saturation_time=saturation_time,
+            saturation_vu=saturation_vu,
+        )
         scaling_summary = plot_scale_latency(output_dir, label, snapshots) or {}
 
         # For summary CSV values prefer the k6 final-summary numbers when
