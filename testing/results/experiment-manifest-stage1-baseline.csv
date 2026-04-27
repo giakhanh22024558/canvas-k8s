@@ -4,3 +4,4 @@ stage1-baseline,baseline,long-stress,2,stage1-baseline-baseline-long-stress-run0
 stage1-baseline,baseline,long-stress,3,stage1-baseline-baseline-long-stress-run03,thesis,2026-04-27T07:38:17Z,2026-04-27T08:01:20Z,yes,,300,false,c72c76a,1,3Gi,3Gi
 stage1-baseline,baseline,long-stress,4,stage1-baseline-baseline-long-stress-run04,thesis,2026-04-27T08:06:25Z,2026-04-27T08:29:29Z,yes,,300,false,c72c76a,1,3Gi,3Gi
 stage1-baseline,baseline,long-stress,5,stage1-baseline-baseline-long-stress-run05,thesis,2026-04-27T08:34:33Z,2026-04-27T08:58:05Z,yes,,300,false,c72c76a,1,3Gi,3Gi
+stage1-baseline,baseline,breakpoint,1,stage1-baseline-baseline-breakpoint-run01,thesis,2026-04-27T09:42:50Z,2026-04-27T10:02:03Z,yes,,0,false,7fdfabc,1,3Gi,3Gi
