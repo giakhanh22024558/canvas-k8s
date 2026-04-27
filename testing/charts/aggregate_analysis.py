@@ -288,10 +288,10 @@ def plot_boxplots(groups: dict, output_dir: Path):
 
         bp = ax.boxplot(
             plot_data, patch_artist=True, widths=0.55,
+            showfliers=False,
             medianprops={"color": "black", "linewidth": 2.0},
             whiskerprops={"linewidth": 1.2},
             capprops={"linewidth": 1.5},
-            flierprops={"marker": "o", "markersize": 4},
         )
         for patch, color in zip(bp["boxes"], colors):
             patch.set_facecolor(color)
