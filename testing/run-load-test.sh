@@ -162,6 +162,10 @@ hpa_clean_start() {
 if command -v kubectl >/dev/null 2>&1; then
   ensure_kubeconfig
   if kubectl get namespace canvas >/dev/null 2>&1; then
+    # Capture cluster state (resource limits, HPA config, git commit) before
+    # the test mutates anything. The plotting script reads environment.env to
+    # draw the memory limit line and annotate summary CSVs.
+    bash "$SCRIPT_DIR/capture-cluster-env.sh" "$RUN_DIR/environment.env" || true
     hpa_clean_start
     bash "$SCRIPT_DIR/collect-k8s-snapshots.sh" "$SNAPSHOT_FILE" &
     K8S_SNAPSHOT_PID="$!"
