@@ -25,10 +25,10 @@ case "$MODE" in
     SCALING_MODE="hpa"
     ;;
   hpa-naive)
-    # Stage 4 — HPA enabled with NAIVE (pre-VPA) resources and stock HPA config
-    # (no behavior tuning). Tests whether HPA alone can compensate for wrong
-    # resource sizing. Expected: pods OOMKill before HPA can scale → still
-    # high error rate, proving HPA is not a substitute for proper VPA sizing.
+    # Stage 4 — VPA-tuned resources + STOCK HPA config (no behavior block).
+    # Isolates the impact of HPA tuning by holding resources constant between
+    # Stage 4 (this) and Stage 5 (tuned HPA). Expected: HPA reacts late and
+    # oscillates, causing higher tail latency and more pod churn vs Stage 5.
     DB_MODE="migrate"
     SCALING_MODE="hpa-naive"
     ;;
@@ -43,7 +43,7 @@ case "$MODE" in
     echo "Usage: ./deploy.sh [baseline|hpa|hpa-naive|prescaled|bootstrap|migrate]"
     echo "  baseline:  migrate DB, 1 web + 1 jobs pod, no HPA"
     echo "  hpa:       migrate DB, deploy with TUNED HPAs (VPA resources, behavior block)"
-    echo "  hpa-naive: migrate DB, NAIVE resources + stock HPA (Stage 4 thesis)"
+    echo "  hpa-naive: migrate DB, VPA resources + STOCK HPA, no behavior block (Stage 4 thesis)"
     echo "  prescaled: migrate DB, fixed 5 web + 3 jobs pods, no HPA"
     echo "  bootstrap: initialize DB, deploy with HPAs enabled"
     echo "  migrate:   alias for hpa"
@@ -90,17 +90,10 @@ case "$DB_MODE" in
     ;;
 esac
 
-# Stage 4 (hpa-naive) uses naive resource YAMLs; everything else uses the
-# VPA-tuned YAMLs.
-if [[ "$SCALING_MODE" == "hpa-naive" ]]; then
-  WEB_YAML="deployment/deployment-web-naive.yaml"
-  JOBS_YAML="deployment/deployment-jobs-naive.yaml"
-else
-  WEB_YAML="deployment/deployment-web.yaml"
-  JOBS_YAML="deployment/deployment-jobs.yaml"
-fi
-echo "Using web deployment:  $WEB_YAML"
-echo "Using jobs deployment: $JOBS_YAML"
+WEB_YAML="deployment/deployment-web.yaml"
+JOBS_YAML="deployment/deployment-jobs.yaml"
+echo "Using web deployment:  $WEB_YAML (VPA resources)"
+echo "Using jobs deployment: $JOBS_YAML (VPA resources)"
 
 kubectl apply -f "$WEB_YAML"
 
@@ -181,6 +174,6 @@ elif [[ "$SCALING_MODE" == "prescaled" ]]; then
 elif [[ "$SCALING_MODE" == "hpa" ]]; then
   echo "Replicas:         web=1-5, jobs=1-3 (TUNED HPA managed)"
 elif [[ "$SCALING_MODE" == "hpa-naive" ]]; then
-  echo "Replicas:         web=1-5, jobs=1-3 (NAIVE HPA managed, naive resources)"
+  echo "Replicas:         web=1-5, jobs=1-3 (STOCK HPA, VPA resources)"
 fi
 echo "Canvas service URL: http://canvas.io.vn"
