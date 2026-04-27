@@ -26,11 +26,11 @@ spec:
               value: "1"
           resources:
             requests:
-              cpu: 500m
-              memory: 1Gi
+              cpu: 100m       # VPA target: 100m
+              memory: 2900Mi  # VPA target: 2975900105 bytes = 2.77Gi → rounded up to 2900Mi
             limits:
-              cpu: "2"
-              memory: 3Gi
+              cpu: 180m       # VPA upper bound
+              memory: 4Gi     # VPA upper bound
           command:
             - sh
             - -c

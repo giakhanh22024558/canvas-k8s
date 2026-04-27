@@ -30,8 +30,9 @@ spec:
               value: "1"
           resources:
             requests:
-              cpu: 1200m      # VPA target: 1168m → rounded to 1200m
-              memory: 3500Mi  # VPA target: ~3.4Gi
+              cpu: 1200m      # Capped at 1200m (VPA target 2281m observed on single pod under full load;
+                              # reduced so 5 replicas fit on single 8-vCPU node: 5×1200m=6 CPU)
+              memory: 4300Mi  # VPA target: 4506574562 bytes = 4.2Gi → rounded up to 4300Mi
             limits:
               cpu: "4"        # VPA upper bound
               memory: 8Gi     # VPA upper bound
