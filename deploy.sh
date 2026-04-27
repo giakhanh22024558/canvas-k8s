@@ -100,9 +100,11 @@ case "$SCALING_MODE" in
   prescaled)
     # Remove HPA so Kubernetes cannot override the replica counts
     kubectl delete -f deployment/hpa.yaml --ignore-not-found
-    # Match HPA upper limits: web max=5, jobs max=3
+    # web=5 (max replicas for thesis comparison), jobs=1 (load tests do not
+    # exercise the submission/job flow so 3 idle jobs pods waste 8.7 GiB
+    # of the 31.7 GiB single-node budget and caused rollout deadlocks)
     kubectl scale deployment/canvas-web  --replicas=5 -n canvas
-    kubectl scale deployment/canvas-jobs --replicas=3 -n canvas
+    kubectl scale deployment/canvas-jobs --replicas=1 -n canvas
     ;;
 esac
 
