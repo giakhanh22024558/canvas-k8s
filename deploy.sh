@@ -24,6 +24,14 @@ case "$MODE" in
     DB_MODE="migrate"
     SCALING_MODE="hpa"
     ;;
+  hpa-naive)
+    # Stage 4 — HPA enabled with NAIVE (pre-VPA) resources and stock HPA config
+    # (no behavior tuning). Tests whether HPA alone can compensate for wrong
+    # resource sizing. Expected: pods OOMKill before HPA can scale → still
+    # high error rate, proving HPA is not a substitute for proper VPA sizing.
+    DB_MODE="migrate"
+    SCALING_MODE="hpa-naive"
+    ;;
   prescaled)
     # Fixed at HPA-maximum replicas (web=5, jobs=3) with no autoscaler.
     # Use this to isolate whether HPA's benefit comes from auto-scaling
@@ -32,9 +40,10 @@ case "$MODE" in
     SCALING_MODE="prescaled"
     ;;
   *)
-    echo "Usage: ./deploy.sh [baseline|hpa|prescaled|bootstrap|migrate]"
+    echo "Usage: ./deploy.sh [baseline|hpa|hpa-naive|prescaled|bootstrap|migrate]"
     echo "  baseline:  migrate DB, 1 web + 1 jobs pod, no HPA"
-    echo "  hpa:       migrate DB, deploy with HPAs enabled (1-5 web, 1-3 jobs)"
+    echo "  hpa:       migrate DB, deploy with TUNED HPAs (VPA resources, behavior block)"
+    echo "  hpa-naive: migrate DB, NAIVE resources + stock HPA (Stage 4 thesis)"
     echo "  prescaled: migrate DB, fixed 5 web + 3 jobs pods, no HPA"
     echo "  bootstrap: initialize DB, deploy with HPAs enabled"
     echo "  migrate:   alias for hpa"
@@ -81,14 +90,26 @@ case "$DB_MODE" in
     ;;
 esac
 
-kubectl apply -f deployment/deployment-web.yaml
+# Stage 4 (hpa-naive) uses naive resource YAMLs; everything else uses the
+# VPA-tuned YAMLs.
+if [[ "$SCALING_MODE" == "hpa-naive" ]]; then
+  WEB_YAML="deployment/deployment-web-naive.yaml"
+  JOBS_YAML="deployment/deployment-jobs-naive.yaml"
+else
+  WEB_YAML="deployment/deployment-web.yaml"
+  JOBS_YAML="deployment/deployment-jobs.yaml"
+fi
+echo "Using web deployment:  $WEB_YAML"
+echo "Using jobs deployment: $JOBS_YAML"
+
+kubectl apply -f "$WEB_YAML"
 
 # canvas-jobs rollout can deadlock on a single node when old pods + new pod
 # exceed available memory (old pods stay Running while new pod is Pending).
 # Fix: scale to 0 first to clear all old pods, then apply and scale back up.
 # This is safe because jobs pods are background workers — brief downtime during
 # a redeploy is acceptable and preferable to a stuck rollout.
-jobs_desired=$(grep '^\s*replicas:' deployment/deployment-jobs.yaml | awk '{print $2}' | head -1)
+jobs_desired=$(grep '^\s*replicas:' "$JOBS_YAML" | awk '{print $2}' | head -1)
 jobs_desired="${jobs_desired:-1}"
 current_jobs=$(kubectl get deployment canvas-jobs -n canvas -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "0")
 if [[ "$current_jobs" -gt 0 ]]; then
@@ -96,7 +117,7 @@ if [[ "$current_jobs" -gt 0 ]]; then
   kubectl scale deployment canvas-jobs -n canvas --replicas=0
   kubectl wait --for=delete pod -l app=canvas-jobs -n canvas --timeout=120s || true
 fi
-kubectl apply -f deployment/deployment-jobs.yaml
+kubectl apply -f "$JOBS_YAML"
 if [[ "$jobs_desired" -gt 0 ]]; then
   echo "Scaling canvas-jobs back to $jobs_desired replicas..."
   kubectl scale deployment canvas-jobs -n canvas --replicas="$jobs_desired"
@@ -113,7 +134,14 @@ case "$SCALING_MODE" in
     fi
     ;;
   hpa)
+    kubectl delete -f deployment/hpa-naive.yaml --ignore-not-found
     kubectl apply -f deployment/hpa.yaml
+    ;;
+  hpa-naive)
+    # Apply naive HPA (no behavior block, stock Kubernetes defaults).
+    # Remove the tuned HPA first if it exists from a previous deploy.
+    kubectl delete -f deployment/hpa.yaml --ignore-not-found
+    kubectl apply -f deployment/hpa-naive.yaml
     ;;
   prescaled)
     # Remove HPA so Kubernetes cannot override the replica counts
@@ -132,7 +160,7 @@ if ! [[ "$SCALING_MODE" == "baseline" && "$BASELINE_DISABLE_JOBS" == "true" ]]; 
   kubectl rollout status deployment/canvas-jobs -n canvas --timeout=300s
 fi
 
-if [[ "$SCALING_MODE" == "hpa" ]]; then
+if [[ "$SCALING_MODE" == "hpa" || "$SCALING_MODE" == "hpa-naive" ]]; then
   kubectl get hpa -n canvas
 else
   echo "HPAs removed — fixed replica counts in effect."
@@ -151,6 +179,8 @@ if [[ "$SCALING_MODE" == "baseline" ]]; then
 elif [[ "$SCALING_MODE" == "prescaled" ]]; then
   echo "Replicas:         web=5, jobs=3 (fixed, no HPA)"
 elif [[ "$SCALING_MODE" == "hpa" ]]; then
-  echo "Replicas:         web=1-5, jobs=1-3 (HPA managed)"
+  echo "Replicas:         web=1-5, jobs=1-3 (TUNED HPA managed)"
+elif [[ "$SCALING_MODE" == "hpa-naive" ]]; then
+  echo "Replicas:         web=1-5, jobs=1-3 (NAIVE HPA managed, naive resources)"
 fi
 echo "Canvas service URL: http://canvas.io.vn"

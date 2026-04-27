@@ -1,0 +1,46 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: canvas-web
+  namespace: canvas
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: canvas-web
+  minReplicas: 1
+  maxReplicas: 5
+  # Stage 4 — naive HPA: NO behavior block.
+  # Kubernetes uses default scale policies:
+  #   scaleDown.stabilizationWindowSeconds = 300 (5 min)
+  #   scaleUp.stabilizationWindowSeconds   = 0 (reacts immediately)
+  #   scaleUp policy = up to 100% or 4 pods per 60s, whichever is greater
+  #   scaleDown policy = up to 100% per 60s
+  # This is the out-of-the-box behavior most users get when they "just enable HPA".
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: canvas-jobs
+  namespace: canvas
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: canvas-jobs
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
