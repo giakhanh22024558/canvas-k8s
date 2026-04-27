@@ -1,0 +1,7 @@
+experiment_name,mode,scenario,run_number,test_id,seed_prefix,started_at,ended_at,accepted,notes,cooldown_seconds,flush_redis_between_runs,git_commit,node_count,web_memory_limit,jobs_memory_limit
+stage4-hpa-naive,hpa-naive,long-stress,1,stage4-hpa-naive-hpa-naive-long-stress-run01,thesis,2026-04-27T15:30:58Z,2026-04-27T15:39:51Z,yes,,300,false,6336a81,1,3Gi,3Gi
+stage4-hpa-naive,hpa-naive,long-stress,1,stage4-hpa-naive-hpa-naive-long-stress-run01,thesis,2026-04-27T15:48:25Z,2026-04-27T16:15:33Z,yes,,300,false,2869cde,1,8Gi,4Gi
+stage4-hpa-naive,hpa-naive,long-stress,2,stage4-hpa-naive-hpa-naive-long-stress-run02,thesis,2026-04-27T16:20:51Z,2026-04-27T16:47:58Z,yes,,300,false,2869cde,1,8Gi,4Gi
+stage4-hpa-naive,hpa-naive,long-stress,3,stage4-hpa-naive-hpa-naive-long-stress-run03,thesis,2026-04-27T16:53:16Z,2026-04-27T17:20:23Z,yes,,300,false,6bbcf81,1,8Gi,4Gi
+stage4-hpa-naive,hpa-naive,long-stress,4,stage4-hpa-naive-hpa-naive-long-stress-run04,thesis,2026-04-27T17:25:39Z,2026-04-27T17:52:47Z,yes,,300,false,6bbcf81,1,8Gi,4Gi
+stage4-hpa-naive,hpa-naive,long-stress,5,stage4-hpa-naive-hpa-naive-long-stress-run05,thesis,2026-04-27T17:58:05Z,2026-04-27T18:25:12Z,yes,,300,false,ef5d782,1,8Gi,4Gi
