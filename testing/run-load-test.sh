@@ -81,6 +81,18 @@ if command -v kubectl >/dev/null 2>&1; then
   ensure_kubeconfig
   echo "Capturing cluster snapshot to $RUN_DIR/environment.env ..."
   bash "$SCRIPT_DIR/capture-cluster-env.sh" "$RUN_DIR/environment.env" || true
+  if [[ -f "$RUN_DIR/environment.env" ]]; then
+    echo ""
+    echo "============================================================"
+    echo "  CLUSTER SNAPSHOT — pre-test state"
+    echo "============================================================"
+    while IFS='=' read -r key value; do
+      [[ -z "$key" || "$key" == \#* ]] && continue
+      printf "  %-35s %s\n" "$key" "$value"
+    done < "$RUN_DIR/environment.env"
+    echo "============================================================"
+    echo ""
+  fi
 else
   echo "kubectl not available — skipping cluster snapshot."
 fi
