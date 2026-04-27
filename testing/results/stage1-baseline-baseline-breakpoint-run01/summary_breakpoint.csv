@@ -1,0 +1,16 @@
+metric,value
+test_id,stage1-baseline-baseline-breakpoint-run01
+label,breakpoint
+scaling_mode,baseline
+avg_throughput_rps,16.476
+avg_error_rate_percent,57.73
+avg_p50_ms,0.467
+avg_p95_ms,3410.0
+avg_p99_ms,11711.731
+max_vus,99.0
+max_web_restart_total,5.0
+max_jobs_restart_total,0.0
+avg_web_memory_mb,4952.67
+avg_jobs_memory_mb,1330.865
+max_hpa_cpu_percent,247.936
+prom_fallback_used,0
