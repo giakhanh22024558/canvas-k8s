@@ -194,11 +194,110 @@ cmd_read() {
   echo "  3. kubectl rollout status deployment/canvas-web -n canvas"
 }
 
+cmd_save() {
+  # Save VPA recommendations to a structured file for documentation.
+  # Usage: bash testing/vpa-recommend.sh save [output-dir]
+  #   output-dir defaults to testing/results/stage2-vpa-profile/
+  local out_dir="${2:-$REPO_ROOT/testing/results/stage2-vpa-profile}"
+  mkdir -p "$out_dir"
+
+  require_kubectl
+
+  if ! vpa_crds_installed; then
+    die "VPA CRDs not installed. Run: bash testing/vpa-recommend.sh setup"
+  fi
+
+  # ── Collect raw values ──────────────────────────────────────────────────────
+  local web_lo_cpu web_tgt_cpu web_up_cpu web_lo_mem web_tgt_mem web_up_mem
+  local jobs_lo_cpu jobs_tgt_cpu jobs_up_cpu jobs_lo_mem jobs_tgt_mem jobs_up_mem
+  web_lo_cpu=$(extract_json  "canvas-web-vpa" 0 lowerBound cpu)
+  web_tgt_cpu=$(extract_json "canvas-web-vpa" 0 target     cpu)
+  web_up_cpu=$(extract_json  "canvas-web-vpa" 0 upperBound cpu)
+  web_lo_mem=$(extract_json  "canvas-web-vpa" 0 lowerBound memory)
+  web_tgt_mem=$(extract_json "canvas-web-vpa" 0 target     memory)
+  web_up_mem=$(extract_json  "canvas-web-vpa" 0 upperBound memory)
+
+  jobs_lo_cpu=$(extract_json  "canvas-jobs-vpa" 0 lowerBound cpu)
+  jobs_tgt_cpu=$(extract_json "canvas-jobs-vpa" 0 target     cpu)
+  jobs_up_cpu=$(extract_json  "canvas-jobs-vpa" 0 upperBound cpu)
+  jobs_lo_mem=$(extract_json  "canvas-jobs-vpa" 0 lowerBound memory)
+  jobs_tgt_mem=$(extract_json "canvas-jobs-vpa" 0 target     memory)
+  jobs_up_mem=$(extract_json  "canvas-jobs-vpa" 0 upperBound memory)
+
+  local captured_at
+  captured_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  # ── Write machine-readable env file ────────────────────────────────────────
+  cat > "$out_dir/vpa-profile.env" <<EOF
+# VPA resource recommendations captured at $captured_at
+# Source: namespace=$NAMESPACE, profiled under long-stress (naive resources)
+captured_at=$captured_at
+
+# canvas-web
+web_vpa_lower_cpu=$web_lo_cpu
+web_vpa_target_cpu=$web_tgt_cpu
+web_vpa_upper_cpu=$web_up_cpu
+web_vpa_lower_memory=$web_lo_mem
+web_vpa_target_memory=$web_tgt_mem
+web_vpa_upper_memory=$web_up_mem
+
+# canvas-jobs
+jobs_vpa_lower_cpu=$jobs_lo_cpu
+jobs_vpa_target_cpu=$jobs_tgt_cpu
+jobs_vpa_upper_cpu=$jobs_up_cpu
+jobs_vpa_lower_memory=$jobs_lo_mem
+jobs_vpa_target_memory=$jobs_tgt_mem
+jobs_vpa_upper_memory=$jobs_up_mem
+
+# Applied values (deployment-web.yaml / deployment-jobs.yaml)
+# web cpu request capped at 1200m (VPA target 2281m observed on single-pod full load;
+# reduced to allow 5 replicas to schedule on single 8-vCPU node: 5x1200m=6 CPU)
+applied_web_cpu_request=1200m
+applied_web_memory_request=4300Mi
+applied_web_cpu_limit=4
+applied_web_memory_limit=8Gi
+applied_jobs_cpu_request=100m
+applied_jobs_memory_request=2900Mi
+applied_jobs_cpu_limit=180m
+applied_jobs_memory_limit=4Gi
+EOF
+
+  # ── Write human-readable summary ────────────────────────────────────────────
+  {
+    echo "VPA Resource Recommendations"
+    echo "Captured: $captured_at"
+    echo "Namespace: $NAMESPACE"
+    echo "Profiled under: long-stress load test with naive resources (800m/1Gi web, 500m/1Gi jobs)"
+    echo ""
+    printf "%-12s  %-22s  %-14s  %-14s\n" "Deployment" "Bound" "CPU" "Memory"
+    hr
+    printf "%-12s  %-22s  %-14s  %-14s\n" "canvas-web" "lower bound" "$web_lo_cpu"  "$web_lo_mem"
+    printf "%-12s  %-22s  %-14s  %-14s\n" "canvas-web" "target"      "$web_tgt_cpu" "$web_tgt_mem"
+    printf "%-12s  %-22s  %-14s  %-14s\n" "canvas-web" "upper bound" "$web_up_cpu"  "$web_up_mem"
+    hr
+    printf "%-12s  %-22s  %-14s  %-14s\n" "canvas-jobs" "lower bound" "$jobs_lo_cpu"  "$jobs_lo_mem"
+    printf "%-12s  %-22s  %-14s  %-14s\n" "canvas-jobs" "target"      "$jobs_tgt_cpu" "$jobs_tgt_mem"
+    printf "%-12s  %-22s  %-14s  %-14s\n" "canvas-jobs" "upper bound" "$jobs_up_cpu"  "$jobs_up_mem"
+    echo ""
+    echo "Applied to deployment manifests:"
+    echo "  canvas-web:  requests cpu=1200m memory=4300Mi  limits cpu=4 memory=8Gi"
+    echo "  canvas-jobs: requests cpu=100m  memory=2900Mi  limits cpu=180m memory=4Gi"
+    echo ""
+    echo "Note: web CPU request capped at 1200m (VPA target $web_tgt_cpu observed under"
+    echo "single-pod full load; 5x1200m=6 CPU fits on 8-vCPU single-node cluster)."
+  } > "$out_dir/vpa-recommendations.txt"
+
+  echo "Saved VPA profiling results to $out_dir:"
+  echo "  vpa-profile.env          (machine-readable key=value)"
+  echo "  vpa-recommendations.txt  (human-readable summary)"
+}
+
 # ── dispatch ───────────────────────────────────────────────────────────────────
 
 require_kubectl
 
 case "$COMMAND" in
-  setup)  cmd_setup ;;
-  read|*) cmd_read  ;;
+  setup)      cmd_setup ;;
+  save)       cmd_save "$@" ;;
+  read|*)     cmd_read  ;;
 esac
