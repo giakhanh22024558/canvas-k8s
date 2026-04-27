@@ -34,7 +34,9 @@ spec:
               cpu: 100m       # VPA target: 100m
               memory: 2900Mi  # VPA target: 2975900105 bytes = 2.77Gi → rounded up to 2900Mi
             limits:
-              cpu: 180m       # VPA upper bound
+              cpu: "2"        # Raised from VPA 180m — jobs pods hit 100% CPU at idle
+                              # indicating VPA under-estimated burst usage. 2 CPU
+                              # matches original naive limit and prevents throttling.
               memory: 4Gi     # VPA upper bound
           command:
             - sh
