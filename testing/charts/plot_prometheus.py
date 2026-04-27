@@ -205,11 +205,12 @@ def plot_throughput_error(output_dir, label, throughput_values, error_values, k6
         ys = [y for _, y in error_values]
         ax2.plot(xs, ys, color="#d62728", label="Error rate (1-min rolling, %)", linewidth=1.5, alpha=0.6)
 
-    # Always fix the error rate axis to 0-100% so crash spikes are in context
-    # and stable near-zero phases are visible. Without this matplotlib
-    # autoscales to e.g. 96-104% when crash windows dominate, hiding the
-    # stable baseline and making the chart unreadable.
-    ax2.set_ylim(0, 100)
+    # Fix the error rate axis to 0–110 % so crash spikes that reach 100 % are
+    # clearly visible with breathing room above the line rather than clipping
+    # at the top edge. The extra 10 pp headroom also prevents matplotlib from
+    # auto-scaling to e.g. 96–104 % when crash windows dominate, which would
+    # hide the stable near-zero baseline phases.
+    ax2.set_ylim(0, 110)
     ax2.set_ylabel("Error rate (%)", color="#d62728")
     ax2.tick_params(axis="y", labelcolor="#d62728")
 
