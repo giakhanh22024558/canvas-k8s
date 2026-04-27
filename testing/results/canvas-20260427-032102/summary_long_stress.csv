@@ -1,0 +1,16 @@
+metric,value
+test_id,canvas-20260427-032102
+label,long-stress
+scaling_mode,baseline
+avg_throughput_rps,14.593
+avg_error_rate_percent,65.99
+avg_p50_ms,0.0
+avg_p95_ms,2150.0
+avg_p99_ms,11979.832
+max_vus,60.0
+max_web_restart_total,6.0
+max_jobs_restart_total,2.0
+avg_web_memory_mb,5017.424
+avg_jobs_memory_mb,2924.313
+max_hpa_cpu_percent,177.159
+prom_fallback_used,0
