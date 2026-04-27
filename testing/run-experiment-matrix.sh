@@ -8,6 +8,7 @@ load_testing_env
 ensure_kubeconfig
 
 RUNS_PER_SCENARIO="${RUNS_PER_SCENARIO:-9}"
+START_RUN="${START_RUN:-1}"   # First run number to execute (use to resume after interruption)
 EXPERIMENT_NAME="${EXPERIMENT_NAME:-thesis}"
 MATRIX_MODES="${MATRIX_MODES:-baseline,hpa}"
 MATRIX_SCENARIOS="${MATRIX_SCENARIOS:-smoke,load,stress,soak}"
@@ -53,7 +54,7 @@ IFS=',' read -r -a SCENARIOS <<< "$MATRIX_SCENARIOS"
 
 for mode in "${MODES[@]}"; do
   for scenario in "${SCENARIOS[@]}"; do
-    for run_number in $(seq 1 "$RUNS_PER_SCENARIO"); do
+    for run_number in $(seq "$START_RUN" "$RUNS_PER_SCENARIO"); do
       if [[ "$CURRENT_MODE" != "$mode" ]]; then
         if [[ "$SKIP_DEPLOY" == "true" ]]; then
           echo "SKIP_DEPLOY=true — skipping deploy.sh for mode: $mode (using current cluster state)"
