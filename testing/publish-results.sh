@@ -46,6 +46,19 @@ if [[ -z "$PYTHON" ]]; then
 fi
 
 echo "Using Python: $PYTHON"
+
+# --- Pull latest code BEFORE generating charts so plot fixes are applied ---
+cd "$REPO_ROOT"
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+echo "Pulling latest changes on branch $BRANCH ..."
+git pull origin "$BRANCH" --rebase || echo "WARNING: git pull failed. Continuing with local code."
+
+# Remove stale chart PNGs before regenerating so files that the new code no
+# longer produces (e.g. hpa_cpu for baseline, comparison bar for single run)
+# don't linger in the results directory and mislead readers.
+echo "Cleaning stale chart files in $RUN_DIR ..."
+rm -f "$RUN_DIR"/*.png
+
 echo "Generating charts..."
 
 "$PYTHON" "$SCRIPT_DIR/charts/plot_prometheus.py" \
@@ -56,14 +69,6 @@ echo "Generating charts..."
   --step "$STEP"
 
 echo "Charts generated in $RUN_DIR"
-
-# --- Commit and push to current repo ---
-cd "$REPO_ROOT"
-
-BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-
-echo "Pulling latest changes on branch $BRANCH ..."
-git pull origin "$BRANCH" --rebase || echo "WARNING: git pull failed. Attempting push anyway."
 
 git add "testing/results/$TEST_ID/"
 
