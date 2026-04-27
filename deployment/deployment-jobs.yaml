@@ -4,7 +4,7 @@ metadata:
   name: canvas-jobs
   namespace: canvas
 spec:
-  replicas: 1
+  replicas: 3
   strategy:
     type: RollingUpdate
     rollingUpdate:
