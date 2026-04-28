@@ -1,0 +1,6 @@
+experiment_name,mode,scenario,run_number,test_id,seed_prefix,started_at,ended_at,accepted,notes,cooldown_seconds,flush_redis_between_runs,git_commit,node_count,web_memory_limit,jobs_memory_limit
+stage5-hpa-tuned,hpa,long-stress,1,stage5-hpa-tuned-hpa-long-stress-run01,thesis,2026-04-28T04:16:34Z,2026-04-28T04:43:43Z,yes,,300,false,7eee6ab,1,8Gi,4Gi
+stage5-hpa-tuned,hpa,long-stress,2,stage5-hpa-tuned-hpa-long-stress-run02,thesis,2026-04-28T04:49:01Z,2026-04-28T05:16:10Z,yes,,300,false,4fecb0b,1,8Gi,4Gi
+stage5-hpa-tuned,hpa,long-stress,3,stage5-hpa-tuned-hpa-long-stress-run03,thesis,2026-04-28T05:21:28Z,2026-04-28T05:48:36Z,yes,,300,false,02a65b1,1,8Gi,4Gi
+stage5-hpa-tuned,hpa,long-stress,4,stage5-hpa-tuned-hpa-long-stress-run04,thesis,2026-04-28T05:53:54Z,2026-04-28T06:21:01Z,yes,,300,false,02a65b1,1,8Gi,4Gi
+stage5-hpa-tuned,hpa,long-stress,5,stage5-hpa-tuned-hpa-long-stress-run05,thesis,2026-04-28T06:26:19Z,2026-04-28T06:53:28Z,yes,,300,false,02a65b1,1,8Gi,4Gi
