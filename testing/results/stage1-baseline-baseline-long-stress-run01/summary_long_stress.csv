@@ -1,0 +1,16 @@
+metric,value
+test_id,stage1-baseline-baseline-long-stress-run01
+label,long-stress
+scaling_mode,baseline
+avg_throughput_rps,13.314
+avg_error_rate_percent,44.78
+avg_p50_ms,57.66
+avg_p95_ms,2340.0
+avg_p99_ms,9029.754
+max_vus,60.0
+max_web_restart_total,5.0
+max_jobs_restart_total,0.0
+avg_web_memory_mb,4943.536
+avg_jobs_memory_mb,1452.548
+max_hpa_cpu_percent,248.393
+prom_fallback_used,0

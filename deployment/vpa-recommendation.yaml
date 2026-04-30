@@ -1,0 +1,59 @@
+---
+# VPA in "Off" mode — observes resource usage and outputs recommendations
+# but does NOT change pod resources automatically.
+#
+# After running a load test:
+#   kubectl describe vpa canvas-web-vpa -n canvas
+#
+# Look for the "Recommendation" section:
+#   Lower Bound  = safe minimum (use as request)
+#   Target       = VPA's recommended request
+#   Upper Bound  = VPA's recommended limit (use as limit)
+#
+# Install VPA CRDs first if not present:
+#   kubectl apply -f https://github.com/kubernetes/autoscaler/releases/latest/download/vertical-pod-autoscaler.yaml
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: canvas-web-vpa
+  namespace: canvas
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: canvas-web
+  updatePolicy:
+    updateMode: "Off"       # recommendation only — never touches actual pods
+  resourcePolicy:
+    containerPolicies:
+      - containerName: web
+        controlledResources: ["cpu", "memory"]
+        minAllowed:
+          cpu: 200m
+          memory: 512Mi
+        maxAllowed:
+          cpu: "4"
+          memory: 8Gi
+---
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: canvas-jobs-vpa
+  namespace: canvas
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: canvas-jobs
+  updatePolicy:
+    updateMode: "Off"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: jobs
+        controlledResources: ["cpu", "memory"]
+        minAllowed:
+          cpu: 100m
+          memory: 256Mi
+        maxAllowed:
+          cpu: "2"
+          memory: 4Gi

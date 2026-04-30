@@ -1,0 +1,47 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: canvas-web
+  namespace: canvas
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: canvas-web
+  minReplicas: 1
+  maxReplicas: 5
+  # Stage 4 — STOCK HPA: NO behavior block, VPA resources used on deployment.
+  # Kubernetes default scale policies:
+  #   scaleDown.stabilizationWindowSeconds = 300 (5 min)
+  #   scaleUp.stabilizationWindowSeconds   = 0 (reacts immediately to spikes)
+  #   scaleUp policy   = up to 100% or 4 pods per 60s, whichever is greater
+  #   scaleDown policy = up to 100% per 60s
+  # Compare to Stage 5 (hpa.yaml) which has tuned 30s scaleUp window and
+  # capped scale-up rate (2 pods/60s). Same resources, different tuning.
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: canvas-jobs
+  namespace: canvas
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: canvas-jobs
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

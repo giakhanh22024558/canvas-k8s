@@ -1,0 +1,16 @@
+metric,value
+test_id,stage2-vpa-profile
+label,long-stress
+scaling_mode,baseline
+avg_throughput_rps,12.487
+avg_error_rate_percent,36.65
+avg_p50_ms,103.79
+avg_p95_ms,2520.0
+avg_p99_ms,7850.133
+max_vus,60.0
+max_web_restart_total,10.0
+max_jobs_restart_total,0.0
+avg_web_memory_mb,4889.736
+avg_jobs_memory_mb,2408.645
+max_hpa_cpu_percent,250.07
+prom_fallback_used,0
