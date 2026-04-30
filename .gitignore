@@ -1,2 +1,9 @@
 testing/testing.env
 testing/results-publish-repo/
+.claude/settings.local.json
+.claude/PROJECT_CONTEXT.md
+.claude/DEPLOYMENT_CHALLENGES.md
+.claude/EXPERIMENT_NARRATIVE.md
+
+# Thesis — local only, synced to Overleaf separately
+thesis/

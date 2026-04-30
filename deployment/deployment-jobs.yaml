@@ -4,7 +4,12 @@ metadata:
   name: canvas-jobs
   namespace: canvas
 spec:
-  replicas: 1
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0        # Never start a new pod before terminating an old one —
+      maxUnavailable: 1  # prevents memory surge on single-node cluster.
   selector:
     matchLabels:
       app: canvas-jobs
@@ -26,11 +31,13 @@ spec:
               value: "1"
           resources:
             requests:
-              cpu: 500m
-              memory: 1Gi
+              cpu: 100m       # VPA target: 100m
+              memory: 2900Mi  # VPA target: 2975900105 bytes = 2.77Gi → rounded up to 2900Mi
             limits:
-              cpu: "2"
-              memory: 3Gi
+              cpu: "2"        # Raised from VPA 180m — jobs pods hit 100% CPU at idle
+                              # indicating VPA under-estimated burst usage. 2 CPU
+                              # matches original naive limit and prevents throttling.
+              memory: 4Gi     # VPA upper bound
           command:
             - sh
             - -c

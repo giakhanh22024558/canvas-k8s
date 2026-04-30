@@ -73,6 +73,30 @@ fi
 
 mkdir -p "$RUN_DIR"
 
+# Capture cluster state immediately — before any pod restarts, cooldowns, or
+# test activity mutates the environment. This is the ground truth snapshot:
+# resource limits, HPA config, replica counts, and git commit at test time.
+# The plotting script reads environment.env to draw the memory limit line.
+if command -v kubectl >/dev/null 2>&1; then
+  ensure_kubeconfig
+  echo "Capturing cluster snapshot to $RUN_DIR/environment.env ..."
+  bash "$SCRIPT_DIR/capture-cluster-env.sh" "$RUN_DIR/environment.env" || true
+  if [[ -f "$RUN_DIR/environment.env" ]]; then
+    echo ""
+    echo "============================================================"
+    echo "  CLUSTER SNAPSHOT — pre-test state"
+    echo "============================================================"
+    while IFS='=' read -r key value; do
+      [[ -z "$key" || "$key" == \#* ]] && continue
+      printf "  %-35s %s\n" "$key" "$value"
+    done < "$RUN_DIR/environment.env"
+    echo "============================================================"
+    echo ""
+  fi
+else
+  echo "kubectl not available — skipping cluster snapshot."
+fi
+
 cleanup() {
   if [[ -n "$K8S_SNAPSHOT_PID" ]] && kill -0 "$K8S_SNAPSHOT_PID" >/dev/null 2>&1; then
     kill "$K8S_SNAPSHOT_PID" >/dev/null 2>&1 || true
@@ -114,6 +138,13 @@ hpa_clean_start() {
 
   echo "HPA detected — performing clean start (scale to 1 replica + pod restart)..."
 
+  # Clamp HPA maxReplicas to 1 BEFORE scaling down.
+  # Without this, HPA reads stale high-CPU metrics from the previous test
+  # and immediately re-scales back to 5 pods, defeating the clean start.
+  echo "Clamping HPA maxReplicas to 1 to prevent scale-up during warmup..."
+  kubectl patch hpa canvas-web  -n canvas -p '{"spec":{"maxReplicas":1}}' 2>/dev/null || true
+  kubectl patch hpa canvas-jobs -n canvas -p '{"spec":{"maxReplicas":1}}' 2>/dev/null || true
+
   # Force replicas back to 1 immediately (bypasses HPA scale-down cooldown)
   kubectl scale deployment canvas-web  -n canvas --replicas=1 2>/dev/null || true
   kubectl scale deployment canvas-jobs -n canvas --replicas=1 2>/dev/null || true
@@ -128,10 +159,28 @@ hpa_clean_start() {
   echo "Waiting for canvas-jobs rollout..."
   kubectl rollout status deployment/canvas-jobs -n canvas --timeout=120s
 
+  # Readiness probe passing ≠ Rails fully warmed up. A Canvas pod needs
+  # time after becoming "Ready" to finish loading gems, open DB connection
+  # pools, and compile routes. Without this sleep, k6 setup() hits a
+  # half-warm pod and retries, inflating early error metrics.
+  #
+  # 4 minutes (was 2): the extra time lets HPA evaluate at least 4 scrape
+  # cycles of near-zero CPU before load starts, so the baseline is clean.
+  # It also prevents the pod from being overwhelmed at the very first VU
+  # ramp before HPA has had any chance to collect metrics and scale out.
+  echo "Waiting 4 minutes for Rails to warm up after restart..."
+  sleep 240
+
+  # Restore HPA maxReplicas so it can scale freely during the actual test
+  echo "Restoring HPA maxReplicas (web=5, jobs=3)..."
+  kubectl patch hpa canvas-web  -n canvas -p '{"spec":{"maxReplicas":5}}' 2>/dev/null || true
+  kubectl patch hpa canvas-jobs -n canvas -p '{"spec":{"maxReplicas":3}}' 2>/dev/null || true
+
   echo "Clean start complete. Current pod state:"
   kubectl get pods -n canvas
   echo "Current HPA state:"
   kubectl get hpa  -n canvas
+  echo "Warmup complete — starting test."
 }
 
 if command -v kubectl >/dev/null 2>&1; then
@@ -148,13 +197,21 @@ else
   echo "Skipping Kubernetes snapshot collection because kubectl is unavailable."
 fi
 
+# k6 exits non-zero when thresholds fail (exit code 108) — expected under stress
+# conditions where error rate is high. Use || true so the matrix continues to
+# the next run instead of stopping after the first threshold breach.
 K6_PROMETHEUS_RW_SERVER_URL="$PROM_URL" \
 K6_PROMETHEUS_RW_TREND_STATS="p(50),p(95),p(99),avg,min,max" \
-k6 run -o experimental-prometheus-rw --tag testid="$TEST_ID" "$SCRIPT_DIR/load_test/canvas-load.js" 2>&1 | tee "$LOG_FILE"
+k6 run -o experimental-prometheus-rw --tag testid="$TEST_ID" "$SCRIPT_DIR/load_test/canvas-load.js" 2>&1 | tee "$LOG_FILE" || true
 
 echo "ended_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$RUN_DIR/metadata.env"
 
 echo "Finished load test with testid=$TEST_ID"
 echo "Saved run output to $RUN_DIR"
 
-TEST_ID="$TEST_ID" RESULTS_DIR="$RESULTS_DIR" bash "$SCRIPT_DIR/publish-results.sh"
+# Chart generation and git push are NOT done here — call publish-results.sh
+# manually after all matrix runs complete:
+#   TEST_ID=<id> bash testing/publish-results.sh
+echo "Raw data saved to $RUN_DIR"
+echo "  k6-summary.txt, k8s-snapshots.csv, metadata.env, environment.env"
+echo "Run 'TEST_ID=$TEST_ID bash testing/publish-results.sh' to generate charts."

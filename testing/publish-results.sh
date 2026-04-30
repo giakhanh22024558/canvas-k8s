@@ -11,7 +11,11 @@ STEP="${STEP:-15s}"
 TEST_ID="${TEST_ID:-}"
 
 if [[ -z "$TEST_ID" ]]; then
-  RUN_DIR="$(find "$RESULTS_DIR" -mindepth 1 -maxdepth 1 -type d | sort | tail -n 1)"
+  # Only consider timestamped run folders (canvas-YYYYMMDD-HHMMSS).
+  # Plain `sort` works here because the date+time format is lexicographically
+  # ordered — the most recent run always sorts last.
+  # Non-timestamped folders like grafana-stress-check are excluded.
+  RUN_DIR="$(find "$RESULTS_DIR" -mindepth 1 -maxdepth 1 -type d -name 'canvas-*' | sort | tail -n 1)"
   TEST_ID="$(basename "$RUN_DIR")"
 else
   RUN_DIR="$RESULTS_DIR/$TEST_ID"
@@ -42,6 +46,20 @@ if [[ -z "$PYTHON" ]]; then
 fi
 
 echo "Using Python: $PYTHON"
+
+# --- Pull latest code BEFORE generating charts so plot fixes are applied ---
+cd "$REPO_ROOT"
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+echo "Pulling latest changes on branch $BRANCH ..."
+git pull origin "$BRANCH" --rebase || echo "WARNING: git pull failed. Continuing with local code."
+
+# Remove stale generated files before regenerating so files that the new code
+# no longer produces (e.g. hpa_cpu for baseline, comparison bar for single run)
+# don't linger in the results directory and mislead readers.
+echo "Cleaning stale chart files in $RUN_DIR ..."
+rm -f "$RUN_DIR"/*.png
+rm -f "$RUN_DIR"/summary_comparison.csv
+
 echo "Generating charts..."
 
 "$PYTHON" "$SCRIPT_DIR/charts/plot_prometheus.py" \
@@ -52,14 +70,6 @@ echo "Generating charts..."
   --step "$STEP"
 
 echo "Charts generated in $RUN_DIR"
-
-# --- Commit and push to current repo ---
-cd "$REPO_ROOT"
-
-BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-
-echo "Pulling latest changes on branch $BRANCH ..."
-git pull origin "$BRANCH" --rebase || echo "WARNING: git pull failed. Attempting push anyway."
 
 git add "testing/results/$TEST_ID/"
 

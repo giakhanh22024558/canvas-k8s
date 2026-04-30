@@ -5,6 +5,11 @@ metadata:
   namespace: canvas
 spec:
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0        # Never start a new pod before terminating an old one —
+      maxUnavailable: 1  # prevents memory surge on single-node cluster.
   selector:
     matchLabels:
       app: canvas-web
@@ -30,11 +35,12 @@ spec:
               value: "1"
           resources:
             requests:
-              cpu: 500m
-              memory: 1Gi
+              cpu: 1200m      # Capped at 1200m (VPA target 2281m observed on single pod under full load;
+                              # reduced so 5 replicas fit on single 8-vCPU node: 5×1200m=6 CPU)
+              memory: 4300Mi  # VPA target: 4506574562 bytes = 4.2Gi → rounded up to 4300Mi
             limits:
-              cpu: "2"
-              memory: 2Gi
+              cpu: "4"        # VPA upper bound
+              memory: 8Gi     # VPA upper bound
           ports:
             - containerPort: 80
           volumeMounts:
