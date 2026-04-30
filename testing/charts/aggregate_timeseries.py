@@ -175,9 +175,11 @@ def read_snapshots_csv(path: Path, started_at, column):
 
 # ── plotting ──────────────────────────────────────────────────────────────────
 
-def plot_band(ax, grid, mean, std, label, color, show_band=True):
-    if mean is None:
+def plot_band(ax, grid, agg, label, color, show_band=True):
+    """agg is the (mean, std, n) tuple returned by aggregate_runs."""
+    if agg is None or agg[0] is None:
         return
+    mean, std, _ = agg
     minutes = grid / 60.0
     ax.plot(minutes, mean, label=label, color=color, linewidth=2)
     if show_band and std is not None:
@@ -187,14 +189,14 @@ def plot_band(ax, grid, mean, std, label, color, show_band=True):
 
 def plot_throughput_error(grid, tput, err, output, experiment, n_runs):
     fig, ax1 = plt.subplots(figsize=(11, 5))
-    plot_band(ax1, grid, *tput, "Throughput (RPS)", "#1f77b4")
+    plot_band(ax1, grid, tput, "Throughput (RPS)", "#1f77b4")
     ax1.set_xlabel("Minutes from test start")
     ax1.set_ylabel("Requests/sec", color="#1f77b4")
     ax1.tick_params(axis="y", labelcolor="#1f77b4")
     ax1.grid(True, alpha=0.3)
 
     ax2 = ax1.twinx()
-    plot_band(ax2, grid, *err, "Error rate (%)", "#d62728")
+    plot_band(ax2, grid, err, "Error rate (%)", "#d62728")
     ax2.set_ylabel("Error rate %", color="#d62728")
     ax2.tick_params(axis="y", labelcolor="#d62728")
 
@@ -207,9 +209,9 @@ def plot_throughput_error(grid, tput, err, output, experiment, n_runs):
 
 def plot_latency(grid, p50, p95, p99, output, experiment, n_runs):
     fig, ax = plt.subplots(figsize=(11, 5))
-    plot_band(ax, grid, *p50, "p50",  "#2ca02c")
-    plot_band(ax, grid, *p95, "p95",  "#ff7f0e")
-    plot_band(ax, grid, *p99, "p99",  "#d62728")
+    plot_band(ax, grid, p50, "p50",  "#2ca02c")
+    plot_band(ax, grid, p95, "p95",  "#ff7f0e")
+    plot_band(ax, grid, p99, "p99",  "#d62728")
     ax.set_xlabel("Minutes from test start")
     ax.set_ylabel("Latency (ms)")
     ax.set_yscale("log")
@@ -224,14 +226,14 @@ def plot_latency(grid, p50, p95, p99, output, experiment, n_runs):
 
 def plot_cpu_replicas(grid, replicas, cpu_pct, output, experiment, n_runs):
     fig, ax1 = plt.subplots(figsize=(11, 5))
-    plot_band(ax1, grid, *replicas, "Web replicas", "#1f77b4")
+    plot_band(ax1, grid, replicas, "Web replicas", "#1f77b4")
     ax1.set_xlabel("Minutes from test start")
     ax1.set_ylabel("Replicas", color="#1f77b4")
     ax1.tick_params(axis="y", labelcolor="#1f77b4")
     ax1.grid(True, alpha=0.3)
 
     ax2 = ax1.twinx()
-    plot_band(ax2, grid, *cpu_pct, "CPU % of request", "#d62728")
+    plot_band(ax2, grid, cpu_pct, "CPU % of request", "#d62728")
     ax2.axhline(70, color="#d62728", linestyle="--", linewidth=1, alpha=0.5,
                 label="HPA target 70%")
     ax2.set_ylabel("CPU %", color="#d62728")
@@ -247,8 +249,8 @@ def plot_cpu_replicas(grid, replicas, cpu_pct, output, experiment, n_runs):
 
 def plot_memory(grid, web_mem, jobs_mem, output, experiment, n_runs):
     fig, ax = plt.subplots(figsize=(11, 5))
-    plot_band(ax, grid, *web_mem,  "Web memory (MB)",  "#1f77b4")
-    plot_band(ax, grid, *jobs_mem, "Jobs memory (MB)", "#2ca02c")
+    plot_band(ax, grid, web_mem,  "Web memory (MB)",  "#1f77b4")
+    plot_band(ax, grid, jobs_mem, "Jobs memory (MB)", "#2ca02c")
     ax.set_xlabel("Minutes from test start")
     ax.set_ylabel("Memory (MB)")
     ax.grid(True, alpha=0.3)
