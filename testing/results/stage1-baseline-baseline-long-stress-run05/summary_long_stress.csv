@@ -6,7 +6,7 @@ avg_throughput_rps,12.018
 avg_error_rate_percent,15.86
 avg_p50_ms,355.81
 avg_p95_ms,2600.0
-avg_p99_ms,17.373
+avg_p99_ms,17373.343
 max_vus,60.0
 max_web_restart_total,4.0
 max_jobs_restart_total,0.0
