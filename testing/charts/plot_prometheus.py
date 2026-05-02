@@ -70,8 +70,8 @@ def parse_k6_summary_metrics(path):
     text = path.read_text(encoding="utf-8", errors="ignore")
     metrics = {}
 
-    # k6 summary line format:
-    # http_req_duration...: avg=96ms min=1ms med=60ms max=35s p(90)=127ms p(95)=168ms
+    # k6 summary line format (with summaryTrendStats including p(99)):
+    # http_req_duration...: avg=96ms min=1ms med=60ms max=35s p(90)=127ms p(95)=168ms p(99)=300ms
     duration_match = re.search(
         r"http_req_duration\.*:\s+avg=(\S+)\s+min=\S+\s+med=(\S+).*?p\(90\)=(\S+)\s+p\(95\)=(\S+)",
         text,
@@ -81,6 +81,20 @@ def parse_k6_summary_metrics(path):
         metrics["avg"]  = parse_duration_to_seconds(duration_match.group(1))
         metrics["p50"]  = parse_duration_to_seconds(duration_match.group(2))  # median = p50
         metrics["p95"]  = parse_duration_to_seconds(duration_match.group(4))
+
+    # p(99) is captured separately so older runs (which lacked p(99) in their
+    # summary text) still parse the rest of the metrics. New runs include
+    # p(99) because summaryTrendStats in the k6 options now requests it.
+    # When present, p99 is computed by k6 over the *entire* request population
+    # — matching the methodology used for p95 and avoiding the apples-to-
+    # oranges comparison that resulted from time-averaging Prometheus values.
+    p99_match = re.search(
+        r"http_req_duration\.*:.*?p\(99\)=(\S+)",
+        text,
+        re.DOTALL,
+    )
+    if p99_match:
+        metrics["p99"] = parse_duration_to_seconds(p99_match.group(1))
 
     expected_match = re.search(
         r"\{\s*expected_response:true\s*\}\.*:\s+avg=(\S+).*?p\(90\)=(\S+)\s+p\(95\)=(\S+)",
@@ -1028,8 +1042,11 @@ def main():
             "avg_error_rate_percent":k6_or_prom(k6_summary_metrics, "error_rate_percent", average_value(error_rate)),
             "avg_p50_ms":            k6_or_prom(k6_summary_metrics, "p50",  average_value(latency["p50"]), scale=1000),
             "avg_p95_ms":            k6_or_prom(k6_summary_metrics, "p95",  average_value(latency["p95"]), scale=1000),
-            # p99 is not in k6 summary — Prometheus time-average only (caveat: averages per-interval p99s)
-            "avg_p99_ms":            round(average_value(latency["p99"]) * 1000, 3),
+            # p99 now uses k6's true population p99 when available (post-fix runs
+            # with summaryTrendStats including p(99)). Older runs fall back to
+            # max-over-time of windowed p99 — guaranteed >= p95 and a defensible
+            # worst-case-tail aggregation, unlike the original time-average.
+            "avg_p99_ms":            k6_or_prom(k6_summary_metrics, "p99", max((v for _, v in latency["p99"]), default=0), scale=1000),
             "max_vus":               round(max((value for _, value in vus), default=0), 3),
             "max_web_restart_total": round(max((row["web_restart_total"]  for row in snapshots), default=0), 3),
             "max_jobs_restart_total":round(max((row["jobs_restart_total"] for row in snapshots), default=0), 3),
@@ -1065,7 +1082,7 @@ def main():
                 "avg_error_rate_percent":k6_or_prom(k6_summary_metrics, "error_rate_percent", average_value(error_rate)),
                 "avg_p50_ms":            k6_or_prom(k6_summary_metrics, "p50",  average_value(latency["p50"]), scale=1000),
                 "avg_p95_ms":            k6_or_prom(k6_summary_metrics, "p95",  average_value(latency["p95"]), scale=1000),
-                "avg_p99_ms":            round(average_value(latency["p99"]) * 1000, 3),
+                "avg_p99_ms":            k6_or_prom(k6_summary_metrics, "p99", max((v for _, v in latency["p99"]), default=0), scale=1000),
                 "max_vus":               round(max((value for _, value in vus), default=0), 3),
                 "max_web_restart_total": round(max((row["web_restart_total"] for row in snapshots), default=0), 3),
                 "max_jobs_restart_total":round(max((row["jobs_restart_total"] for row in snapshots), default=0), 3),

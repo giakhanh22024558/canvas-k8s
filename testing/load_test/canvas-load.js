@@ -57,7 +57,17 @@ const profilePresets = {
 
 function buildOptions() {
   const preset = profilePresets[profileName] || profilePresets.load;
-  const options = { thresholds: defaultThresholds, setupTimeout: "120s" };
+  const options = {
+    thresholds: defaultThresholds,
+    setupTimeout: "120s",
+    // Include p(99) so it appears in k6's end-of-test summary text. The
+    // summary parser in plot_prometheus.py reads this for avg_p99_ms.
+    // Without this, p99 falls back to averaging Prometheus windowed values,
+    // which produces an apples-to-oranges comparison with p95 (true
+    // population statistic) and can yield p99 < p95 for workloads with rare
+    // tail spikes (cold starts, occasional GC pauses, etc.).
+    summaryTrendStats: ["avg", "min", "med", "max", "p(90)", "p(95)", "p(99)"],
+  };
 
   if (__ENV.STAGES_JSON) {
     try {
