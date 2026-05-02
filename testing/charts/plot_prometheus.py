@@ -715,9 +715,15 @@ def k6_or_prom(k6_summary, k6_key, prom_value, scale=1.0):
     k6 summary metrics (error rate, p50, p95, throughput) are computed
     over every request in the test and are unaffected by the setup() phase
     or equal-weight time-averaging that Prometheus applies.
+
+    The `scale` factor (e.g. 1000 to convert seconds → milliseconds) is
+    applied to BOTH paths so callers can rely on a consistent unit
+    regardless of whether k6 supplied the value or Prometheus did.
     """
     v = k6_summary.get(k6_key)
-    return round(v * scale, 3) if v is not None else round(prom_value, 3)
+    if v is not None:
+        return round(v * scale, 3)
+    return round(prom_value * scale, 3)
 
 
 def plot_comparison_p95(output_dir, comparison_rows):
