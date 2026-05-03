@@ -175,15 +175,21 @@ def read_snapshots_csv(path: Path, started_at, column):
 
 # ── plotting ──────────────────────────────────────────────────────────────────
 
-def plot_band(ax, grid, agg, label, color, show_band=True):
-    """agg is the (mean, std, n) tuple returned by aggregate_runs."""
+def plot_band(ax, grid, agg, label, color, show_band=True, scale=1.0):
+    """agg is the (mean, std, n) tuple returned by aggregate_runs.
+
+    `scale` multiplies both mean and std before plotting (e.g. 1000 to
+    convert Prometheus seconds → milliseconds).
+    """
     if agg is None or agg[0] is None:
         return
     mean, std, _ = agg
     minutes = grid / 60.0
-    ax.plot(minutes, mean, label=label, color=color, linewidth=2)
-    if show_band and std is not None:
-        ax.fill_between(minutes, mean - std, mean + std,
+    mean_s = mean * scale
+    std_s = std * scale if std is not None else None
+    ax.plot(minutes, mean_s, label=label, color=color, linewidth=2)
+    if show_band and std_s is not None:
+        ax.fill_between(minutes, mean_s - std_s, mean_s + std_s,
                         alpha=0.20, color=color, linewidth=0)
 
 
@@ -209,9 +215,11 @@ def plot_throughput_error(grid, tput, err, output, experiment, n_runs):
 
 def plot_latency(grid, p50, p95, p99, output, experiment, n_runs):
     fig, ax = plt.subplots(figsize=(11, 5))
-    plot_band(ax, grid, p50, "p50",  "#2ca02c")
-    plot_band(ax, grid, p95, "p95",  "#ff7f0e")
-    plot_band(ax, grid, p99, "p99",  "#d62728")
+    # Prometheus k6_http_req_duration_pXX is in seconds — scale to ms so the
+    # axis label "Latency (ms)" matches the displayed values.
+    plot_band(ax, grid, p50, "p50",  "#2ca02c", scale=1000)
+    plot_band(ax, grid, p95, "p95",  "#ff7f0e", scale=1000)
+    plot_band(ax, grid, p99, "p99",  "#d62728", scale=1000)
     ax.set_xlabel("Minutes from test start")
     ax.set_ylabel("Latency (ms)")
     ax.set_yscale("log")
