@@ -1,0 +1,16 @@
+metric,value
+test_id,stage3-prescaled-prescaled-long-stress-run01
+label,long-stress
+scaling_mode,prescaled
+avg_throughput_rps,22.114
+avg_error_rate_percent,1.42
+avg_p50_ms,99.26
+avg_p95_ms,276.91
+avg_p99_ms,408.25
+max_vus,60.0
+max_web_restart_total,0.0
+max_jobs_restart_total,0.0
+avg_web_memory_mb,14340.509
+avg_jobs_memory_mb,4596.732
+max_hpa_cpu_percent,88.335
+prom_fallback_used,0
