@@ -41,9 +41,12 @@ case "$TEST_TYPE" in
     export VUS="${VUS:-15}"
     export DURATION="${DURATION:-30m}"
     ;;
-  long-stress)
-    # Extended stress test — holds each VU level long enough for HPA to scale and stabilize
-    # Total ~23 minutes: ramp to 10 → hold 5m → ramp to 30 → hold 5m → ramp to 60 → hold 5m → ramp down
+  staircase|long-stress)
+    # Staircase load — three discrete VU levels with 5-min holds. Lets HPA
+    # converge on each step so we can observe scale-out latency and the
+    # cooldown stabilization-window behaviour separately.
+    # Total ~23 min: ramp 10 → hold 5m → ramp 30 → hold 5m → ramp 60 → hold 5m → ramp down.
+    # `long-stress` is kept as a backward-compatible alias.
     export STAGES_JSON="${STAGES_JSON:-[{\"duration\":\"2m\",\"target\":10},{\"duration\":\"5m\",\"target\":10},{\"duration\":\"2m\",\"target\":30},{\"duration\":\"5m\",\"target\":30},{\"duration\":\"2m\",\"target\":60},{\"duration\":\"5m\",\"target\":60},{\"duration\":\"2m\",\"target\":0}]}"
     ;;
   breakpoint)
@@ -53,7 +56,7 @@ case "$TEST_TYPE" in
     ;;
   *)
     echo "Unsupported TEST_TYPE: $TEST_TYPE"
-    echo "Use one of: smoke, load, stress, soak, long-stress, breakpoint"
+    echo "Use one of: smoke, load, stress, soak, staircase, breakpoint"
     exit 1
     ;;
 esac

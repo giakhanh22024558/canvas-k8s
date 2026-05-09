@@ -452,11 +452,11 @@ bash testing/start-collectors.sh
 cd ~/canvas-k8s
 git pull origin khanh-dev/testing
 EXPERIMENT_NAME=stage5-hpa-tuned-run01 \
-  TEST_TYPE=long-stress \
+  TEST_TYPE=staircase \
   bash testing/run-load-test.sh
 ```
 
-`TEST_TYPE` options: `smoke` (30s), `load` (5m), `long-stress` (~26m), `breakpoint`, `soak` (30m).
+`TEST_TYPE` options: `smoke` (30s), `load` (5m), `staircase` (~23m, ramp 10→30→60 with 5-min holds), `breakpoint` (~20m, ramps 1→100 to find capacity), `soak` (30m). The legacy alias `long-stress` still maps to `staircase`.
 
 **3. On the SUT — stop collectors, fold their CSVs into the run folder, regenerate charts:**
 
@@ -671,7 +671,7 @@ Each stage isolates exactly one variable from the previous one so cross-stage de
 - Deploy with `./deploy.sh baseline` — exactly 1 web pod and 1 jobs pod, naive resource values, no HPA.
 - Install VPA recommender + apply observe-only VPA CRs: `bash testing/vpa-recommend.sh setup`. It collects usage stats while the test runs but never mutates the pods (`updateMode: "Off"`).
 
-**Action**: ramp k6 load until the pod's CPU sits at ~70-80%. The `load` profile (10 VUs, 5 min) is usually enough for a single pod to reach that range; if not, switch to `long-stress` for a longer hold at the highest VU level.
+**Action**: ramp k6 load until the pod's CPU sits at ~70-80%. The `load` profile (10 VUs, 5 min) is usually enough for a single pod to reach that range; if not, switch to `staircase` for a longer hold at the highest VU level.
 
 ```bash
 ./deploy.sh baseline
@@ -680,7 +680,7 @@ bash testing/vpa-recommend.sh setup
 SEED_PREFIX=thesis \
   RUNS_PER_SCENARIO=3 \
   MATRIX_MODES=baseline \
-  MATRIX_SCENARIOS=long-stress \
+  MATRIX_SCENARIOS=staircase \
   EXPERIMENT_NAME=stage1-baseline-vpa \
   COOLDOWN_SECONDS=300 \
   bash testing/run-experiment-matrix.sh
@@ -726,16 +726,16 @@ SEED_PREFIX=thesis \
 **Setup**:
 - HPA enabled with stock Kubernetes defaults: `targetAverageUtilization: 80%`, no `behavior:` block (so K8s applies built-in scale policies — 5-min scale-down stabilization, 0-second scale-up window, max +100% per minute).
 - Resources: VPA-recommended values from Stage 1.
-- Load profile: a custom `STAGES_JSON` that ramps to **`MAX_VUS`** from Stage 2 (override the default `long-stress` if it caps at 60 and `MAX_VUS` is higher).
+- Load profile: a custom `STAGES_JSON` that ramps to **`MAX_VUS`** from Stage 2 (override the default `staircase` if it caps at 60 and `MAX_VUS` is higher).
 
 ```bash
 ./deploy.sh hpa-naive
 
-# Adjust STAGES_JSON if Stage 2's MAX_VUS exceeds 60 (long-stress default cap)
+# Adjust STAGES_JSON if Stage 2's MAX_VUS exceeds 60 (staircase default cap)
 SEED_PREFIX=thesis \
   RUNS_PER_SCENARIO=5 \
   MATRIX_MODES=hpa-naive \
-  MATRIX_SCENARIOS=long-stress \
+  MATRIX_SCENARIOS=staircase \
   EXPERIMENT_NAME=stage3-hpa-naive \
   COOLDOWN_SECONDS=300 \
   SKIP_DEPLOY=true \
@@ -765,7 +765,7 @@ SEED_PREFIX=thesis \
 SEED_PREFIX=thesis \
   RUNS_PER_SCENARIO=5 \
   MATRIX_MODES=hpa \
-  MATRIX_SCENARIOS=long-stress \
+  MATRIX_SCENARIOS=staircase \
   EXPERIMENT_NAME=stage4-hpa-tuned \
   COOLDOWN_SECONDS=300 \
   SKIP_DEPLOY=true \
@@ -784,7 +784,7 @@ PRESCALED_WEB_REPLICAS=5 PRESCALED_JOBS_REPLICAS=3 ./deploy.sh prescaled
 SEED_PREFIX=thesis \
   RUNS_PER_SCENARIO=5 \
   MATRIX_MODES=prescaled \
-  MATRIX_SCENARIOS=long-stress \
+  MATRIX_SCENARIOS=staircase \
   EXPERIMENT_NAME=optional-prescaled \
   COOLDOWN_SECONDS=300 \
   SKIP_DEPLOY=true \
@@ -800,7 +800,7 @@ SEED_PREFIX=thesis \
 | `SKIP_DEPLOY=true` | Skip `deploy.sh` between runs (use when resources have been manually patched) |
 | `COOLDOWN_SECONDS=300` | Sleep between runs to let CPU/memory settle |
 | `MATRIX_MODES=hpa,prescaled` | Comma-separated list of `deploy.sh` modes |
-| `MATRIX_SCENARIOS=long-stress,breakpoint` | Comma-separated k6 profiles |
+| `MATRIX_SCENARIOS=staircase,breakpoint` | Comma-separated k6 profiles |
 | `EXPERIMENT_NAME=stage5-hpa-tuned` | Prefix used in `test_id` and manifest filename |
 | `FLUSH_REDIS_BETWEEN_RUNS=true` | Redis FLUSHALL before each run |
 
@@ -815,8 +815,8 @@ bash testing/vpa-recommend.sh install
 # Apply observe-only VPA objects (defined in deployment/vpa-recommendation.yaml)
 bash testing/vpa-recommend.sh apply
 
-# Run real load while VPA observes (any of the test profiles works; long-stress is best)
-TEST_TYPE=long-stress TEST_ID=stage2-vpa-profile bash testing/run-load-test.sh
+# Run real load while VPA observes (any of the test profiles works; staircase is best)
+TEST_TYPE=staircase TEST_ID=stage2-vpa-profile bash testing/run-load-test.sh
 
 # After the load test, read recommendations
 bash testing/vpa-recommend.sh show

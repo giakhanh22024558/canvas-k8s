@@ -25,9 +25,11 @@ import numpy as np
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-KNOWN_SCENARIOS = {"smoke", "load", "stress", "long-stress", "soak", "breakpoint"}
+# `long-stress` is kept alongside `staircase` so manifests written before the
+# rename still parse. New runs should record `staircase`.
+KNOWN_SCENARIOS = {"smoke", "load", "stress", "staircase", "long-stress", "soak", "breakpoint"}
 
-SCENARIO_ORDER = ["smoke", "load", "stress", "long-stress", "soak", "breakpoint"]
+SCENARIO_ORDER = ["smoke", "load", "stress", "staircase", "long-stress", "soak", "breakpoint"]
 
 MODE_COLORS = {
     "baseline":  "#1f77b4",   # blue
