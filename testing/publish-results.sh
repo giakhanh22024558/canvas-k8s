@@ -51,7 +51,14 @@ if [[ -z "$TEST_ID" ]]; then
   # Plain `sort` works here because the date+time format is lexicographically
   # ordered — the most recent run always sorts last.
   # Non-timestamped folders like grafana-stress-check are excluded.
-  RUN_DIR="$(find "$RESULTS_DIR" -mindepth 1 -maxdepth 1 -type d -name 'canvas-*' | sort | tail -n 1)"
+  # Match any folder whose name ends in -YYYYMMDD-HHMMSS (timestamp suffix
+  # added by run-load-test.sh, regardless of EXPERIMENT_NAME prefix). Plain
+  # `sort` is correct because the timestamp suffix sorts lexicographically;
+  # the most recent run sorts last. Excludes analysis-* and the legacy
+  # canvas-* prefix is just one of many possible prefixes now.
+  RUN_DIR="$(find "$RESULTS_DIR" -mindepth 1 -maxdepth 1 -type d \
+              -regextype posix-extended -regex '.*-[0-9]{8}-[0-9]{6}$' \
+              | sort | tail -n 1)"
   TEST_ID="$(basename "$RUN_DIR")"
 else
   RUN_DIR="$RESULTS_DIR/$TEST_ID"

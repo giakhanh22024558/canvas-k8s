@@ -31,7 +31,10 @@ bash "$SCRIPT_DIR/stop-collectors.sh" || true
 
 # 2. Resolve run folder
 if [[ -z "$TEST_ID" ]]; then
-  RUN_DIR="$(find "$RESULTS_DIR" -mindepth 1 -maxdepth 1 -type d -name 'canvas-*' \
+  # Match any folder whose name ends in -YYYYMMDD-HHMMSS — covers both legacy
+  # canvas-* runs and the new {EXPERIMENT_NAME}-{timestamp} convention.
+  RUN_DIR="$(find "$RESULTS_DIR" -mindepth 1 -maxdepth 1 -type d \
+              -regextype posix-extended -regex '.*-[0-9]{8}-[0-9]{6}$' \
               | sort | tail -n 1)"
   if [[ -z "$RUN_DIR" ]]; then
     echo "ERROR: no canvas-* run folder under $RESULTS_DIR — has the load gen pushed yet?"
