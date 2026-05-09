@@ -28,7 +28,13 @@ const profilePresets = {
       { duration: "2m", target: 0 },
     ],
   },
-  "long-stress": {
+  // staircase — ramp-and-hold load profile. Three discrete VU levels with
+  // 5-min holds, giving HPA stable steady-state windows to converge on each
+  // step. The shape (low → mid → high → ramp-down) lets us observe scale-out
+  // latency and the cooldown stabilization-window behaviour separately. Total
+  // ~23 min. "long-stress" is kept as a backward-compatible alias so old
+  // experiment manifests still resolve.
+  staircase: {
     stages: [
       { duration: "2m", target: 10 },
       { duration: "5m", target: 10 },
@@ -55,8 +61,15 @@ const profilePresets = {
   soak: { vus: 15, duration: "30m" },
 };
 
+// Backward-compat alias map: old TEST_TYPE values mapped to their new names.
+// Lets pre-existing scripts and experiment manifests keep working unchanged.
+const profileAliases = {
+  "long-stress": "staircase",
+};
+
 function buildOptions() {
-  const preset = profilePresets[profileName] || profilePresets.load;
+  const resolvedName = profileAliases[profileName] || profileName;
+  const preset = profilePresets[resolvedName] || profilePresets.load;
   const options = {
     thresholds: defaultThresholds,
     setupTimeout: "120s",

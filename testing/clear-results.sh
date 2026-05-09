@@ -36,7 +36,7 @@ while [[ $# -gt 0 ]]; do
       echo "  (no flags)          Interactive mode — choose what to delete"
       echo "  --all               Delete every result folder"
       echo "  --type <test_type>  Delete all runs of a specific type"
-      echo "                      Types: smoke, load, stress, long-stress, breakpoint, soak"
+      echo "                      Types: smoke, load, stress, staircase, breakpoint, soak"
       echo "  --id <test_id>      Delete one specific run folder"
       echo "  --dry-run           Preview what would be deleted without actually deleting"
       echo "  -h, --help          Show this help"
@@ -124,7 +124,7 @@ if [[ -z "$MODE" ]]; then
     1) MODE="all" ;;
     2)
       MODE="type"
-      read -rp "Test type (smoke/load/stress/long-stress/breakpoint/soak): " FILTER_TYPE
+      read -rp "Test type (smoke/load/stress/staircase/breakpoint/soak): " FILTER_TYPE
       ;;
     3)
       MODE="id"
