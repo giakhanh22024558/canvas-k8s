@@ -201,6 +201,7 @@ def read_jobs_queue_csv(path: Path, started_at):
                 continue
 
     prev_cum, prev_ts = None, None
+    last_nonzero = 0.0
     for r in rows:
         rel = (r["ts"] - started_at).total_seconds()
         pending.append((rel, r["pending"]))
@@ -210,9 +211,19 @@ def read_jobs_queue_csv(path: Path, started_at):
         else:
             dt_seconds = (r["ts"] - prev_ts).total_seconds()
             d_cum = r["cum"] - prev_cum
-            rate = (d_cum / dt_seconds) * 60.0 if dt_seconds > 0 and d_cum >= 0 else 0.0
+            # Mirror the reset-recovery + big-drop guards in
+            # load_jobs_queue() so an aggregate Stage 2 chart doesn't get
+            # spiked by a single Postgres-stat reset window.
+            reset_recovery = prev_cum == 0 and r["cum"] > 0 and last_nonzero > 0
+            big_drop = r["cum"] < last_nonzero / 2 and last_nonzero > 100
+            if dt_seconds <= 0 or d_cum < 0 or reset_recovery or big_drop:
+                rate = 0.0
+            else:
+                rate = (d_cum / dt_seconds) * 60.0
             jpm.append((rel, rate))
         prev_cum, prev_ts = r["cum"], r["ts"]
+        if r["cum"] > 0:
+            last_nonzero = r["cum"]
     return pending, age, jpm
 
 
