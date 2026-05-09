@@ -175,7 +175,7 @@
       "id": 5,
       "targets": [
         {
-          "expr": "100 * sum(rate(k6_http_req_failed_total{expected_response=\"false\"}[1m])) / clamp_min(sum(rate(k6_http_reqs_total[1m])), 0.01)",
+          "expr": "100 * avg(k6_http_req_failed_rate)",
           "refId": "A",
           "instant": true
         }
@@ -1149,7 +1149,7 @@
       "targets": [
         {
           "format": "table",
-          "rawSql": "SELECT count(*)::int AS waits FROM pg_stat_activity WHERE wait_event_type IS NOT NULL",
+          "rawSql": "SELECT count(*)::int AS waits FROM pg_stat_activity WHERE wait_event_type IN ('Lock','LWLock','BufferPin') AND state = 'active'",
           "refId": "A"
         }
       ],
@@ -1240,7 +1240,7 @@
       "targets": [
         {
           "format": "time_series",
-          "rawSql": "SELECT now() AS time, count(*) FILTER (WHERE state='active')::int AS active, count(*) FILTER (WHERE state='idle')::int AS idle, count(*) FILTER (WHERE wait_event_type IS NOT NULL)::int AS waiting FROM pg_stat_activity",
+          "rawSql": "SELECT now() AS time, count(*) FILTER (WHERE state='active')::int AS active, count(*) FILTER (WHERE state='idle')::int AS idle, count(*) FILTER (WHERE wait_event_type IN ('Lock','LWLock','BufferPin') AND state = 'active')::int AS waiting FROM pg_stat_activity",
           "refId": "A"
         }
       ],
