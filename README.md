@@ -1133,7 +1133,7 @@ A run is considered "DB-clean" — meaning bottlenecks observed are application-
 | Postgres | Cache hit ratio | > 99% | `pg_stat_database.blks_hit / (blks_hit+blks_read)` |
 | Redis | CPU | < 50% of one vCPU peak | `kubectl top` via `collect-redis-metrics.sh` |
 | Redis | Memory | < 80% of `maxmemory` | `INFO memory` |
-| Redis | Hit ratio | > 95% | `keyspace_hits / (hits + misses)` |
+| Redis | Hit ratio (rolling, per 5s window) | > 90% (LMS workload baseline) | derived from `INFO stats.keyspace_hits / misses` deltas between consecutive samples |
 | Redis | Evictions | = 0 (cumulative) | `INFO stats.evicted_keys` |
 
 If any invariant is violated, the run is excluded from autoscaling claims and the bottleneck is reported as the DB tier instead.
@@ -1182,7 +1182,7 @@ kill $PG_PID $REDIS_PID
 | `min_cache_hit_ratio_percent` | min cache hit ratio | > 99 |
 | `peak_redis_cpu_millicores` | max Redis CPU | < 500 |
 | `peak_redis_memory_mb` | max Redis memory used | < 80% of maxmemory |
-| `min_redis_hit_ratio_percent` | min Redis hit ratio | > 95 |
+| `min_redis_hit_ratio_percent` | min rolling-window Redis hit ratio | > 90 |
 | `redis_evictions_total` | cumulative evictions seen | = 0 |
 
 ### Live monitoring during defense
@@ -1219,7 +1219,7 @@ This is the audit reference for what each summary metric actually measures and h
 | `total_slow_queries_over_1s` | `postgres-health.csv` | max snapshot count of queries running > 1s |
 | `min_cache_hit_ratio_percent` | `postgres-health.csv` | min observed `blks_hit / (blks_hit+blks_read)` × 100 |
 | `peak_redis_cpu_millicores`, `peak_redis_memory_mb` | `redis-health.csv` | max of `kubectl top` and `INFO memory.used_memory` samples |
-| `min_redis_hit_ratio_percent` | `redis-health.csv` | min cumulative `keyspace_hits / (hits+misses)` × 100 |
+| `min_redis_hit_ratio_percent` | `redis-health.csv` | min **rolling-window** `keyspace_hits / (hits+misses)` × 100 — derived from per-sample deltas, *not* cumulative since pod start |
 | `redis_evictions_total` | `redis-health.csv` | last value of `INFO stats.evicted_keys` cumulative counter |
 
 ### Time-series chart provenance
