@@ -22,6 +22,27 @@ kubectl create configmap grafana-dashboard \
   -n canvas-monitoring \
   --dry-run=client -o yaml | kubectl apply -f -
 
+kubectl create configmap grafana-jobs-dashboard \
+  --from-file=jobs-tier-dashboard.json="$SCRIPT_DIR/grafana/jobs-tier-dashboard.json" \
+  -n canvas-monitoring \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# Mirror canvas-secret (DB credentials) from canvas namespace to canvas-monitoring
+# so Grafana's Postgres data source can authenticate. Secrets are namespace-
+# scoped, so we copy DB_USER/DB_PASSWORD/DB_NAME into a small dedicated secret
+# instead of importing the whole canvas-secret. Re-runs idempotently.
+echo "Mirroring DB credentials to canvas-monitoring/canvas-secret-mirror ..."
+DB_USER=$(kubectl get secret canvas-secret -n canvas -o jsonpath='{.data.DB_USER}' | base64 -d)
+DB_PASSWORD=$(kubectl get secret canvas-secret -n canvas -o jsonpath='{.data.DB_PASSWORD}' | base64 -d)
+DB_NAME=$(kubectl get secret canvas-secret -n canvas -o jsonpath='{.data.DB_NAME}' | base64 -d)
+kubectl create secret generic canvas-secret-mirror \
+  --from-literal=DB_USER="$DB_USER" \
+  --from-literal=DB_PASSWORD="$DB_PASSWORD" \
+  --from-literal=DB_NAME="$DB_NAME" \
+  -n canvas-monitoring \
+  --dry-run=client -o yaml | kubectl apply -f -
+unset DB_USER DB_PASSWORD DB_NAME
+
 kubectl apply -f "$SCRIPT_DIR/monitoring/grafana.yaml"
 kubectl rollout restart deployment/grafana -n canvas-monitoring
 
