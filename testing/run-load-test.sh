@@ -209,9 +209,38 @@ echo "ended_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$RUN_DIR/metadata.env"
 echo "Finished load test with testid=$TEST_ID"
 echo "Saved run output to $RUN_DIR"
 
-# Chart generation and git push are NOT done here — call publish-results.sh
-# manually after all matrix runs complete:
-#   TEST_ID=<id> bash testing/publish-results.sh
+# Raw data lives on the load gen disk. There are two ways to get charts:
+#   1. Manual:  TEST_ID=<id> bash testing/publish-results.sh on the SUT, which
+#               rsyncs the run folder via LOADGEN_SSH_HOST then plots.
+#   2. Auto:    set SUT_SSH_HOST in testing.env (e.g. "ubuntu@172.31.27.241")
+#               and this script will SSH into the SUT right now and trigger
+#               publish-results.sh remotely. The rsync, chart gen, and results-
+#               repo push all happen on the SUT — no bytes go through the main
+#               canvas-k8s repo, so it doesn't bloat over time.
 echo "Raw data saved to $RUN_DIR"
 echo "  k6-summary.txt, k8s-snapshots.csv, metadata.env, environment.env"
-echo "Run 'TEST_ID=$TEST_ID bash testing/publish-results.sh' to generate charts."
+
+SUT_SSH_HOST="${SUT_SSH_HOST:-}"
+SUT_REPO_DIR="${SUT_REPO_DIR:-/home/ubuntu/canvas-k8s}"
+SUT_SSH_KEY="${SUT_SSH_KEY:-}"
+
+if [[ -n "$SUT_SSH_HOST" ]]; then
+  SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
+  if [[ -n "$SUT_SSH_KEY" ]]; then
+    SSH_OPTS="$SSH_OPTS -i $SUT_SSH_KEY"
+  fi
+
+  echo ""
+  echo "Triggering publish-results.sh on SUT ($SUT_SSH_HOST) for $TEST_ID ..."
+  # The SUT's publish-results.sh:
+  # 1. git pulls latest plotting code
+  # 2. rsyncs the run folder from this load gen via LOADGEN_SSH_HOST
+  # 3. queries Prometheus, generates charts, pushes to the *results* repo
+  # All chart bytes land in the dedicated results repo — never in canvas-k8s.
+  ssh $SSH_OPTS "$SUT_SSH_HOST" \
+    "cd $SUT_REPO_DIR && TEST_ID=$TEST_ID bash testing/publish-results.sh" \
+    || echo "WARN: remote publish-results.sh on SUT failed. Run it manually: ssh $SUT_SSH_HOST 'cd $SUT_REPO_DIR && TEST_ID=$TEST_ID bash testing/publish-results.sh'"
+else
+  echo "Run 'TEST_ID=$TEST_ID bash testing/publish-results.sh' on the SUT to generate charts."
+  echo "Tip: set SUT_SSH_HOST in testing.env to auto-trigger publish here."
+fi
