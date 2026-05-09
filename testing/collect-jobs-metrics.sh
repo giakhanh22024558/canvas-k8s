@@ -47,8 +47,8 @@ SQL="SELECT
   count(*) FILTER (WHERE locked_at IS NULL AND failed_at IS NULL) AS pending,
   count(*) FILTER (WHERE locked_at IS NOT NULL AND failed_at IS NULL) AS running,
   count(*) FILTER (WHERE failed_at IS NOT NULL) AS failed,
-  COALESCE(EXTRACT(EPOCH FROM (now() - min(run_at))) FILTER
-    (WHERE locked_at IS NULL AND failed_at IS NULL AND run_at <= now()), 0)::int AS oldest_age,
+  COALESCE(EXTRACT(EPOCH FROM (now() - min(run_at)
+    FILTER (WHERE locked_at IS NULL AND failed_at IS NULL AND run_at <= now()))), 0)::int AS oldest_age,
   COALESCE((SELECT n_tup_del FROM pg_stat_user_tables WHERE relname='delayed_jobs'), 0) AS processed
 FROM delayed_jobs;"
 
