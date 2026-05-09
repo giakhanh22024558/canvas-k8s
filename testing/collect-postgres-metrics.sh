@@ -36,7 +36,8 @@ SQL="SELECT
   count(*) FILTER (WHERE state = 'active'),
   count(*) FILTER (WHERE state = 'idle'),
   count(*) FILTER (WHERE state = 'idle in transaction'),
-  count(*) FILTER (WHERE wait_event_type IS NOT NULL),
+  count(*) FILTER (WHERE wait_event_type IN ('Lock','LWLock','BufferPin')
+                     AND state = 'active'),
   count(*) FILTER (WHERE state = 'active' AND now() - query_start > interval '1 second'),
   (SELECT current_setting('max_connections')::int),
   (SELECT round(100.0 * sum(blks_hit)::numeric / nullif(sum(blks_hit + blks_read), 0), 2)
