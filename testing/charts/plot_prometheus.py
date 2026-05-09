@@ -446,6 +446,162 @@ def load_snapshots(path):
     return rows
 
 
+def load_jobs_queue(path):
+    """Load jobs-queue.csv produced by collect-jobs-metrics.sh.
+
+    Returns a list of dicts sorted by timestamp. Throughput (jobs/min) is
+    derived post-hoc from the cumulative `total_processed_cumulative` counter
+    using the time delta between consecutive samples — delayed_job removes
+    rows on success, so n_tup_del is monotonic.
+    """
+    if not path.exists():
+        return []
+
+    rows = []
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        for row in reader:
+            row["timestamp"] = parse_timestamp(row["timestamp"])
+            for key, value in row.items():
+                if key == "timestamp":
+                    continue
+                row[key] = parse_numeric(value)
+            rows.append(row)
+
+    # Compute jobs-per-minute from cumulative counter diff. First sample has
+    # no predecessor, so set rate to 0 — chart will start flat for one tick.
+    prev_count = None
+    prev_ts = None
+    for row in rows:
+        cur_count = row.get("total_processed_cumulative", 0) or 0
+        cur_ts = row["timestamp"]
+        if prev_count is None or prev_ts is None:
+            row["jobs_per_minute"] = 0.0
+        else:
+            dt_seconds = (cur_ts - prev_ts).total_seconds()
+            d_count = cur_count - prev_count
+            # Counter resets (e.g. Postgres stats reset) → treat as 0.
+            if dt_seconds <= 0 or d_count < 0:
+                row["jobs_per_minute"] = 0.0
+            else:
+                row["jobs_per_minute"] = (d_count / dt_seconds) * 60.0
+        prev_count = cur_count
+        prev_ts = cur_ts
+    return rows
+
+
+def plot_jobs_queue(output_dir, label, jobs_rows, snapshots=None):
+    """Three-panel jobs-tier chart: queue depth + replicas, age, throughput.
+
+    queue_depth: pending jobs over time, with jobs replicas overlay if
+                 snapshots provided. Direct visual of "is HPA scaling enough?"
+    age:         oldest pending job age in seconds — proxy for end-user-
+                 perceived latency-to-start. SLO line drawn at 10s.
+    throughput:  jobs processed per minute (derived from delayed_jobs n_tup_del
+                 counter). Counterpart of HTTP RPS for the async tier.
+    """
+    if not jobs_rows:
+        return
+
+    fig, axes = plt.subplots(3, 1, figsize=(12, 10), sharex=True)
+    ax_q, ax_age, ax_tput = axes
+
+    xs = [row["timestamp"] for row in jobs_rows]
+
+    # Panel 1 — queue depth + jobs replica overlay
+    ax_q.plot(xs, [row["pending"] for row in jobs_rows],
+              color="#d62728", linewidth=2, label="Pending (queued)")
+    ax_q.plot(xs, [row["running"] for row in jobs_rows],
+              color="#2ca02c", linewidth=1.5, alpha=0.8, label="Running")
+    ax_q.set_ylabel("Jobs in queue", color="#d62728")
+    ax_q.tick_params(axis="y", labelcolor="#d62728")
+    ax_q.set_title(f"Jobs Queue Depth and Worker Replicas ({label})")
+    ax_q.grid(alpha=0.25)
+
+    if snapshots:
+        replica_xs = [row["timestamp"] for row in snapshots]
+        replica_ys = [row.get("jobs_ready_replicas") or row.get("jobs_spec_replicas") or 0
+                      for row in snapshots]
+        if len(set(replica_ys)) > 1:
+            ax_q_r = ax_q.twinx()
+            ax_q_r.step(replica_xs, replica_ys, where="post",
+                        color="#9467bd", linewidth=2, label="Jobs replicas")
+            ax_q_r.set_ylabel("Replica count", color="#9467bd")
+            ax_q_r.tick_params(axis="y", labelcolor="#9467bd")
+            handles_l = ax_q.get_lines()
+            handles_r = ax_q_r.get_lines()
+            ax_q.legend(handles_l + handles_r,
+                        [h.get_label() for h in handles_l + handles_r],
+                        loc="upper left")
+        else:
+            ax_q.legend(loc="upper left")
+    else:
+        ax_q.legend(loc="upper left")
+
+    # Panel 2 — oldest pending age (latency to start)
+    ages = [row["oldest_pending_age_sec"] for row in jobs_rows]
+    ax_age.plot(xs, ages, color="#ff7f0e", linewidth=2, label="Oldest pending age")
+    # SLO reference line — 10s is a common default for user-perceived async lag
+    ax_age.axhline(10, color="#888", linestyle="--", linewidth=1, alpha=0.7,
+                   label="10s SLO reference")
+    ax_age.set_ylabel("Seconds")
+    ax_age.set_title("Job Age (latency-to-start)")
+    ax_age.grid(alpha=0.25)
+    ax_age.legend(loc="upper left")
+
+    # Panel 3 — throughput
+    ax_tput.plot(xs, [row["jobs_per_minute"] for row in jobs_rows],
+                 color="#1f77b4", linewidth=2, label="Jobs/min")
+    ax_tput.set_ylabel("Jobs / minute")
+    ax_tput.set_xlabel("Time")
+    ax_tput.set_title("Jobs Throughput")
+    ax_tput.grid(alpha=0.25)
+    ax_tput.legend(loc="upper left")
+
+    apply_time_axis(ax_tput)
+
+    fig.tight_layout()
+    fig.savefig(output_dir / f"jobs_queue_{slugify(label)}.png")
+    plt.close(fig)
+
+
+def compute_jobs_summary(jobs_rows):
+    """Reduce jobs-queue.csv to scalar metrics for the summary CSV row.
+
+    Returns 0 for every metric when no data present so summary CSV stays
+    consistent across runs (some old runs predate the collector).
+    """
+    if not jobs_rows:
+        return {
+            "peak_queue_depth": 0,
+            "avg_queue_depth": 0.0,
+            "peak_job_age_sec": 0.0,
+            "avg_job_age_sec": 0.0,
+            "peak_jobs_per_minute": 0.0,
+            "avg_jobs_per_minute": 0.0,
+            "total_jobs_processed": 0,
+            "peak_failed_jobs": 0,
+        }
+
+    pending = [row["pending"] for row in jobs_rows]
+    ages = [row["oldest_pending_age_sec"] for row in jobs_rows]
+    rates = [row["jobs_per_minute"] for row in jobs_rows]
+    failed = [row["failed"] for row in jobs_rows]
+    processed_first = jobs_rows[0].get("total_processed_cumulative", 0) or 0
+    processed_last = jobs_rows[-1].get("total_processed_cumulative", 0) or 0
+
+    return {
+        "peak_queue_depth":       int(max(pending, default=0)),
+        "avg_queue_depth":        round(sum(pending) / len(pending), 2) if pending else 0.0,
+        "peak_job_age_sec":       round(max(ages, default=0), 2),
+        "avg_job_age_sec":        round(sum(ages) / len(ages), 2) if ages else 0.0,
+        "peak_jobs_per_minute":   round(max(rates, default=0), 2),
+        "avg_jobs_per_minute":    round(sum(rates) / len(rates), 2) if rates else 0.0,
+        "total_jobs_processed":   int(max(0, processed_last - processed_first)),
+        "peak_failed_jobs":       int(max(failed, default=0)),
+    }
+
+
 def plot_cpu_replicas(output_dir, label, cpu_values, snapshots):
     if not cpu_values and not snapshots:
         return
@@ -972,6 +1128,7 @@ def main():
         label = metadata.get("test_type", args.testid)
         snapshots = load_snapshots(run_dir / "k8s-snapshots.csv")
         k6_summary_metrics = parse_k6_summary_metrics(run_dir / "k6-summary.txt")
+        jobs_rows = load_jobs_queue(run_dir / "jobs-queue.csv")
 
         latency, throughput, error_rate, vus, web_cpu, web_memory, jobs_memory, hpa_cpu = collect_run_metrics(
             args.prometheus_url, selector, start, end, step
@@ -1032,6 +1189,10 @@ def main():
             saturation_vu=saturation_vu,
         )
         scaling_summary = plot_scale_latency(output_dir, label, snapshots) or {}
+        # Jobs-tier chart (queue depth + age + throughput). Skipped silently
+        # if jobs-queue.csv is absent — old runs predate the collector.
+        plot_jobs_queue(output_dir, label, jobs_rows, snapshots)
+        jobs_summary = compute_jobs_summary(jobs_rows)
 
         # For summary CSV values prefer the k6 final-summary numbers when
         # available. They are computed over every request in the test
@@ -1062,6 +1223,7 @@ def main():
             "prom_fallback_used":    int(fallback_used),
         }
         summary_metrics.update({key: round(value, 3) if isinstance(value, float) else value for key, value in scaling_summary.items()})
+        summary_metrics.update(jobs_summary)
         write_summary(output_dir, label, summary_metrics)
         comparison_rows.append(summary_metrics)
         latency_overlays[label] = latency

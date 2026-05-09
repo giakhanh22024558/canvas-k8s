@@ -173,6 +173,49 @@ def read_snapshots_csv(path: Path, started_at, column):
     return out
 
 
+def read_jobs_queue_csv(path: Path, started_at):
+    """Return three series — pending, oldest_age, jobs_per_minute — each as
+    [(seconds_from_start, value)]. Throughput is derived from the cumulative
+    n_tup_del counter via diff, identical logic to load_jobs_queue() in
+    plot_prometheus.py.
+    """
+    pending, age, jpm = [], [], []
+    if not path.exists():
+        return pending, age, jpm
+
+    rows = []
+    with path.open() as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            ts_raw = row.get("timestamp", "")
+            if not ts_raw:
+                continue
+            try:
+                rows.append({
+                    "ts": parse_ts(ts_raw),
+                    "pending": float(row.get("pending", 0) or 0),
+                    "age":     float(row.get("oldest_pending_age_sec", 0) or 0),
+                    "cum":     float(row.get("total_processed_cumulative", 0) or 0),
+                })
+            except Exception:
+                continue
+
+    prev_cum, prev_ts = None, None
+    for r in rows:
+        rel = (r["ts"] - started_at).total_seconds()
+        pending.append((rel, r["pending"]))
+        age.append((rel, r["age"]))
+        if prev_cum is None:
+            jpm.append((rel, 0.0))
+        else:
+            dt_seconds = (r["ts"] - prev_ts).total_seconds()
+            d_cum = r["cum"] - prev_cum
+            rate = (d_cum / dt_seconds) * 60.0 if dt_seconds > 0 and d_cum >= 0 else 0.0
+            jpm.append((rel, rate))
+        prev_cum, prev_ts = r["cum"], r["ts"]
+    return pending, age, jpm
+
+
 # ── plotting ──────────────────────────────────────────────────────────────────
 
 def plot_band(ax, grid, agg, label, color, show_band=True, scale=1.0):
@@ -255,6 +298,53 @@ def plot_cpu_replicas(grid, replicas, cpu_pct, output, experiment, n_runs):
     print(f"  → {output}")
 
 
+def plot_jobs_queue(grid, queue_depth, job_age, jobs_per_min, jobs_replicas,
+                    output, experiment, n_runs):
+    """Three-panel jobs-tier aggregate chart: queue depth + replicas, age,
+    throughput. Each line is mean across runs; band is ±1 std. Skipped if
+    no run has jobs-queue.csv data.
+    """
+    has_data = any(agg is not None and agg[0] is not None
+                   for agg in (queue_depth, job_age, jobs_per_min))
+    if not has_data:
+        print(f"  → (skip) no jobs-queue.csv data found for {experiment}")
+        return
+
+    fig, axes = plt.subplots(3, 1, figsize=(11, 11), sharex=True)
+    ax_q, ax_age, ax_tput = axes
+
+    plot_band(ax_q, grid, queue_depth, "Pending jobs", "#d62728")
+    ax_q.set_ylabel("Jobs in queue", color="#d62728")
+    ax_q.tick_params(axis="y", labelcolor="#d62728")
+    ax_q.grid(True, alpha=0.3)
+
+    if jobs_replicas is not None and jobs_replicas[0] is not None:
+        ax_q_r = ax_q.twinx()
+        plot_band(ax_q_r, grid, jobs_replicas, "Jobs replicas", "#9467bd")
+        ax_q_r.set_ylabel("Replica count", color="#9467bd")
+        ax_q_r.tick_params(axis="y", labelcolor="#9467bd")
+
+    plot_band(ax_age, grid, job_age, "Oldest pending age", "#ff7f0e")
+    ax_age.axhline(10, color="#888", linestyle="--", linewidth=1, alpha=0.7,
+                   label="10s SLO reference")
+    ax_age.set_ylabel("Seconds")
+    ax_age.grid(True, alpha=0.3)
+    ax_age.legend(loc="upper left")
+
+    plot_band(ax_tput, grid, jobs_per_min, "Jobs / min", "#1f77b4")
+    ax_tput.set_ylabel("Jobs / minute")
+    ax_tput.set_xlabel("Minutes from test start")
+    ax_tput.grid(True, alpha=0.3)
+    ax_tput.legend(loc="upper left")
+
+    fig.suptitle(f"{experiment} — Jobs Queue, Age, Throughput "
+                 f"(mean ± std, n={n_runs})")
+    fig.tight_layout()
+    fig.savefig(output, dpi=130)
+    plt.close(fig)
+    print(f"  → {output}")
+
+
 def plot_memory(grid, web_mem, jobs_mem, output, experiment, n_runs):
     fig, ax = plt.subplots(figsize=(11, 5))
     plot_band(ax, grid, web_mem,  "Web memory (MB)",  "#1f77b4")
@@ -331,6 +421,8 @@ def main():
         "p50": [], "p95": [], "p99": [],
         "replicas": [], "cpu_pct": [],
         "web_memory": [], "jobs_memory": [],
+        "jobs_queue_depth": [], "jobs_age": [], "jobs_per_min": [],
+        "jobs_replicas": [],
     }
 
     step_str = f"{args.step_seconds}s"
@@ -355,6 +447,10 @@ def main():
         # Replica count from local snapshots CSV (more reliable)
         snap_csv = r["dir"] / "k8s-snapshots.csv"
         rep = read_snapshots_csv(snap_csv, s, "web_ready_replicas")
+        jobs_rep = read_snapshots_csv(snap_csv, s, "jobs_ready_replicas")
+
+        # Jobs-queue series from local CSV (collect-jobs-metrics.sh output)
+        q_pending, q_age, q_jpm = read_jobs_queue_csv(r["dir"] / "jobs-queue.csv", s)
 
         metrics["throughput"].append(to_relative(thr, s))
         metrics["error_rate"].append(to_relative(err, s))
@@ -365,6 +461,10 @@ def main():
         metrics["cpu_pct"].append(to_relative(cpu, s))
         metrics["web_memory"].append(to_relative(wmem, s))
         metrics["jobs_memory"].append(to_relative(jmem, s))
+        metrics["jobs_queue_depth"].append(q_pending)
+        metrics["jobs_age"].append(q_age)
+        metrics["jobs_per_min"].append(q_jpm)
+        metrics["jobs_replicas"].append(jobs_rep)
 
     # Aggregate
     print("\nAggregating across runs...")
@@ -385,6 +485,11 @@ def main():
     plot_memory(grid, agg["web_memory"], agg["jobs_memory"],
                 output_dir / "timeseries_memory.png",
                 args.experiment, n)
+    plot_jobs_queue(grid,
+                    agg["jobs_queue_depth"], agg["jobs_age"],
+                    agg["jobs_per_min"],   agg["jobs_replicas"],
+                    output_dir / "timeseries_jobs_queue.png",
+                    args.experiment, n)
 
     print(f"\nDone. Charts written to {output_dir}/timeseries_*.png")
 

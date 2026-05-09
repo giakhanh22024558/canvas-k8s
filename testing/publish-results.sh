@@ -10,6 +10,42 @@ RESULTS_DIR="${RESULTS_DIR:-$SCRIPT_DIR/results}"
 STEP="${STEP:-15s}"
 TEST_ID="${TEST_ID:-}"
 
+# --- Optional: pull raw k6 results from a remote load generator ----------------
+# When k6 runs on a separate EC2 instance (recommended for clean SUT isolation),
+# the raw run folders live on the load gen, not the SUT. Set LOADGEN_SSH_HOST in
+# testing.env (e.g. "ubuntu@172.31.6.227") to auto-rsync them here before charts
+# are generated. Leave unset to skip (single-host setup).
+LOADGEN_SSH_HOST="${LOADGEN_SSH_HOST:-}"
+LOADGEN_RESULTS_DIR="${LOADGEN_RESULTS_DIR:-/home/ubuntu/canvas-k8s/testing/results}"
+LOADGEN_SSH_KEY="${LOADGEN_SSH_KEY:-}"
+
+if [[ -n "$LOADGEN_SSH_HOST" ]]; then
+  SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
+  if [[ -n "$LOADGEN_SSH_KEY" ]]; then
+    SSH_OPTS="$SSH_OPTS -i $LOADGEN_SSH_KEY"
+  fi
+
+  echo "Syncing run data from load gen ($LOADGEN_SSH_HOST) ..."
+  mkdir -p "$RESULTS_DIR"
+
+  if [[ -n "$TEST_ID" ]]; then
+    # Targeted sync — single run requested.
+    rsync -az --info=stats1 -e "ssh $SSH_OPTS" \
+      "$LOADGEN_SSH_HOST:$LOADGEN_RESULTS_DIR/$TEST_ID/" \
+      "$RESULTS_DIR/$TEST_ID/" \
+      || { echo "ERROR: rsync of $TEST_ID failed"; exit 1; }
+  else
+    # Pull all canvas-* run folders so the latest one resolves correctly below.
+    # --update keeps locally newer files (e.g. charts already regenerated here).
+    rsync -az --update --info=stats1 -e "ssh $SSH_OPTS" \
+      --include='canvas-*/' --include='canvas-*/**' --exclude='*' \
+      "$LOADGEN_SSH_HOST:$LOADGEN_RESULTS_DIR/" \
+      "$RESULTS_DIR/" \
+      || { echo "ERROR: rsync from load gen failed"; exit 1; }
+  fi
+  echo "Sync complete."
+fi
+
 if [[ -z "$TEST_ID" ]]; then
   # Only consider timestamped run folders (canvas-YYYYMMDD-HHMMSS).
   # Plain `sort` works here because the date+time format is lexicographically
@@ -23,6 +59,9 @@ fi
 
 if [[ -z "${RUN_DIR:-}" || ! -d "$RUN_DIR" ]]; then
   echo "Could not find a load test run directory. Pass TEST_ID or run ./testing/run-load-test.sh first."
+  if [[ -n "$LOADGEN_SSH_HOST" ]]; then
+    echo "Hint: rsync ran from $LOADGEN_SSH_HOST:$LOADGEN_RESULTS_DIR — verify path exists there."
+  fi
   exit 1
 fi
 
