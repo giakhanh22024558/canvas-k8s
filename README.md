@@ -1210,7 +1210,7 @@ This is the audit reference for what each summary metric actually measures and h
 | `oscillation_count` | derived from `k8s-snapshots.csv` | number of times `desiredReplicas` direction reversed |
 | `avg_scale_out_latency_seconds` | derived from `k8s-snapshots.csv` | time from desired-change to ready-replicas-reach-target |
 | `peak_queue_depth`, `avg_queue_depth` | `jobs-queue.csv` | `count(*)` of pending `delayed_jobs` rows, polled every 5s |
-| `peak_job_age_sec`, `avg_job_age_sec` | `jobs-queue.csv` | `now() - min(run_at)` of pending jobs |
+| `peak_job_age_sec`, `avg_job_age_sec` | `jobs-queue.csv` | `now() - min(run_at)` of pending jobs **scheduled within the last hour** — long-stranded periodic jobs (Delayed::Periodic) are excluded so this reflects test-induced backlog, not pre-existing scheduled tasks |
 | `peak_jobs_per_minute`, `avg_jobs_per_minute` | `jobs-queue.csv` | derived from diff of `pg_stat_user_tables.n_tup_del` for `delayed_jobs` |
 | `total_jobs_processed` | `jobs-queue.csv` | last - first value of cumulative `n_tup_del` counter |
 | `peak_postgres_cpu_millicores`, `peak_postgres_memory_mib` | `postgres-health.csv` | max of `kubectl top` samples during run |
