@@ -1,0 +1,5 @@
+timestamp,web_ready_replicas,web_available_replicas,web_spec_replicas,jobs_ready_replicas,jobs_available_replicas,jobs_spec_replicas,web_hpa_current_replicas,web_hpa_desired_replicas,jobs_hpa_current_replicas,jobs_hpa_desired_replicas,web_restart_total,jobs_restart_total
+2026-05-09T16:29:18+00:00,3,3,3,2,2,2,0,0,0,0,0,0
+2026-05-09T16:29:24+00:00,3,3,3,2,2,2,0,0,0,0,0,0
+2026-05-09T16:29:30+00:00,3,3,3,2,2,2,0,0,0,0,0,0
+2026-05-09T16:29:35+00:00,3,3,3,2,2,2,0,0,0,0,0,0

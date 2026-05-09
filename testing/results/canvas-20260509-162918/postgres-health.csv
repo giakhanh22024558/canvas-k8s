@@ -1,0 +1,5 @@
+timestamp,postgres_cpu_millicores,postgres_memory_mib,active_conns,idle_conns,idle_in_tx_conns,waiting_on_locks,slow_queries_over_1s,max_connections,cache_hit_ratio_percent,xact_commit_cumulative
+2026-05-09T16:29:18+00:00,8,159,2,30,0,0,0,100,99.97,20870391
+2026-05-09T16:29:24+00:00,176,192,1,30,0,0,0,100,99.97,20871443
+2026-05-09T16:29:29+00:00,176,192,2,35,0,0,0,100,99.97,20872123
+2026-05-09T16:29:34+00:00,176,192,2,35,0,0,0,100,99.97,20872227

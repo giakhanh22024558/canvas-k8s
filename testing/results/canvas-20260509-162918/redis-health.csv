@@ -1,0 +1,5 @@
+timestamp,redis_cpu_millicores,redis_memory_used_mb,redis_memory_max_mb,connected_clients,blocked_clients,ops_per_sec,keyspace_hits_cumulative,keyspace_misses_cumulative,evicted_keys_cumulative
+2026-05-09T16:29:18+00:00,3,1,0,10,0,0,2110846,154160,0
+2026-05-09T16:29:24+00:00,3,1,0,11,0,1160,2111711,154986,0
+2026-05-09T16:29:29+00:00,3,1,0,13,0,89,2112011,155189,0
+2026-05-09T16:29:34+00:00,3,1,0,13,0,91,2112239,155189,0
