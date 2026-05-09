@@ -975,6 +975,80 @@ awk -F',' 'NR>1 {
 }' testing/results/postgres-bottleneck-check/postgres-during-stage5.csv
 ```
 
+## Why DB scaling is out of scope (validation)
+
+The thesis evaluates web and jobs tier autoscaling on a single Postgres instance and a single Redis instance — the database tier is intentionally not scaled. To defend this scope, we measure the database and cache through every load test and verify they remain well within their capacity ceilings, eliminating them as confounding variables.
+
+### Saturation invariants
+
+A run is considered "DB-clean" — meaning bottlenecks observed are application-tier, not database-tier — when *all* of the following hold throughout the test window:
+
+| Tier | Invariant | Threshold | Source |
+|---|---|---|---|
+| Postgres | CPU | < 70% of one vCPU peak | `kubectl top` via `collect-postgres-metrics.sh` |
+| Postgres | Memory | < 80% of container limit | same |
+| Postgres | Active connections | < 50% of `max_connections` | `pg_stat_activity` |
+| Postgres | Lock waits (`wait_event_type IS NOT NULL`) | = 0 | `pg_stat_activity` |
+| Postgres | Slow queries (>1s) | = 0 | `pg_stat_activity` |
+| Postgres | Cache hit ratio | > 99% | `pg_stat_database.blks_hit / (blks_hit+blks_read)` |
+| Redis | CPU | < 50% of one vCPU peak | `kubectl top` via `collect-redis-metrics.sh` |
+| Redis | Memory | < 80% of `maxmemory` | `INFO memory` |
+| Redis | Hit ratio | > 95% | `keyspace_hits / (hits + misses)` |
+| Redis | Evictions | = 0 (cumulative) | `INFO stats.evicted_keys` |
+
+If any invariant is violated, the run is excluded from autoscaling claims and the bottleneck is reported as the DB tier instead.
+
+### Collectors
+
+Two pollers run on the SUT in parallel with `run-load-test.sh`. They poll Postgres and Redis every 5s and write CSVs into the run folder.
+
+```bash
+# Start collectors before the load test (run on SUT, terminal 1):
+RUN_DIR=$(ls -td testing/results/canvas-* | head -1)   # latest run
+# (or set RUN_DIR explicitly)
+
+bash testing/collect-postgres-metrics.sh "$RUN_DIR/postgres-health.csv" &
+PG_PID=$!
+bash testing/collect-redis-metrics.sh    "$RUN_DIR/redis-health.csv"    &
+REDIS_PID=$!
+
+# When the test finishes (k6 done on load gen):
+kill $PG_PID $REDIS_PID
+```
+
+`postgres-health.csv` schema (11 cols): `timestamp, postgres_cpu_millicores, postgres_memory_mib, active_conns, idle_conns, idle_in_tx_conns, waiting_on_locks, slow_queries_over_1s, max_connections, cache_hit_ratio_percent, xact_commit_cumulative`
+
+`redis-health.csv` schema (10 cols): `timestamp, redis_cpu_millicores, redis_memory_used_mb, redis_memory_max_mb, connected_clients, blocked_clients, ops_per_sec, keyspace_hits_cumulative, keyspace_misses_cumulative, evicted_keys_cumulative`
+
+### Charts
+
+`publish-results.sh` reads both CSVs and generates per-run charts:
+
+- `db_health_<label>.png` — 4 panels: Postgres CPU+memory, connection-pool utilization, cache hit ratio + slow queries, lock waits + idle-in-transaction.
+- `redis_health_<label>.png` — 2 panels: Redis CPU+memory vs maxmemory, hit ratio + ops/sec + evictions.
+
+### Summary CSV invariant fields
+
+`summary_*.csv` adds 11 columns derived from the above CSVs:
+
+| Field | Meaning | Pass threshold |
+|---|---|---|
+| `peak_postgres_cpu_millicores` | max CPU during run | < 700 (≈70% of 1 vCPU) |
+| `peak_postgres_memory_mib` | max RSS during run | < 80% of limit |
+| `peak_active_conns` | max active connections | < 50% of `max_connections` |
+| `max_db_lock_waits` | max concurrent lock waiters | = 0 |
+| `max_db_idle_in_tx` | max idle-in-transaction connections | low (≤ 2) |
+| `total_slow_queries_over_1s` | snapshots with at least one slow query | = 0 |
+| `min_cache_hit_ratio_percent` | min cache hit ratio | > 99 |
+| `peak_redis_cpu_millicores` | max Redis CPU | < 500 |
+| `peak_redis_memory_mb` | max Redis memory used | < 80% of maxmemory |
+| `min_redis_hit_ratio_percent` | min Redis hit ratio | > 95 |
+| `redis_evictions_total` | cumulative evictions seen | = 0 |
+
+### Live monitoring during defense
+
+The Grafana dashboard's "Database & Cache — Saturation Invariants" section shows these threshold-coloured live (background turns red when an invariant is violated). For demos, open that section before starting the test — green panels throughout the run are visual proof that the database is not the bottleneck.
+
 ## Metric methodology and data integrity
 
 This is the audit reference for what each summary metric actually measures and how to defend it. Every summary CSV row has fields whose values come from different sources — they are not all equivalent statistics, even when the column names look similar.
@@ -995,6 +1069,18 @@ This is the audit reference for what each summary metric actually measures and h
 | `scale_out_events`, `scale_in_events` | derived from `k8s-snapshots.csv` | count of `desiredReplicas` increases / decreases |
 | `oscillation_count` | derived from `k8s-snapshots.csv` | number of times `desiredReplicas` direction reversed |
 | `avg_scale_out_latency_seconds` | derived from `k8s-snapshots.csv` | time from desired-change to ready-replicas-reach-target |
+| `peak_queue_depth`, `avg_queue_depth` | `jobs-queue.csv` | `count(*)` of pending `delayed_jobs` rows, polled every 5s |
+| `peak_job_age_sec`, `avg_job_age_sec` | `jobs-queue.csv` | `now() - min(run_at)` of pending jobs |
+| `peak_jobs_per_minute`, `avg_jobs_per_minute` | `jobs-queue.csv` | derived from diff of `pg_stat_user_tables.n_tup_del` for `delayed_jobs` |
+| `total_jobs_processed` | `jobs-queue.csv` | last - first value of cumulative `n_tup_del` counter |
+| `peak_postgres_cpu_millicores`, `peak_postgres_memory_mib` | `postgres-health.csv` | max of `kubectl top` samples during run |
+| `peak_active_conns` | `postgres-health.csv` | max of `count(*) state='active'` from `pg_stat_activity` |
+| `max_db_lock_waits`, `max_db_idle_in_tx` | `postgres-health.csv` | max counts from `pg_stat_activity` |
+| `total_slow_queries_over_1s` | `postgres-health.csv` | max snapshot count of queries running > 1s |
+| `min_cache_hit_ratio_percent` | `postgres-health.csv` | min observed `blks_hit / (blks_hit+blks_read)` × 100 |
+| `peak_redis_cpu_millicores`, `peak_redis_memory_mb` | `redis-health.csv` | max of `kubectl top` and `INFO memory.used_memory` samples |
+| `min_redis_hit_ratio_percent` | `redis-health.csv` | min cumulative `keyspace_hits / (hits+misses)` × 100 |
+| `redis_evictions_total` | `redis-health.csv` | last value of `INFO stats.evicted_keys` cumulative counter |
 
 ### Time-series chart provenance
 

@@ -27,16 +27,22 @@ fi
 
 mkdir -p "$(dirname "$OUTPUT_FILE")"
 
-echo "timestamp,postgres_cpu_millicores,postgres_memory_mib,active_conns,idle_conns,idle_in_tx_conns,waiting_on_locks,slow_queries_over_1s" > "$OUTPUT_FILE"
+echo "timestamp,postgres_cpu_millicores,postgres_memory_mib,active_conns,idle_conns,idle_in_tx_conns,waiting_on_locks,slow_queries_over_1s,max_connections,cache_hit_ratio_percent,xact_commit_cumulative" > "$OUTPUT_FILE"
 
-# Single quoted SQL — no shell expansion. Output is one space-separated row:
-# active idle idle_in_tx waiting slow
+# Single quoted SQL — one row, comma-separated. Combines pg_stat_activity
+# state counts with max_connections setting, global cache hit ratio, and
+# cumulative committed transactions for our database.
 SQL="SELECT
   count(*) FILTER (WHERE state = 'active'),
   count(*) FILTER (WHERE state = 'idle'),
   count(*) FILTER (WHERE state = 'idle in transaction'),
   count(*) FILTER (WHERE wait_event_type IS NOT NULL),
-  count(*) FILTER (WHERE state = 'active' AND now() - query_start > interval '1 second')
+  count(*) FILTER (WHERE state = 'active' AND now() - query_start > interval '1 second'),
+  (SELECT current_setting('max_connections')::int),
+  (SELECT round(100.0 * sum(blks_hit)::numeric / nullif(sum(blks_hit + blks_read), 0), 2)
+   FROM pg_stat_database),
+  (SELECT COALESCE(xact_commit + xact_rollback, 0)
+   FROM pg_stat_database WHERE datname = '${DB_NAME}')
 FROM pg_stat_activity
 WHERE datname = '${DB_NAME}';"
 
@@ -51,10 +57,10 @@ while true; do
   cpu="${cpu:-0}"
   mem="${mem:-0}"
 
-  # pg_stat_activity counts — single row, tab/space-separated
+  # 8-column row from SQL above
   pg_row="$(kubectl exec -n "$NAMESPACE" deployment/postgres -- \
     psql -U "$DB_USER" -d "$DB_NAME" -t -A -F ',' -c "$SQL" 2>/dev/null | head -1 || true)"
-  pg_row="${pg_row:-0,0,0,0,0}"
+  pg_row="${pg_row:-0,0,0,0,0,100,0,0}"
 
   echo "${ts},${cpu},${mem},${pg_row}" >> "$OUTPUT_FILE"
   sleep "$INTERVAL_SECONDS"
