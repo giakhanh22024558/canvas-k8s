@@ -171,38 +171,16 @@ def apply_time_axis(ax):
 
 
 def annotate_saturation(axes, saturation_time, saturation_vu, end_time=None):
-    """Draw a vertical dashed line + shaded collapse region on one or more axes.
+    """Disabled by request — the inferred saturation point was deemed
+    misleading on charts where the system degrades gracefully without an
+    obvious threshold crossing. Calls are kept in the codebase so the
+    surrounding chart wiring still works, but no red dashed line, no
+    shaded collapse region, and no text label are drawn.
 
-    axes         — single Axes or list of Axes to annotate
-    saturation_time — datetime of first OOMKill
-    saturation_vu   — VU count at saturation (may be None)
-    end_time        — right edge for the shaded region (defaults to axes xlim max)
+    Re-enable by restoring the previous body if a future stage wants
+    the marker back.
     """
-    if saturation_time is None:
-        return
-    if not isinstance(axes, (list, tuple)):
-        axes = [axes]
-
-    vu_str = f"≈{int(round(saturation_vu))} VU" if saturation_vu else ""
-    label_text = f"Saturation point\n{vu_str}" if vu_str else "Saturation point"
-
-    for i, ax in enumerate(axes):
-        ax.axvline(saturation_time, color="#d62728", linewidth=2,
-                   linestyle="--", alpha=0.85, zorder=5)
-        xlim = ax.get_xlim()
-        right = end_time if end_time is not None else mdates.num2date(xlim[1])
-        ax.axvspan(saturation_time, right, alpha=0.07, color="#d62728", zorder=0)
-        # Only label on the first (topmost) axis to avoid clutter
-        if i == 0:
-            ylim = ax.get_ylim()
-            ax.text(
-                saturation_time, ylim[1] * 0.97,
-                label_text,
-                ha="left", va="top", fontsize=8.5, color="#b02020",
-                bbox=dict(boxstyle="round,pad=0.25", facecolor="white",
-                          edgecolor="#d62728", alpha=0.85),
-                zorder=6,
-            )
+    return
 
 
 def detect_saturation_point(snapshots, vus_values,
