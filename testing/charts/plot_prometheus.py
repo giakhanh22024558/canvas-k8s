@@ -205,23 +205,57 @@ def annotate_saturation(axes, saturation_time, saturation_vu, end_time=None):
             )
 
 
-def detect_saturation_point(snapshots, vus_values):
+def detect_saturation_point(snapshots, vus_values,
+                            error_rate=None, latency_p95=None,
+                            error_threshold_pct=1.0,
+                            latency_threshold_seconds=5.0):
     """Return (saturation_datetime, vu_at_saturation) for breakpoint tests.
 
-    Saturation is defined as the moment web_restart_total first increments
-    from 0 — i.e. the first OOMKill. VU count is interpolated from the k6
-    VU time-series at the nearest timestamp.
+    Saturation is the EARLIEST of:
+      (A) First sample where web_restart_total increments from 0 — i.e. the
+          first OOMKill (the original definition).
+      (B) First sample where error_rate (% of failed requests in the
+          Prometheus rolling window) crosses `error_threshold_pct` (default 1%).
+      (C) First sample where p95 latency (seconds) crosses
+          `latency_threshold_seconds` (default 5s).
 
-    Returns (None, None) if no restart is detected.
+    With well-resourced pods on a max-packed node the system can survive
+    100 VUs without an OOMKill, but error rate or tail latency will degrade
+    well before that — so cases (B) and (C) catch threshold-based
+    saturation that case (A) alone misses. VU count is interpolated from
+    the k6 VU time-series at the nearest timestamp to whichever case fires
+    first.
+
+    Returns (None, None) when no signal is observed.
     """
-    sat_time = None
+    candidates = []
+
+    # (A) OOMKill
     for i, row in enumerate(snapshots[1:], start=1):
         if row["web_restart_total"] > snapshots[i - 1]["web_restart_total"]:
-            sat_time = row["timestamp"]
+            candidates.append((row["timestamp"], "oomkill"))
             break
 
-    if sat_time is None:
+    # (B) error rate threshold — error_rate values are already percent (Prometheus
+    # series multiplies by 100 server-side or in our query construction).
+    if error_rate:
+        for ts, val in error_rate:
+            if val is not None and val >= error_threshold_pct:
+                candidates.append((ts, f"error_rate>={error_threshold_pct:g}%"))
+                break
+
+    # (C) p95 latency threshold — Prometheus emits p95 in seconds.
+    if latency_p95:
+        for ts, val in latency_p95:
+            if val is not None and val >= latency_threshold_seconds:
+                candidates.append((ts, f"p95>={latency_threshold_seconds:g}s"))
+                break
+
+    if not candidates:
         return None, None
+
+    # Earliest signal wins.
+    sat_time, _reason = min(candidates, key=lambda c: c[0])
 
     # Nearest VU sample to the saturation timestamp
     sat_vu = None
@@ -1403,11 +1437,16 @@ def main():
         scaling_mode = infer_scaling_mode(snapshots)
         is_breakpoint = (label == "breakpoint")
 
-        # For breakpoint tests, detect the saturation point (first OOMKill)
-        # and the VU count at that moment — used to annotate all charts.
+        # For breakpoint tests, detect the saturation point (earliest of:
+        # first OOMKill, first error_rate >=1%, or first p95 >=5s) and the
+        # VU count at that moment — used to annotate all charts.
         saturation_time, saturation_vu = (None, None)
         if is_breakpoint:
-            saturation_time, saturation_vu = detect_saturation_point(snapshots, vus)
+            saturation_time, saturation_vu = detect_saturation_point(
+                snapshots, vus,
+                error_rate=error_rate,
+                latency_p95=latency.get("p95"),
+            )
 
         plot_latency_timeline(output_dir, {label: latency})
         plot_throughput_error(
