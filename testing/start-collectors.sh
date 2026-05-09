@@ -36,21 +36,27 @@ if [[ -f "$PID_FILE" ]]; then
 fi
 
 start_one() {
-  local name="$1" csv="$2"
-  nohup bash "$SCRIPT_DIR/collect-${name}-metrics.sh" "$csv" \
+  local name="$1" csv="$2" script="$3"
+  nohup bash "$SCRIPT_DIR/${script}" "$csv" \
     > "$LOG_DIR/c-${name}.log" 2>&1 &
   local pid=$!
   echo "$pid" >> "$PID_FILE"
-  printf "  %-9s pid=%-7d csv=%s\n" "$name" "$pid" "$csv"
+  printf "  %-12s pid=%-7d csv=%s\n" "$name" "$pid" "$csv"
 }
 
 echo "Starting collectors → $OUTPUT_DIR"
-start_one jobs     "$OUTPUT_DIR/jobs-queue.csv"
-start_one postgres "$OUTPUT_DIR/postgres-health.csv"
-start_one redis    "$OUTPUT_DIR/redis-health.csv"
+start_one jobs       "$OUTPUT_DIR/jobs-queue.csv"      "collect-jobs-metrics.sh"
+start_one postgres   "$OUTPUT_DIR/postgres-health.csv" "collect-postgres-metrics.sh"
+start_one redis      "$OUTPUT_DIR/redis-health.csv"    "collect-redis-metrics.sh"
+# k8s-snapshots is the canonical source for replica counts, restart counters,
+# HPA desired/current state and scale-latency derivations. The load-gen has no
+# kubectl so run-load-test.sh skips its built-in snapshot; the SUT must run it
+# in this collector batch instead. Without it, max_web_restart_total stays at
+# 0 in the summary CSV even when pods are actively OOMKill-looping (Stage 1).
+start_one k8s-snaps  "$OUTPUT_DIR/k8s-snapshots.csv"   "collect-k8s-snapshots.sh"
 
 echo ""
-echo "Logs: $LOG_DIR/c-{jobs,postgres,redis}.log"
+echo "Logs: $LOG_DIR/c-{jobs,postgres,redis,k8s-snaps}.log"
 echo "Stop with: bash testing/stop-collectors.sh"
 echo "PID file: $PID_FILE"
 echo "OUTPUT_DIR=$OUTPUT_DIR"
