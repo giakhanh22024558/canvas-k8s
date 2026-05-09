@@ -22,11 +22,6 @@ kubectl create configmap grafana-dashboard \
   -n canvas-monitoring \
   --dry-run=client -o yaml | kubectl apply -f -
 
-kubectl create configmap grafana-jobs-dashboard \
-  --from-file=jobs-tier-dashboard.json="$SCRIPT_DIR/grafana/jobs-tier-dashboard.json" \
-  -n canvas-monitoring \
-  --dry-run=client -o yaml | kubectl apply -f -
-
 # Mirror canvas-secret (DB credentials) from canvas namespace to canvas-monitoring
 # so Grafana's Postgres data source can authenticate. Secrets are namespace-
 # scoped, so we copy DB_USER/DB_PASSWORD/DB_NAME into a small dedicated secret

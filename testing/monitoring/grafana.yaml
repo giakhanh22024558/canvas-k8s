@@ -112,9 +112,6 @@ spec:
             - name: grafana-dashboard
               mountPath: /var/lib/grafana/dashboards/canvas-local-dashboard.json
               subPath: canvas-local-dashboard.json
-            - name: grafana-jobs-dashboard
-              mountPath: /var/lib/grafana/dashboards/jobs-tier-dashboard.json
-              subPath: jobs-tier-dashboard.json
       volumes:
         - name: grafana-storage
           emptyDir: {}
@@ -124,9 +121,6 @@ spec:
         - name: grafana-dashboard
           configMap:
             name: grafana-dashboard
-        - name: grafana-jobs-dashboard
-          configMap:
-            name: grafana-jobs-dashboard
 ---
 apiVersion: v1
 kind: Service
