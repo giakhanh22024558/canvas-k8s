@@ -10,21 +10,23 @@ spec:
     name: canvas-web
   minReplicas: 1
   maxReplicas: 5
-  # Stage 4 — STOCK HPA: NO behavior block, VPA resources used on deployment.
-  # Kubernetes default scale policies:
+  # Stage 3 (HPA naive) — STOCK HPA an unsophisticated engineer would deploy:
+  # only CPU target = 80 %, NO behavior block, deployment uses VPA-recommended
+  # resources. Kubernetes applies its built-in scale policies:
   #   scaleDown.stabilizationWindowSeconds = 300 (5 min)
   #   scaleUp.stabilizationWindowSeconds   = 0 (reacts immediately to spikes)
   #   scaleUp policy   = up to 100% or 4 pods per 60s, whichever is greater
   #   scaleDown policy = up to 100% per 60s
-  # Compare to Stage 5 (hpa.yaml) which has tuned 30s scaleUp window and
-  # capped scale-up rate (2 pods/60s). Same resources, different tuning.
+  # Compare to Stage 4 (hpa.yaml) which lowers the target, adds a 30s scaleUp
+  # window, and caps scale-up rate. Same resources, different tuning — the
+  # delta is *only* the HPA configuration.
   metrics:
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 70
+          averageUtilization: 80
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -44,4 +46,4 @@ spec:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 70
+          averageUtilization: 80

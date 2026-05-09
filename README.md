@@ -650,74 +650,141 @@ Suggested thesis experiment set:
 - HPA enabled under the same workload profile with `./deploy.sh hpa`
 - compare latency, throughput, and pod CPU over time
 
-## Thesis 5-stage experimental framework
+## Thesis 4-stage experimental framework
 
-Each stage isolates a single variable so cross-stage differences attribute cleanly to one cause:
+Four stages chained so each one's output is the next one's input:
 
-| Stage | Mode | Variable changed vs previous | Question answered |
-|-------|------|------------------------------|--------------------|
-| 1 — baseline | `baseline` | — | What does the naive default do? |
-| 2 — VPA profiling | `vpa-recommend.sh` | observe | What resources does the workload need? |
-| 3 — prescaled | `prescaled` | resources right-sized + 5 fixed pods | Does over-provisioning solve it? |
-| 4 — HPA-naive | `hpa-naive` | replace fixed pods with stock HPA | Does HPA alone help? |
-| 5 — HPA-tuned | `hpa` | tune HPA `behavior:` block | Does HPA tuning help further? |
+| Stage | Goal | Output consumed by |
+|-------|------|---------------------|
+| 1 — Baseline + VPA Profiling | Find the per-pod resource footprint (CPU + memory request/limit) under realistic load | feeds resource numbers into Stages 2-4 |
+| 2 — Breakpoint Test | Find the absolute capacity ceiling of the SUT (max VUs before error rate >1% or latency >5s) | gives `MAX_VUS` used to drive Stages 3-4 |
+| 3 — HPA Naive (stock config) | Show how an untuned default HPA behaves at full capacity load — slow reaction, latency spikes, possible drops | comparison baseline for Stage 4 |
+| 4 — HPA Tuned | Demonstrate that lowering the target and tuning `behavior:` keeps the system stable under the same load | the thesis claim |
 
-Stages 4 and 5 share resources and replica caps; only the HPA `behavior:` block differs. This lets you attribute Stage 4→5 deltas to tuning alone.
+Each stage isolates exactly one variable from the previous one so cross-stage deltas attribute cleanly. Stages 3 and 4 use **identical resources, replica caps, and load profile**; only the HPA configuration differs.
 
-### Stage 1 — Baseline (1 web pod, naive resources, no HPA)
+### Stage 1 — Baseline + VPA Profiling
+
+**Goal**: characterise resource footprint of one web pod and one jobs pod under realistic load. Output: `requests/limits` numbers for CPU and memory that feed every later stage.
+
+**Setup**:
+- Deploy with `./deploy.sh baseline` — exactly 1 web pod and 1 jobs pod, naive resource values, no HPA.
+- Apply VPA in observe-only mode (`./testing/apply-vpa.sh`). It collects usage stats while the test runs but does not mutate the pod.
+
+**Action**: ramp k6 load until the pod's CPU sits at ~70-80%. The `load` profile (10 VUs, 5 min) is usually enough for a single pod to reach that range; if not, switch to `long-stress` for a longer hold at the highest VU level.
 
 ```bash
 ./deploy.sh baseline
+./testing/apply-vpa.sh
+
 SEED_PREFIX=thesis \
-  RUNS_PER_SCENARIO=5 \
+  RUNS_PER_SCENARIO=3 \
   MATRIX_MODES=baseline \
   MATRIX_SCENARIOS=long-stress \
-  EXPERIMENT_NAME=stage1-baseline \
+  EXPERIMENT_NAME=stage1-baseline-vpa \
   COOLDOWN_SECONDS=300 \
   bash testing/run-experiment-matrix.sh
+
+# After the runs finish, read VPA's recommendation:
+bash testing/vpa-recommend.sh
 ```
 
-### Stage 2 — VPA profiling (observe-only, no autoscaling)
+**Expected outcome**: `vpa-recommend.sh` prints suggested CPU/memory `requests` and `limits` for `canvas-web` and `canvas-jobs`. Edit `deployment/deployment-web.yaml` and `deployment/deployment-jobs.yaml` with those values before continuing.
 
-VPA in observe-only mode profiles the workload under load to recommend right-sized CPU and memory. See [VPA profiling](#vpa-profiling-stage-2) below for the procedure. Apply the recommended values to `deployment/deployment-web.yaml` and `deployment/deployment-jobs.yaml` before running Stage 3.
+### Stage 2 — Breakpoint Test
 
-### Stage 3 — Prescaled (5 web + 3 jobs fixed, no HPA, VPA resources)
+**Goal**: find `MAX_VUS` — the highest virtual-user count the SUT can sustain on the new instance type with VPA-sized resources, before error rate exceeds 1 % or p95 latency exceeds 5 s.
+
+**Setup**:
+- Disable HPA (`prescaled` deploy mode does this — fixed replica counts, no HPA).
+- Manually scale to as many pods as the node can comfortably hold given the Stage 1 resource numbers (typically 6-8 web pods + 3 jobs pods on `m6a.2xlarge`).
+- Resources are the VPA-recommended values from Stage 1.
+
+**Action**: run k6 with the `breakpoint` profile, which ramps from 1 to 100 VUs over 20 minutes, holding each level for 2 minutes.
 
 ```bash
-./deploy.sh prescaled
+# Pick replica counts based on Stage 1 footprint and node capacity, e.g. 8 web + 3 jobs.
+PRESCALED_WEB_REPLICAS=8 PRESCALED_JOBS_REPLICAS=3 ./deploy.sh prescaled
+
 SEED_PREFIX=thesis \
-  RUNS_PER_SCENARIO=5 \
+  RUNS_PER_SCENARIO=3 \
   MATRIX_MODES=prescaled \
-  MATRIX_SCENARIOS=long-stress \
-  EXPERIMENT_NAME=stage3-prescaled \
+  MATRIX_SCENARIOS=breakpoint \
+  EXPERIMENT_NAME=stage2-breakpoint \
   COOLDOWN_SECONDS=300 \
   SKIP_DEPLOY=true \
   bash testing/run-experiment-matrix.sh
 ```
 
-### Stage 4 — HPA naive (stock HPA config, VPA resources)
+**Expected outcome**: a `MAX_VUS` number visible from the breakpoint chart's saturation point — the VU level at which error rate first crosses 1 % or p95 first crosses 5 s. Use that number to build the load profile for Stages 3-4.
+
+### Stage 3 — HPA Naive (stock Kubernetes default)
+
+**Goal**: show how an untuned engineer-default HPA behaves under the load level discovered in Stage 2 — slow reaction, transient outage during ramps, latency spikes while pods come up.
+
+**Setup**:
+- HPA enabled with stock Kubernetes defaults: `targetAverageUtilization: 80%`, no `behavior:` block (so K8s applies built-in scale policies — 5-min scale-down stabilization, 0-second scale-up window, max +100% per minute).
+- Resources: VPA-recommended values from Stage 1.
+- Load profile: a custom `STAGES_JSON` that ramps to **`MAX_VUS`** from Stage 2 (override the default `long-stress` if it caps at 60 and `MAX_VUS` is higher).
 
 ```bash
 ./deploy.sh hpa-naive
+
+# Adjust STAGES_JSON if Stage 2's MAX_VUS exceeds 60 (long-stress default cap)
 SEED_PREFIX=thesis \
   RUNS_PER_SCENARIO=5 \
   MATRIX_MODES=hpa-naive \
   MATRIX_SCENARIOS=long-stress \
-  EXPERIMENT_NAME=stage4-hpa-naive \
+  EXPERIMENT_NAME=stage3-hpa-naive \
   COOLDOWN_SECONDS=300 \
   SKIP_DEPLOY=true \
   bash testing/run-experiment-matrix.sh
 ```
 
-### Stage 5 — HPA tuned (tuned HPA behavior, VPA resources)
+**Observations to record**:
+- Time from VU ramp to first new pod becoming `Ready` (scale-out latency).
+- Whether existing pods are OOMKilled or hung before reinforcements arrive.
+- Error-rate spikes during ramp transitions.
+- HPA target threshold (80 %) being crossed before scale-out begins.
+
+### Stage 4 — HPA Tuned
+
+**Goal**: prove that lowering the target and tuning `behavior:` keeps error rate low and latency stable under the same load that Stage 3 struggled with.
+
+**Setup** (`deployment/hpa.yaml`):
+- Lower `targetAverageUtilization` (60-65 %).
+- `behavior.scaleUp` with an aggressive `Pods` or `Percent` policy for fast pod provisioning.
+- `behavior.scaleUp.stabilizationWindowSeconds` short (≤ 30 s).
+- `behavior.scaleDown.stabilizationWindowSeconds` long (≥ 300 s) to prevent flapping.
+- Same resources and replica caps as Stage 3 — only the HPA config differs.
 
 ```bash
 ./deploy.sh hpa
+
 SEED_PREFIX=thesis \
   RUNS_PER_SCENARIO=5 \
   MATRIX_MODES=hpa \
   MATRIX_SCENARIOS=long-stress \
-  EXPERIMENT_NAME=stage5-hpa-tuned \
+  EXPERIMENT_NAME=stage4-hpa-tuned \
+  COOLDOWN_SECONDS=300 \
+  SKIP_DEPLOY=true \
+  bash testing/run-experiment-matrix.sh
+```
+
+**Expected outcome**: same load as Stage 3, but error rate stays low, p95 latency stable, new pods come up *before* existing pods saturate.
+
+### Optional — Prescaled comparison stage (legacy)
+
+The earlier 5-stage version of this thesis included a "prescaled" stage with fixed N pods (no HPA) at the same load level as the HPA stages, showing that even an over-provisioned static deployment could not handle dynamic load gracefully. It is no longer part of the main narrative because Stage 2 (Breakpoint with prescaled max pods) already demonstrates the static ceiling. If you want to run it for completeness:
+
+```bash
+PRESCALED_WEB_REPLICAS=5 PRESCALED_JOBS_REPLICAS=3 ./deploy.sh prescaled
+
+SEED_PREFIX=thesis \
+  RUNS_PER_SCENARIO=5 \
+  MATRIX_MODES=prescaled \
+  MATRIX_SCENARIOS=long-stress \
+  EXPERIMENT_NAME=optional-prescaled \
   COOLDOWN_SECONDS=300 \
   SKIP_DEPLOY=true \
   bash testing/run-experiment-matrix.sh
