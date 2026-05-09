@@ -9,7 +9,7 @@ spec:
     kind: Deployment
     name: canvas-web
   minReplicas: 1
-  maxReplicas: 5
+  maxReplicas: 3
   # Stage 3 (HPA naive) — STOCK HPA an unsophisticated engineer would deploy:
   # only CPU target = 80 %, NO behavior block, deployment uses VPA-recommended
   # resources. Kubernetes applies its built-in scale policies:
@@ -39,7 +39,7 @@ spec:
     kind: Deployment
     name: canvas-jobs
   minReplicas: 1
-  maxReplicas: 3
+  maxReplicas: 2
   metrics:
     - type: Resource
       resource:
