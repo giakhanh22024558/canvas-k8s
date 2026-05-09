@@ -584,8 +584,13 @@ def load_postgres_health(path):
 
 
 def load_redis_health(path):
-    """Load redis-health.csv. Computes hit ratio + jobs/min throughput post-hoc
-    from cumulative hits/misses counters."""
+    """Load redis-health.csv. Cumulative counters from INFO stats are kept as-is
+    in the CSV; here we derive a *rolling-window* hit ratio per sample (delta
+    hits / (delta hits + delta misses) since the previous sample), which
+    reflects the current workload — the cumulative ratio drifts toward the
+    pod-lifetime average and lags the current behavior. First sample has no
+    predecessor so it falls back to the cumulative value.
+    """
     if not path.exists():
         return []
     rows = []
@@ -598,11 +603,38 @@ def load_redis_health(path):
                     continue
                 row[key] = parse_numeric(value)
             rows.append(row)
-    # Derive cumulative hit ratio per sample (using running totals)
+
+    prev_hits = None
+    prev_misses = None
     for row in rows:
         h = row.get("keyspace_hits_cumulative", 0) or 0
         m = row.get("keyspace_misses_cumulative", 0) or 0
-        row["hit_ratio_percent"] = round(100.0 * h / (h + m), 2) if (h + m) > 0 else 100.0
+        if prev_hits is None:
+            # First sample — fall back to cumulative ratio
+            ratio = 100.0 * h / (h + m) if (h + m) > 0 else 100.0
+        else:
+            dh = h - prev_hits
+            dm = m - prev_misses
+            # Counter reset (e.g. Redis restart) → window collapses; report
+            # cumulative for that sample to avoid a misleading 0/0 spike.
+            if dh < 0 or dm < 0:
+                ratio = 100.0 * h / (h + m) if (h + m) > 0 else 100.0
+            elif (dh + dm) == 0:
+                # No keyspace activity in this window — keep the previous
+                # rolling ratio rather than reporting 100% on a quiet bucket.
+                ratio = row.get("hit_ratio_percent", 100.0)
+            else:
+                ratio = 100.0 * dh / (dh + dm)
+        row["hit_ratio_percent"] = round(ratio, 2)
+        prev_hits, prev_misses = h, m
+
+    # Also expose the cumulative ratio for diagnostics — useful to compare
+    # workload drift vs pod-lifetime average.
+    for row in rows:
+        h = row.get("keyspace_hits_cumulative", 0) or 0
+        m = row.get("keyspace_misses_cumulative", 0) or 0
+        row["hit_ratio_cumulative_percent"] = round(
+            100.0 * h / (h + m) if (h + m) > 0 else 100.0, 2)
     return rows
 
 
