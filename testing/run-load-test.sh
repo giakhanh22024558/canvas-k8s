@@ -8,7 +8,15 @@ load_testing_env
 BASE_URL="${BASE_URL:-http://canvas.io.vn}"
 PROM_URL="${PROM_URL:-http://127.0.0.1:30090/api/v1/write}"
 TEST_TYPE="${TEST_TYPE:-load}"
-TEST_ID="${TEST_ID:-canvas-$(date +%Y%m%d-%H%M%S)}"
+# Run-folder name embeds the EXPERIMENT_NAME tag when set, falling back to the
+# legacy canvas-<timestamp> form. Doing this in the folder itself (not just in
+# metadata.env) makes cross-stage `ls` listings self-describing — e.g.
+# "stage2-breakpoint-run02-20260509-163250" — and lets aggregate scripts
+# discover runs by name prefix without parsing every metadata file.
+if [[ -z "${TEST_ID:-}" ]]; then
+  default_prefix="${EXPERIMENT_NAME:-canvas}"
+  TEST_ID="${default_prefix}-$(date +%Y%m%d-%H%M%S)"
+fi
 RESULTS_DIR="${RESULTS_DIR:-$SCRIPT_DIR/results}"
 RUN_DIR="$RESULTS_DIR/$TEST_ID"
 LOG_FILE="$RUN_DIR/k6-summary.txt"
@@ -122,6 +130,7 @@ echo "Login flow enabled: $login_enabled"
 echo "Submission flow enabled: $submission_enabled"
 {
   echo "test_id=$TEST_ID"
+  echo "experiment_name=${EXPERIMENT_NAME:-}"
   echo "base_url=$BASE_URL"
   echo "prom_url=$PROM_URL"
   echo "test_type=$TEST_TYPE"
