@@ -209,41 +209,9 @@ echo "ended_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$RUN_DIR/metadata.env"
 echo "Finished load test with testid=$TEST_ID"
 echo "Saved run output to $RUN_DIR"
 
-# Chart generation is NOT done here — call publish-results.sh on the SUT
-# after the run finishes (it will git pull this raw data).
+# Chart generation and git push are NOT done here — call publish-results.sh
+# manually after all matrix runs complete:
+#   TEST_ID=<id> bash testing/publish-results.sh
 echo "Raw data saved to $RUN_DIR"
 echo "  k6-summary.txt, k8s-snapshots.csv, metadata.env, environment.env"
-
-# ── Optional: auto-commit raw run data to git so the SUT can pull it ─────────
-# Set AUTO_PUSH_RESULTS=true in testing.env (or env) to enable. The load gen
-# stages this run folder, commits, and pushes to origin on the current branch.
-# The SUT's publish-results.sh then `git pull`s instead of rsync'ing.
-AUTO_PUSH_RESULTS="${AUTO_PUSH_RESULTS:-false}"
-if [[ "$AUTO_PUSH_RESULTS" == "true" ]]; then
-  REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-  cd "$REPO_ROOT"
-  BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
-  if [[ -z "$BRANCH" ]]; then
-    echo "WARN: not in a git repo or detached HEAD — skipping auto-push."
-  else
-    echo "Auto-pushing $TEST_ID to origin/$BRANCH ..."
-    # Pull --rebase first so concurrent pushes from SUT (charts) and load gen
-    # (raw data) don't collide. Continue even if pull fails — we still try the
-    # push and let git surface the actual conflict.
-    git pull origin "$BRANCH" --rebase --autostash 2>&1 | tail -5 || \
-      echo "WARN: git pull failed before push."
-    git add "testing/results/$TEST_ID/"
-    if git diff --cached --quiet; then
-      echo "Nothing new to commit for $TEST_ID."
-    else
-      git commit -m "Add raw run data for $TEST_ID (load gen)" \
-        || { echo "ERROR: git commit failed."; }
-      git push origin "$BRANCH" 2>&1 | tail -5 \
-        || { echo "ERROR: git push failed. Run charts manually with rsync fallback."; }
-    fi
-    cd - >/dev/null
-  fi
-  echo "On the SUT, run: TEST_ID=$TEST_ID bash testing/publish-results.sh"
-else
-  echo "Run 'TEST_ID=$TEST_ID bash testing/publish-results.sh' to generate charts."
-fi
+echo "Run 'TEST_ID=$TEST_ID bash testing/publish-results.sh' to generate charts."

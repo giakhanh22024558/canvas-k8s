@@ -469,25 +469,6 @@ Optional flows:
 - set `TEST_LOGIN_EMAIL` and `TEST_LOGIN_PASSWORD` to enable session login checks
 - set `SUBMISSION_API_TOKEN` to enable assignment submission traffic with a student-scoped token
 
-### Two-host workflow: load gen pushes, SUT pulls
-
-When k6 runs on a separate EC2 instance (recommended for clean SUT isolation), the raw k6 output ends up on the load gen disk, but charts and Prometheus queries need to run on the SUT. We bridge the two hosts via git instead of rsync — the load gen commits its run folder and pushes; the SUT pulls before generating charts.
-
-On the load gen, set in `testing/testing.env`:
-
-```bash
-AUTO_PUSH_RESULTS=true
-```
-
-Then `bash testing/run-load-test.sh` will, after k6 finishes:
-
-1. `git pull --rebase --autostash` to absorb any concurrent commits
-2. `git add testing/results/<test-id>/`
-3. commit with message `Add raw run data for <test-id> (load gen)`
-4. `git push origin <branch>`
-
-On the SUT, `bash testing/publish-results.sh` and `bash testing/aggregate-timeseries.sh` automatically `git pull` first so they see the freshly pushed run data, generate charts, and push the chart artifacts back. Disable the pull side with `FETCH_RESULTS=false` for offline reruns. Both hosts must be on the same branch and have push access to origin (PAT or SSH key — see GitHub authentication section).
-
 ## Horizontal Pod Autoscaling
 
 This repo now includes simple CPU-based HPAs for:

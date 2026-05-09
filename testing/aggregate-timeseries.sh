@@ -29,20 +29,27 @@ if [[ -z "$EXPERIMENT_NAME" ]]; then
   exit 1
 fi
 
-# ── Pull latest run folders from origin (load gen auto-pushed them) ─────────
-# When k6 runs on a separate instance with AUTO_PUSH_RESULTS=true, the load gen
-# commits canvas-* folders to origin. Aggregator pulls here so it sees them.
-# Skip with FETCH_RESULTS=false (e.g. for offline reruns).
-FETCH_RESULTS="${FETCH_RESULTS:-true}"
+# ── Optional: pull canvas-* run folders from remote load gen ─────────────────
+# Set LOADGEN_SSH_HOST in testing.env (e.g. "ubuntu@172.31.6.227") when k6 runs
+# on a separate instance. Skipped silently if unset.
+LOADGEN_SSH_HOST="${LOADGEN_SSH_HOST:-}"
+LOADGEN_RESULTS_DIR="${LOADGEN_RESULTS_DIR:-/home/ubuntu/canvas-k8s/testing/results}"
+LOADGEN_SSH_KEY="${LOADGEN_SSH_KEY:-}"
 
-if [[ "$FETCH_RESULTS" == "true" ]]; then
-  AGG_BRANCH="$(git -C "$ROOT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
-  if [[ -n "$AGG_BRANCH" ]]; then
-    echo "Pulling latest run data from origin/$AGG_BRANCH (load gen auto-push) ..."
-    git -C "$ROOT_DIR" pull origin "$AGG_BRANCH" --rebase --autostash 2>&1 | tail -5 \
-      || echo "WARN: git pull failed. Continuing with local files."
-    echo ""
+if [[ -n "$LOADGEN_SSH_HOST" ]]; then
+  SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
+  if [[ -n "$LOADGEN_SSH_KEY" ]]; then
+    SSH_OPTS="$SSH_OPTS -i $LOADGEN_SSH_KEY"
   fi
+  echo "Syncing canvas-* run folders from load gen ($LOADGEN_SSH_HOST) ..."
+  mkdir -p "$RESULTS_DIR"
+  rsync -az --update --info=stats1 -e "ssh $SSH_OPTS" \
+    --include='canvas-*/' --include='canvas-*/**' --exclude='*' \
+    "$LOADGEN_SSH_HOST:$LOADGEN_RESULTS_DIR/" \
+    "$RESULTS_DIR/" \
+    || { echo "ERROR: rsync from load gen failed"; exit 1; }
+  echo "Sync complete."
+  echo ""
 fi
 
 # ── Find Python (venv first) ──────────────────────────────────────────────────
@@ -61,9 +68,14 @@ PROM_QUERY_URL="$(prometheus_query_url)"
 echo "Prometheus URL: $PROM_QUERY_URL"
 echo ""
 
-# Note: git pull (FETCH_RESULTS step) above already brought in the latest code,
-# so plotting fixes are applied. No extra pull here.
-BRANCH="${AGG_BRANCH:-$(git -C "$ROOT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || true)}"
+# ── Pull latest plotting code ─────────────────────────────────────────────────
+BRANCH="$(git -C "$ROOT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+if [[ -n "$BRANCH" ]]; then
+  echo "Pulling latest code on branch $BRANCH ..."
+  git -C "$ROOT_DIR" pull origin "$BRANCH" --rebase || \
+    echo "WARNING: git pull failed — using local code."
+  echo ""
+fi
 
 mkdir -p "$OUTPUT_DIR"
 
