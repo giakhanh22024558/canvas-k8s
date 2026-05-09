@@ -14,6 +14,29 @@ data:
         url: http://prometheus.canvas-monitoring.svc.cluster.local:9090
         isDefault: true
         editable: true
+      # Direct PostgreSQL data source for live jobs-tier metrics. Reads
+      # delayed_jobs and pg_stat_user_tables on every panel refresh — gives
+      # instantaneous queue depth, oldest pending age, and cumulative
+      # throughput counter without needing an exporter. Credentials are
+      # injected from the canvas-secret-mirror Secret (must exist in this
+      # namespace; see kustomize/grafana-secret-sync README note).
+      - name: CanvasPostgres
+        uid: canvas-postgres
+        type: postgres
+        access: proxy
+        url: postgres.canvas.svc.cluster.local:5432
+        user: $DB_USER
+        secureJsonData:
+          password: $DB_PASSWORD
+        jsonData:
+          database: $DB_NAME
+          sslmode: disable
+          maxOpenConns: 5
+          maxIdleConns: 2
+          connMaxLifetime: 14400
+          postgresVersion: 1500
+          timescaledb: false
+        editable: true
   dashboards.yaml: |
     apiVersion: 1
     providers:
@@ -51,6 +74,25 @@ spec:
               value: admin
             - name: GF_SECURITY_ADMIN_PASSWORD
               value: admin
+            # Postgres credentials interpolated by Grafana into datasources.yaml
+            # ($DB_USER / $DB_PASSWORD / $DB_NAME). The canvas-secret-mirror
+            # Secret in canvas-monitoring is created by mirroring the canvas
+            # namespace's canvas-secret — see jobs-grafana-setup.sh.
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: canvas-secret-mirror
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: canvas-secret-mirror
+                  key: DB_PASSWORD
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: canvas-secret-mirror
+                  key: DB_NAME
           resources:
             requests:
               cpu: 100m
@@ -70,6 +112,9 @@ spec:
             - name: grafana-dashboard
               mountPath: /var/lib/grafana/dashboards/canvas-local-dashboard.json
               subPath: canvas-local-dashboard.json
+            - name: grafana-jobs-dashboard
+              mountPath: /var/lib/grafana/dashboards/jobs-tier-dashboard.json
+              subPath: jobs-tier-dashboard.json
       volumes:
         - name: grafana-storage
           emptyDir: {}
@@ -79,6 +124,9 @@ spec:
         - name: grafana-dashboard
           configMap:
             name: grafana-dashboard
+        - name: grafana-jobs-dashboard
+          configMap:
+            name: grafana-jobs-dashboard
 ---
 apiVersion: v1
 kind: Service
