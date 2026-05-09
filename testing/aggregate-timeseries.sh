@@ -29,6 +29,29 @@ if [[ -z "$EXPERIMENT_NAME" ]]; then
   exit 1
 fi
 
+# ── Optional: pull canvas-* run folders from remote load gen ─────────────────
+# Set LOADGEN_SSH_HOST in testing.env (e.g. "ubuntu@172.31.6.227") when k6 runs
+# on a separate instance. Skipped silently if unset.
+LOADGEN_SSH_HOST="${LOADGEN_SSH_HOST:-}"
+LOADGEN_RESULTS_DIR="${LOADGEN_RESULTS_DIR:-/home/ubuntu/canvas-k8s/testing/results}"
+LOADGEN_SSH_KEY="${LOADGEN_SSH_KEY:-}"
+
+if [[ -n "$LOADGEN_SSH_HOST" ]]; then
+  SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
+  if [[ -n "$LOADGEN_SSH_KEY" ]]; then
+    SSH_OPTS="$SSH_OPTS -i $LOADGEN_SSH_KEY"
+  fi
+  echo "Syncing canvas-* run folders from load gen ($LOADGEN_SSH_HOST) ..."
+  mkdir -p "$RESULTS_DIR"
+  rsync -az --update --info=stats1 -e "ssh $SSH_OPTS" \
+    --include='canvas-*/' --include='canvas-*/**' --exclude='*' \
+    "$LOADGEN_SSH_HOST:$LOADGEN_RESULTS_DIR/" \
+    "$RESULTS_DIR/" \
+    || { echo "ERROR: rsync from load gen failed"; exit 1; }
+  echo "Sync complete."
+  echo ""
+fi
+
 # ── Find Python (venv first) ──────────────────────────────────────────────────
 PYTHON=""
 for c in "$ROOT_DIR/.venv/bin/python3" "$ROOT_DIR/.venv/bin/python" \
