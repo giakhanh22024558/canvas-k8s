@@ -409,6 +409,95 @@ SEED_PREFIX=lt-batch-01 ./testing/run-unseed-data.sh
 
 This deletes matching seeded courses first, then matching seeded users.
 
+## Full load-test pipeline (copy-paste playbook)
+
+End-to-end flow with k6 on the load gen, collectors and charts on the SUT, and auto-trigger between them. Once one-time setup is done, every test is just two short blocks of commands.
+
+### One-time setup (per stack rebuild)
+
+**On the load gen** — `~/canvas-k8s/testing/testing.env`:
+
+```bash
+SUT_SSH_HOST=ubuntu@<SUT_PRIVATE_IP>
+```
+
+**On the SUT** — `~/canvas-k8s/testing/testing.env`:
+
+```bash
+LOADGEN_SSH_HOST=ubuntu@<LOADGEN_PRIVATE_IP>
+```
+
+**Bidirectional SSH keys** (paste each host's `~/.ssh/id_ed25519.pub` into the other's `~/.ssh/authorized_keys`). Verify both:
+
+```bash
+# On SUT
+ssh ubuntu@<LOADGEN_PRIVATE_IP> "echo ok"
+# On load gen
+ssh ubuntu@<SUT_PRIVATE_IP> "echo ok"
+```
+
+### Per-test execution (3 commands total)
+
+**1. On the SUT — start the 3 collectors (jobs queue, Postgres, Redis):**
+
+```bash
+cd ~/canvas-k8s
+git pull origin khanh-dev/testing
+bash testing/start-collectors.sh
+```
+
+**2. On the load gen — run k6 (auto-triggers chart publish on SUT when k6 finishes):**
+
+```bash
+cd ~/canvas-k8s
+git pull origin khanh-dev/testing
+EXPERIMENT_NAME=stage5-hpa-tuned-run01 \
+  TEST_TYPE=long-stress \
+  bash testing/run-load-test.sh
+```
+
+`TEST_TYPE` options: `smoke` (30s), `load` (5m), `long-stress` (~26m), `breakpoint`, `soak` (30m).
+
+**3. On the SUT — stop collectors, fold their CSVs into the run folder, regenerate charts:**
+
+```bash
+bash testing/stop-collectors.sh && \
+  RUN_ID=$(ls -t testing/results/ | grep '^canvas-' | head -1) && \
+  cp $(ls -td /tmp/collectors-* | head -1)/*.csv testing/results/$RUN_ID/ && \
+  TEST_ID=$RUN_ID bash testing/publish-results.sh
+```
+
+### Verify
+
+```bash
+# All chart PNGs (incl. jobs / db / redis) should be present
+ls testing/results/$RUN_ID/*.png
+
+# Summary CSV should contain the new web/jobs/db/redis fields
+cat testing/results/$RUN_ID/summary_*.csv
+```
+
+Expected charts: `latency_*.png`, `throughput_error_*.png`, `cpu_replicas_*.png`, `memory_*.png`, `hpa_cpu_*.png`, `restart_counts_*.png`, `scale_latency_*.png`, `jobs_queue_*.png`, `db_health_*.png`, `redis_health_*.png`.
+
+### Cross-run aggregate (after 3+ runs of the same experiment)
+
+```bash
+EXPERIMENT_NAME=stage5-hpa-tuned PUSH_GIT=true \
+  bash testing/aggregate-timeseries.sh
+```
+
+Outputs `testing/results/analysis-<experiment>/timeseries_*.png` (mean ± std bands) plus `aggregate_stats_<experiment>.csv` and box plots.
+
+### Skip the auto-trigger (manual mode)
+
+Leave `SUT_SSH_HOST` unset on the load gen. After k6 finishes, run on the SUT:
+
+```bash
+TEST_ID=<test-id-from-load-gen-output> bash testing/publish-results.sh
+```
+
+It will rsync the run folder via `LOADGEN_SSH_HOST` and produce charts as usual.
+
 ## Run load test
 
 Run:
