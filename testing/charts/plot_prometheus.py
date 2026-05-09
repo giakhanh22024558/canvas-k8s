@@ -565,6 +565,230 @@ def plot_jobs_queue(output_dir, label, jobs_rows, snapshots=None):
     plt.close(fig)
 
 
+def load_postgres_health(path):
+    """Load postgres-health.csv produced by collect-postgres-metrics.sh.
+    Returns list of dicts sorted by timestamp."""
+    if not path.exists():
+        return []
+    rows = []
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        for row in reader:
+            row["timestamp"] = parse_timestamp(row["timestamp"])
+            for key, value in row.items():
+                if key == "timestamp":
+                    continue
+                row[key] = parse_numeric(value)
+            rows.append(row)
+    return rows
+
+
+def load_redis_health(path):
+    """Load redis-health.csv. Computes hit ratio + jobs/min throughput post-hoc
+    from cumulative hits/misses counters."""
+    if not path.exists():
+        return []
+    rows = []
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        for row in reader:
+            row["timestamp"] = parse_timestamp(row["timestamp"])
+            for key, value in row.items():
+                if key == "timestamp":
+                    continue
+                row[key] = parse_numeric(value)
+            rows.append(row)
+    # Derive cumulative hit ratio per sample (using running totals)
+    for row in rows:
+        h = row.get("keyspace_hits_cumulative", 0) or 0
+        m = row.get("keyspace_misses_cumulative", 0) or 0
+        row["hit_ratio_percent"] = round(100.0 * h / (h + m), 2) if (h + m) > 0 else 100.0
+    return rows
+
+
+def plot_db_health(output_dir, label, pg_rows, web_mem_limit_mb=None):
+    """4-panel Postgres health chart for "DB is not the bottleneck" defense.
+
+    Panel 1: CPU% (vs 70% threshold) and memory MiB
+    Panel 2: Active connections / max_connections (% utilization)
+    Panel 3: Cache hit ratio (% — should stay > 99%) and slow queries (>1s)
+    Panel 4: Lock waits + idle-in-transaction (both should be 0)
+    """
+    if not pg_rows:
+        return
+
+    fig, axes = plt.subplots(4, 1, figsize=(12, 13), sharex=True)
+    ax_cpu, ax_conn, ax_cache, ax_lock = axes
+    xs = [row["timestamp"] for row in pg_rows]
+
+    # Panel 1 — CPU + memory
+    cpu_ms = [row.get("postgres_cpu_millicores", 0) or 0 for row in pg_rows]
+    mem_mb = [row.get("postgres_memory_mib", 0) or 0 for row in pg_rows]
+    ax_cpu.plot(xs, cpu_ms, color="#d62728", linewidth=2, label="CPU (millicores)")
+    ax_cpu.set_ylabel("CPU millicores", color="#d62728")
+    ax_cpu.tick_params(axis="y", labelcolor="#d62728")
+    ax_cpu_r = ax_cpu.twinx()
+    ax_cpu_r.plot(xs, mem_mb, color="#2ca02c", linewidth=1.5, alpha=0.8,
+                  label="Memory (MiB)")
+    ax_cpu_r.set_ylabel("Memory MiB", color="#2ca02c")
+    ax_cpu_r.tick_params(axis="y", labelcolor="#2ca02c")
+    ax_cpu.set_title(f"Postgres CPU and Memory ({label})")
+    ax_cpu.grid(alpha=0.25)
+    handles = ax_cpu.get_lines() + ax_cpu_r.get_lines()
+    ax_cpu.legend(handles, [h.get_label() for h in handles], loc="upper left")
+
+    # Panel 2 — connection utilization
+    active = [row.get("active_conns", 0) or 0 for row in pg_rows]
+    max_conn_series = [row.get("max_connections", 0) or 0 for row in pg_rows]
+    max_conn = max(max_conn_series, default=100)
+    util_pct = [(a / max_conn * 100.0) if max_conn > 0 else 0 for a in active]
+    ax_conn.plot(xs, util_pct, color="#1f77b4", linewidth=2,
+                 label=f"Active conns / max ({max_conn})")
+    ax_conn.axhline(50, color="#888", linestyle="--", linewidth=1, alpha=0.7,
+                    label="50% safety threshold")
+    ax_conn.set_ylabel("% of max_connections")
+    ax_conn.set_title("Postgres Connection Pool Utilization")
+    ax_conn.grid(alpha=0.25)
+    ax_conn.legend(loc="upper left")
+
+    # Panel 3 — cache hit ratio + slow queries
+    hit_ratio = [row.get("cache_hit_ratio_percent", 100) or 100 for row in pg_rows]
+    slow = [row.get("slow_queries_over_1s", 0) or 0 for row in pg_rows]
+    ax_cache.plot(xs, hit_ratio, color="#2ca02c", linewidth=2, label="Cache hit ratio %")
+    ax_cache.axhline(99, color="#888", linestyle="--", linewidth=1, alpha=0.7,
+                     label="99% threshold")
+    ax_cache.set_ylabel("Hit ratio %", color="#2ca02c")
+    ax_cache.tick_params(axis="y", labelcolor="#2ca02c")
+    ax_cache.set_ylim(95, 100.5)
+    ax_cache_r = ax_cache.twinx()
+    ax_cache_r.plot(xs, slow, color="#d62728", linewidth=1.5, alpha=0.8,
+                    label="Slow queries (>1s)")
+    ax_cache_r.set_ylabel("Slow query count", color="#d62728")
+    ax_cache_r.tick_params(axis="y", labelcolor="#d62728")
+    ax_cache.set_title("Postgres Cache Hit Ratio and Slow Queries")
+    ax_cache.grid(alpha=0.25)
+    handles = ax_cache.get_lines() + ax_cache_r.get_lines()
+    ax_cache.legend(handles, [h.get_label() for h in handles], loc="lower left")
+
+    # Panel 4 — lock waits + idle in tx (contention indicators)
+    locks = [row.get("waiting_on_locks", 0) or 0 for row in pg_rows]
+    idle_tx = [row.get("idle_in_tx_conns", 0) or 0 for row in pg_rows]
+    ax_lock.plot(xs, locks, color="#d62728", linewidth=2, label="Waiting on locks")
+    ax_lock.plot(xs, idle_tx, color="#ff7f0e", linewidth=1.5, alpha=0.8,
+                 label="Idle in transaction")
+    ax_lock.set_ylabel("Connection count")
+    ax_lock.set_xlabel("Time")
+    ax_lock.set_title("Postgres Contention Indicators (both should stay at 0)")
+    ax_lock.grid(alpha=0.25)
+    ax_lock.legend(loc="upper left")
+
+    apply_time_axis(ax_lock)
+
+    fig.tight_layout()
+    fig.savefig(output_dir / f"db_health_{slugify(label)}.png")
+    plt.close(fig)
+
+
+def plot_redis_health(output_dir, label, redis_rows):
+    """2-panel Redis health chart.
+
+    Panel 1: CPU + memory used vs maxmemory
+    Panel 2: Hit ratio % + ops/sec + cumulative evictions
+    """
+    if not redis_rows:
+        return
+
+    fig, axes = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
+    ax_res, ax_perf = axes
+    xs = [row["timestamp"] for row in redis_rows]
+
+    # Panel 1 — CPU + memory
+    cpu = [row.get("redis_cpu_millicores", 0) or 0 for row in redis_rows]
+    used = [row.get("redis_memory_used_mb", 0) or 0 for row in redis_rows]
+    ax_res.plot(xs, cpu, color="#d62728", linewidth=2, label="CPU (millicores)")
+    ax_res.set_ylabel("CPU millicores", color="#d62728")
+    ax_res.tick_params(axis="y", labelcolor="#d62728")
+    ax_res_r = ax_res.twinx()
+    ax_res_r.plot(xs, used, color="#2ca02c", linewidth=1.5, label="Memory used (MB)")
+    max_mb = max((row.get("redis_memory_max_mb", 0) or 0 for row in redis_rows),
+                 default=0)
+    if max_mb > 0:
+        ax_res_r.axhline(max_mb, color="#888", linestyle="--", linewidth=1,
+                         alpha=0.7, label=f"maxmemory ({max_mb} MB)")
+    ax_res_r.set_ylabel("Memory MB", color="#2ca02c")
+    ax_res_r.tick_params(axis="y", labelcolor="#2ca02c")
+    ax_res.set_title(f"Redis CPU and Memory ({label})")
+    ax_res.grid(alpha=0.25)
+    handles = ax_res.get_lines() + ax_res_r.get_lines()
+    ax_res.legend(handles, [h.get_label() for h in handles], loc="upper left")
+
+    # Panel 2 — hit ratio + ops/sec + evictions
+    hit_ratio = [row.get("hit_ratio_percent", 100) or 100 for row in redis_rows]
+    ops = [row.get("ops_per_sec", 0) or 0 for row in redis_rows]
+    evictions = [row.get("evicted_keys_cumulative", 0) or 0 for row in redis_rows]
+
+    ax_perf.plot(xs, hit_ratio, color="#2ca02c", linewidth=2, label="Hit ratio %")
+    ax_perf.axhline(95, color="#888", linestyle="--", linewidth=1, alpha=0.7,
+                    label="95% threshold")
+    ax_perf.set_ylabel("Hit ratio %", color="#2ca02c")
+    ax_perf.tick_params(axis="y", labelcolor="#2ca02c")
+    ax_perf.set_ylim(0, 105)
+
+    ax_perf_r = ax_perf.twinx()
+    ax_perf_r.plot(xs, ops, color="#1f77b4", linewidth=1.5, alpha=0.8,
+                   label="Ops/sec")
+    if max(evictions, default=0) > 0:
+        ax_perf_r.plot(xs, evictions, color="#d62728", linewidth=1.5,
+                       label="Evictions (cumulative)")
+    ax_perf_r.set_ylabel("Ops/sec or evictions")
+    ax_perf.set_title("Redis Performance and Cache Effectiveness")
+    ax_perf.set_xlabel("Time")
+    ax_perf.grid(alpha=0.25)
+    handles = ax_perf.get_lines() + ax_perf_r.get_lines()
+    ax_perf.legend(handles, [h.get_label() for h in handles], loc="lower left")
+
+    apply_time_axis(ax_perf)
+
+    fig.tight_layout()
+    fig.savefig(output_dir / f"redis_health_{slugify(label)}.png")
+    plt.close(fig)
+
+
+def compute_db_summary(pg_rows, redis_rows):
+    """Reduce Postgres + Redis health CSVs to scalar invariants. Returns 0
+    for everything when no data so summary CSV stays consistent across runs.
+    """
+    out = {
+        "peak_postgres_cpu_millicores": 0,
+        "peak_postgres_memory_mib": 0,
+        "peak_active_conns": 0,
+        "max_db_lock_waits": 0,
+        "max_db_idle_in_tx": 0,
+        "total_slow_queries_over_1s": 0,
+        "min_cache_hit_ratio_percent": 100.0,
+        "peak_redis_cpu_millicores": 0,
+        "peak_redis_memory_mb": 0,
+        "min_redis_hit_ratio_percent": 100.0,
+        "redis_evictions_total": 0,
+    }
+    if pg_rows:
+        out["peak_postgres_cpu_millicores"] = int(max((r.get("postgres_cpu_millicores", 0) or 0 for r in pg_rows), default=0))
+        out["peak_postgres_memory_mib"]    = int(max((r.get("postgres_memory_mib", 0) or 0 for r in pg_rows), default=0))
+        out["peak_active_conns"]           = int(max((r.get("active_conns", 0) or 0 for r in pg_rows), default=0))
+        out["max_db_lock_waits"]           = int(max((r.get("waiting_on_locks", 0) or 0 for r in pg_rows), default=0))
+        out["max_db_idle_in_tx"]           = int(max((r.get("idle_in_tx_conns", 0) or 0 for r in pg_rows), default=0))
+        out["total_slow_queries_over_1s"]  = int(max((r.get("slow_queries_over_1s", 0) or 0 for r in pg_rows), default=0))
+        ratios = [r.get("cache_hit_ratio_percent", 100) or 100 for r in pg_rows]
+        out["min_cache_hit_ratio_percent"] = round(min(ratios, default=100.0), 2)
+    if redis_rows:
+        out["peak_redis_cpu_millicores"]   = int(max((r.get("redis_cpu_millicores", 0) or 0 for r in redis_rows), default=0))
+        out["peak_redis_memory_mb"]        = int(max((r.get("redis_memory_used_mb", 0) or 0 for r in redis_rows), default=0))
+        ratios = [r.get("hit_ratio_percent", 100) or 100 for r in redis_rows]
+        out["min_redis_hit_ratio_percent"] = round(min(ratios, default=100.0), 2)
+        out["redis_evictions_total"]       = int(max((r.get("evicted_keys_cumulative", 0) or 0 for r in redis_rows), default=0))
+    return out
+
+
 def compute_jobs_summary(jobs_rows):
     """Reduce jobs-queue.csv to scalar metrics for the summary CSV row.
 
@@ -1129,6 +1353,8 @@ def main():
         snapshots = load_snapshots(run_dir / "k8s-snapshots.csv")
         k6_summary_metrics = parse_k6_summary_metrics(run_dir / "k6-summary.txt")
         jobs_rows = load_jobs_queue(run_dir / "jobs-queue.csv")
+        pg_rows = load_postgres_health(run_dir / "postgres-health.csv")
+        redis_rows = load_redis_health(run_dir / "redis-health.csv")
 
         latency, throughput, error_rate, vus, web_cpu, web_memory, jobs_memory, hpa_cpu = collect_run_metrics(
             args.prometheus_url, selector, start, end, step
@@ -1193,6 +1419,11 @@ def main():
         # if jobs-queue.csv is absent — old runs predate the collector.
         plot_jobs_queue(output_dir, label, jobs_rows, snapshots)
         jobs_summary = compute_jobs_summary(jobs_rows)
+        # DB and cache health charts (defends "DB is not the bottleneck"
+        # claim). Skipped silently if collectors weren't running.
+        plot_db_health(output_dir, label, pg_rows)
+        plot_redis_health(output_dir, label, redis_rows)
+        db_summary = compute_db_summary(pg_rows, redis_rows)
 
         # For summary CSV values prefer the k6 final-summary numbers when
         # available. They are computed over every request in the test
@@ -1224,6 +1455,7 @@ def main():
         }
         summary_metrics.update({key: round(value, 3) if isinstance(value, float) else value for key, value in scaling_summary.items()})
         summary_metrics.update(jobs_summary)
+        summary_metrics.update(db_summary)
         write_summary(output_dir, label, summary_metrics)
         comparison_rows.append(summary_metrics)
         latency_overlays[label] = latency
