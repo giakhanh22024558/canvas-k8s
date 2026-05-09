@@ -504,8 +504,21 @@ def load_jobs_queue(path):
 
     # Compute jobs-per-minute from cumulative counter diff. First sample has
     # no predecessor, so set rate to 0 — chart will start flat for one tick.
+    #
+    # Counter-reset detection (3 cases — all → set rate to 0):
+    #   (1) d_count < 0       counter went down (clear reset)
+    #   (2) prev == 0 and cur > 0 with prev_was_nonzero_recently
+    #                          n_tup_del was 0 mid-run (Postgres stats
+    #                          reset or transient query failure that
+    #                          fell back to the COALESCE default), then
+    #                          the next sample sees the recovered value
+    #                          → fake "burst" of e.g. 100k jobs in 5s.
+    #   (3) cur < prev / 2     same family — large drop suggests reset.
+    # Without these guards, peak_jobs_per_minute can report > 1M/min on
+    # a workload that physically maxes out around a few thousand/min.
     prev_count = None
     prev_ts = None
+    last_nonzero_count = 0
     for row in rows:
         cur_count = row.get("total_processed_cumulative", 0) or 0
         cur_ts = row["timestamp"]
@@ -514,13 +527,17 @@ def load_jobs_queue(path):
         else:
             dt_seconds = (cur_ts - prev_ts).total_seconds()
             d_count = cur_count - prev_count
-            # Counter resets (e.g. Postgres stats reset) → treat as 0.
-            if dt_seconds <= 0 or d_count < 0:
+            reset_recovery = (prev_count == 0 and cur_count > 0
+                              and last_nonzero_count > 0)
+            big_drop = (cur_count < last_nonzero_count / 2 and last_nonzero_count > 100)
+            if dt_seconds <= 0 or d_count < 0 or reset_recovery or big_drop:
                 row["jobs_per_minute"] = 0.0
             else:
                 row["jobs_per_minute"] = (d_count / dt_seconds) * 60.0
         prev_count = cur_count
         prev_ts = cur_ts
+        if cur_count > 0:
+            last_nonzero_count = cur_count
     return rows
 
 
@@ -1139,19 +1156,26 @@ def average_value(values):
 
 
 def infer_scaling_mode(snapshots):
-    """Infer baseline / hpa / prescaled from k8s snapshot data."""
+    """Infer baseline / hpa / prescaled from k8s snapshot data.
+
+    The previous version hard-coded prescaled=5 replicas, which broke when
+    Stage 2 was max-packed at 3 web pods on m6a.2xlarge — the run was
+    classified as "unknown". Detect prescaled by "no HPA active AND replica
+    count is constant > 1" instead, accepting any fixed pod count.
+    """
     if not snapshots:
         return "unknown"
     web_specs = [row["web_spec_replicas"] for row in snapshots]
     min_spec = int(min(web_specs))
     max_spec = int(max(web_specs))
     has_hpa = any(row.get("web_hpa_desired_replicas", 0) > 0 for row in snapshots)
-    if min_spec == 1 and max_spec == 1:
+    if min_spec == 1 and max_spec == 1 and not has_hpa:
         return "baseline"
-    if min_spec == 5 and max_spec == 5 and not has_hpa:
-        return "prescaled"
     if has_hpa or (min_spec < max_spec):
         return "hpa"
+    # Constant >1 replicas with no HPA → prescaled (any size, e.g. 3 or 5).
+    if min_spec == max_spec and min_spec > 1 and not has_hpa:
+        return "prescaled"
     return "unknown"
 
 
