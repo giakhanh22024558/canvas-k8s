@@ -669,13 +669,13 @@ Each stage isolates exactly one variable from the previous one so cross-stage de
 
 **Setup**:
 - Deploy with `./deploy.sh baseline` — exactly 1 web pod and 1 jobs pod, naive resource values, no HPA.
-- Apply VPA in observe-only mode (`./testing/apply-vpa.sh`). It collects usage stats while the test runs but does not mutate the pod.
+- Install VPA recommender + apply observe-only VPA CRs: `bash testing/vpa-recommend.sh setup`. It collects usage stats while the test runs but never mutates the pods (`updateMode: "Off"`).
 
 **Action**: ramp k6 load until the pod's CPU sits at ~70-80%. The `load` profile (10 VUs, 5 min) is usually enough for a single pod to reach that range; if not, switch to `long-stress` for a longer hold at the highest VU level.
 
 ```bash
 ./deploy.sh baseline
-./testing/apply-vpa.sh
+bash testing/vpa-recommend.sh setup
 
 SEED_PREFIX=thesis \
   RUNS_PER_SCENARIO=3 \
@@ -685,8 +685,9 @@ SEED_PREFIX=thesis \
   COOLDOWN_SECONDS=300 \
   bash testing/run-experiment-matrix.sh
 
-# After the runs finish, read VPA's recommendation:
-bash testing/vpa-recommend.sh
+# Wait ~8 min after the runs end so VPA has enough samples, then read:
+bash testing/vpa-recommend.sh           # human-readable
+bash testing/vpa-recommend.sh save      # also write env file + summary
 ```
 
 **Expected outcome**: `vpa-recommend.sh` prints suggested CPU/memory `requests` and `limits` for `canvas-web` and `canvas-jobs`. Edit `deployment/deployment-web.yaml` and `deployment/deployment-jobs.yaml` with those values before continuing.
