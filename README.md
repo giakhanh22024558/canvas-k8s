@@ -469,6 +469,57 @@ Optional flows:
 - set `TEST_LOGIN_EMAIL` and `TEST_LOGIN_PASSWORD` to enable session login checks
 - set `SUBMISSION_API_TOKEN` to enable assignment submission traffic with a student-scoped token
 
+### Two-host workflow: rsync the raw data, publish to a separate results repo
+
+When k6 runs on a separate EC2 instance, raw output stays on the load-gen disk and charts/Prometheus queries run on the SUT. To keep the main `canvas-k8s` repo small, we use **rsync** to move the run folder between hosts (small, fast, LAN-local) and a **separate `canvas-k8s-results` repo** for chart artifacts.
+
+```
+load gen (k6)  --rsync-->  SUT  --git push-->  canvas-k8s-results
+                             |
+                             +-- queries Prometheus, generates charts
+```
+
+Setup once on the **load gen** in `testing/testing.env`:
+
+```bash
+SUT_SSH_HOST=ubuntu@172.31.27.241
+# Optional overrides:
+# SUT_SSH_KEY=/home/ubuntu/.ssh/id_ed25519
+# SUT_REPO_DIR=/home/ubuntu/canvas-k8s
+```
+
+Setup once on the **SUT** in `testing/testing.env`:
+
+```bash
+LOADGEN_SSH_HOST=ubuntu@172.31.6.227
+# Optional overrides:
+# LOADGEN_SSH_KEY=/home/ubuntu/.ssh/id_ed25519
+# LOADGEN_RESULTS_DIR=/home/ubuntu/canvas-k8s/testing/results
+
+RESULTS_REPO_URL=https://github.com/<you>/canvas-k8s-results.git
+RESULTS_REPO_DIR=/home/ubuntu/canvas-k8s-results
+```
+
+SSH keys in both directions:
+
+```bash
+# On load gen → can SSH into SUT to trigger publish
+ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519
+ssh-copy-id ubuntu@172.31.27.241
+
+# On SUT → can SSH into load gen to rsync the run folder
+ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519
+ssh-copy-id ubuntu@172.31.6.227
+```
+
+Now every `bash testing/run-load-test.sh` on the load gen:
+
+1. Runs k6 — raw data lands in `testing/results/<test-id>/` on the load gen.
+2. SSHes into the SUT and triggers `TEST_ID=<id> bash testing/publish-results.sh` remotely.
+3. That script on the SUT pulls the latest plotting code, rsyncs the run folder from the load gen, queries Prometheus, generates charts, then commits and pushes the chart bundle to **`canvas-k8s-results`** (the dedicated results repo).
+
+One command on the load gen → full report published. The main `canvas-k8s` repo never grows with run data. Leave `SUT_SSH_HOST` unset to keep the manual flow (run `publish-results.sh` on the SUT yourself when ready).
+
 ## Horizontal Pod Autoscaling
 
 This repo now includes simple CPU-based HPAs for:
