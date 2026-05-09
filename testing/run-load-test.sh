@@ -200,6 +200,25 @@ else
   echo "Skipping Kubernetes snapshot collection because kubectl is unavailable."
 fi
 
+# ── Optional: trigger start-collectors.sh on the SUT before k6 starts ────────
+# When SUT_SSH_HOST is set in testing.env, this script is running on a
+# dedicated load gen and needs the SUT to spin up the four collectors
+# (jobs queue, Postgres, Redis, k8s-snapshots) in parallel with the test.
+# The post-test finalize-run.sh will stop them and fold the CSVs in.
+SUT_SSH_HOST="${SUT_SSH_HOST:-}"
+SUT_REPO_DIR="${SUT_REPO_DIR:-/home/ubuntu/canvas-k8s}"
+SUT_SSH_KEY="${SUT_SSH_KEY:-}"
+SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
+[[ -n "$SUT_SSH_KEY" ]] && SSH_OPTS="$SSH_OPTS -i $SUT_SSH_KEY"
+
+if [[ -n "$SUT_SSH_HOST" ]]; then
+  echo ""
+  echo "Starting collectors on SUT ($SUT_SSH_HOST) ..."
+  ssh $SSH_OPTS "$SUT_SSH_HOST" \
+    "cd $SUT_REPO_DIR && bash testing/start-collectors.sh" \
+    || echo "WARN: remote start-collectors.sh failed — continuing without on-SUT collectors."
+fi
+
 # k6 exits non-zero when thresholds fail (exit code 108) — expected under stress
 # conditions where error rate is high. Use || true so the matrix continues to
 # the next run instead of stopping after the first threshold breach.
@@ -223,27 +242,18 @@ echo "Saved run output to $RUN_DIR"
 echo "Raw data saved to $RUN_DIR"
 echo "  k6-summary.txt, k8s-snapshots.csv, metadata.env, environment.env"
 
-SUT_SSH_HOST="${SUT_SSH_HOST:-}"
-SUT_REPO_DIR="${SUT_REPO_DIR:-/home/ubuntu/canvas-k8s}"
-SUT_SSH_KEY="${SUT_SSH_KEY:-}"
-
 if [[ -n "$SUT_SSH_HOST" ]]; then
-  SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
-  if [[ -n "$SUT_SSH_KEY" ]]; then
-    SSH_OPTS="$SSH_OPTS -i $SUT_SSH_KEY"
-  fi
-
   echo ""
-  echo "Triggering publish-results.sh on SUT ($SUT_SSH_HOST) for $TEST_ID ..."
-  # The SUT's publish-results.sh:
-  # 1. git pulls latest plotting code
-  # 2. rsyncs the run folder from this load gen via LOADGEN_SSH_HOST
-  # 3. queries Prometheus, generates charts, pushes to the *results* repo
-  # All chart bytes land in the dedicated results repo — never in canvas-k8s.
+  echo "Triggering finalize-run.sh on SUT ($SUT_SSH_HOST) for $TEST_ID ..."
+  # The SUT's finalize-run.sh does everything in one shot:
+  #   1. stop the collector batch we started before k6
+  #   2. fold their CSVs into testing/results/<TEST_ID>/
+  #   3. invoke publish-results.sh which rsyncs raw k6 data, generates
+  #      charts, and pushes to origin
   ssh $SSH_OPTS "$SUT_SSH_HOST" \
-    "cd $SUT_REPO_DIR && TEST_ID=$TEST_ID bash testing/publish-results.sh" \
-    || echo "WARN: remote publish-results.sh on SUT failed. Run it manually: ssh $SUT_SSH_HOST 'cd $SUT_REPO_DIR && TEST_ID=$TEST_ID bash testing/publish-results.sh'"
+    "cd $SUT_REPO_DIR && TEST_ID=$TEST_ID bash testing/finalize-run.sh" \
+    || echo "WARN: remote finalize-run.sh failed. Run manually: ssh $SUT_SSH_HOST 'cd $SUT_REPO_DIR && TEST_ID=$TEST_ID bash testing/finalize-run.sh'"
 else
-  echo "Run 'TEST_ID=$TEST_ID bash testing/publish-results.sh' on the SUT to generate charts."
-  echo "Tip: set SUT_SSH_HOST in testing.env to auto-trigger publish here."
+  echo "Run 'bash testing/finalize-run.sh' on the SUT to stop collectors and publish."
+  echo "Tip: set SUT_SSH_HOST in testing.env to auto-orchestrate the full pipeline from this host."
 fi
