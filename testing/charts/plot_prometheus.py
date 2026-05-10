@@ -829,6 +829,7 @@ def compute_db_summary(pg_rows, redis_rows):
         "min_cache_hit_ratio_percent": 100.0,
         "peak_redis_cpu_millicores": 0,
         "peak_redis_memory_mb": 0,
+        "peak_redis_memory_percent": None,
         "min_redis_hit_ratio_percent": 100.0,
         "redis_evictions_total": 0,
     }
@@ -844,6 +845,21 @@ def compute_db_summary(pg_rows, redis_rows):
     if redis_rows:
         out["peak_redis_cpu_millicores"]   = int(max((r.get("redis_cpu_millicores", 0) or 0 for r in redis_rows), default=0))
         out["peak_redis_memory_mb"]        = int(max((r.get("redis_memory_used_mb", 0) or 0 for r in redis_rows), default=0))
+        # Percentage-of-maxmemory invariant — only meaningful when Redis is
+        # configured with an explicit cap. Bare `redis:alpine` defaults to
+        # maxmemory=0 (unlimited); the manifest now sets --maxmemory 256mb so
+        # this column is computable for runs from Stage 3 onward. Older runs
+        # (Stages 1–2) still have redis_memory_max_mb=0 in their CSVs, in
+        # which case we leave the percent column as None rather than dividing
+        # by zero, and rely on the absolute peak_redis_memory_mb instead.
+        max_mb_samples = [r.get("redis_memory_max_mb", 0) or 0 for r in redis_rows]
+        max_mb = max(max_mb_samples, default=0)
+        if max_mb > 0:
+            pcts = [
+                100.0 * (r.get("redis_memory_used_mb", 0) or 0) / max_mb
+                for r in redis_rows
+            ]
+            out["peak_redis_memory_percent"] = round(max(pcts, default=0.0), 2)
         ratios = [r.get("hit_ratio_percent", 100) or 100 for r in redis_rows]
         out["min_redis_hit_ratio_percent"] = round(min(ratios, default=100.0), 2)
         out["redis_evictions_total"]       = int(max((r.get("evicted_keys_cumulative", 0) or 0 for r in redis_rows), default=0))
