@@ -276,7 +276,22 @@ def plot_latency(grid, p50, p95, p99, output, experiment, n_runs):
     plot_band(ax, grid, p99, "p99",  "#d62728", scale=1000)
     ax.set_xlabel("Minutes from test start")
     ax.set_ylabel("Latency (ms)")
-    ax.set_yscale("log")
+    # Log scale would normally be ideal here so p50 (low) and p99 (high)
+    # both fit on one axis without compressing the small values. But log
+    # scale on matplotlib raises ValueError when the dataset has no
+    # positive values (all NaN or all zero) — which happens for runs
+    # where k6 pushed only counters via prometheus_rw and never the
+    # percentile gauges, or for very early runs that predate the
+    # summaryTrendStats fix. Fall back to linear scale in that case so
+    # the chart still renders (even if it just shows the placeholder
+    # "no data" annotation from plot_band).
+    has_positive = any(
+        agg is not None and agg[0] is not None
+        and float(np.nanmax(agg[0])) > 0
+        for agg in (p50, p95, p99)
+    )
+    if has_positive:
+        ax.set_yscale("log")
     ax.grid(True, alpha=0.3, which="both")
     ax.legend(loc="upper left")
     fig.suptitle(f"{experiment} — Response Time Percentiles (mean ± std, n={n_runs})")
