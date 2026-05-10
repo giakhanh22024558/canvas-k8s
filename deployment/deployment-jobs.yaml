@@ -31,12 +31,11 @@ spec:
               value: "1"
           resources:
             requests:
-              cpu: 100m       # VPA target: 100m
-              memory: 2900Mi  # VPA target: 2975900105 bytes = 2.77Gi → rounded up to 2900Mi
+              cpu: 325m       # VPA-derived (patch-resources-to-vpa.sh, live run)
+              memory: 4Gi     # VPA upper bound — matches live cluster state
             limits:
-              cpu: "2"        # Raised from VPA 180m — jobs pods hit 100% CPU at idle
-                              # indicating VPA under-estimated burst usage. 2 CPU
-                              # matches original naive limit and prevents throttling.
+              cpu: "2"        # Raised from VPA recommendation; prevents throttling
+                              # on bursty DelayedJob processing.
               memory: 4Gi     # VPA upper bound
           command:
             - sh
