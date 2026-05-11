@@ -101,23 +101,79 @@ def resample_to_grid(rel_series, grid_seconds):
 
 
 def aggregate_runs(per_run_series_list, grid_seconds):
-    """Stack runs onto common grid, return (stacked_array, median, n_valid_per_bin).
+    """Stack runs onto common grid, return (stacked_array, _, n_valid_per_bin).
 
-    Spaghetti-plot pipeline: callers draw each row of `stacked_array` as one
-    semi-transparent line and `median` as a bold reference line. No mean /
-    std is computed here because the downstream plotting deliberately avoids
-    parametric variance bands (mean ± std) — bands assume distribution
-    symmetry that does not hold for metrics with a physical lower bound at
-    zero (queue depth, error rate, eviction count).
+    Callers iterate the rows of `stacked_array` to draw each run individually
+    with a distinct colour. No aggregate statistic (mean / median / std) is
+    computed here — chart panels show raw per-run data only, which avoids
+    parametric assumptions that do not hold for metrics bounded at zero
+    (queue depth, error rate, evictions).
     """
     rows = [resample_to_grid(s, grid_seconds) for s in per_run_series_list]
     arr = np.array(rows)  # shape (n_runs, n_bins)
     if arr.size == 0:
         return None, None, None
     with np.errstate(all="ignore"):
-        median = np.nanmedian(arr, axis=0)
-        n      = np.sum(~np.isnan(arr), axis=0)
-    return arr, median, n
+        n = np.sum(~np.isnan(arr), axis=0)
+    # Middle slot retained as None for backwards-compatible tuple shape.
+    return arr, None, n
+
+
+# Distinct colour per run — matplotlib's default qualitative palette. Cycled
+# by run index so Run 1 is blue, Run 2 orange, Run 3 green, etc.
+RUN_COLORS = [
+    "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728",
+    "#9467bd", "#8c564b", "#e377c2", "#7f7f7f",
+]
+
+
+def plot_per_run(ax, grid, agg, label_prefix="Run", scale=1.0):
+    """Draw each run as its own coloured line with dot markers at each
+    grid sample. Used on single-metric panels (RPS, error %, queue depth,
+    job age, jobs/min) so readers can distinguish runs at a glance.
+    """
+    if agg is None or agg[0] is None:
+        return
+    arr = agg[0]
+    minutes = grid / 60.0
+    arr_s = arr * scale
+    for i, run_values in enumerate(arr_s):
+        color = RUN_COLORS[i % len(RUN_COLORS)]
+        ax.plot(
+            minutes, run_values,
+            color=color, alpha=0.9, linewidth=1.4,
+            marker="o", markersize=2.8,
+            markerfacecolor=color, markeredgecolor="none",
+            label=f"{label_prefix} {i + 1}",
+        )
+
+
+def overlay_vus_background(ax, grid, vus_agg, color="#999999"):
+    """Draw VUs as a faint shaded area + thin dashed line on a twin y-axis
+    behind the foreground metric. VUs are identical across runs by design
+    (same k6 scenario, same ramp), so one representative line is drawn —
+    the per-bin mean across runs (NaN-safe), which equals any single run
+    when all runs agree.
+    """
+    if vus_agg is None or vus_agg[0] is None:
+        return None
+    arr = vus_agg[0]
+    minutes = grid / 60.0
+    with np.errstate(all="ignore"):
+        vu_line = np.nanmean(arr, axis=0)
+
+    ax_v = ax.twinx()
+    ax_v.fill_between(minutes, 0, vu_line, color=color, alpha=0.12,
+                      linewidth=0, zorder=0)
+    ax_v.plot(minutes, vu_line, color=color, alpha=0.55,
+              linewidth=1.0, linestyle="--", zorder=0, label="Virtual users")
+    ax_v.set_ylabel("VUs", color=color, fontsize=9)
+    ax_v.tick_params(axis="y", labelcolor=color, labelsize=8)
+    ax_v.set_ylim(bottom=0)
+    # Push twin axis behind the foreground axis so per-run lines stay on top.
+    ax_v.set_zorder(ax.get_zorder() - 1)
+    ax.patch.set_visible(False)
+    return ax_v
 
 
 # ── per-metric query helpers ──────────────────────────────────────────────────
@@ -242,82 +298,62 @@ def read_jobs_queue_csv(path: Path, started_at):
 # ── plotting ──────────────────────────────────────────────────────────────────
 
 def plot_band(ax, grid, agg, label, color, show_band=True, scale=1.0):
-    """Spaghetti plot: one thin semi-transparent line per run + bold median.
+    """Multi-metric variant: every run drawn in the same colour, with the
+    metric distinguished by `label` + `color`. Used on panels that overlay
+    several metrics on one axis (latency p50/p95/p99, memory web vs jobs)
+    where per-metric colour is the primary visual key. For single-metric
+    panels prefer `plot_per_run` which colours by run index instead.
 
-    `agg` is the (stacked_array, median, n) tuple returned by aggregate_runs;
-    stacked_array has shape (n_runs, n_bins). The legend entry uses `label`
-    on the median line; individual run lines share the same colour but no
-    legend entry (would clutter with N duplicates).
-
-    `show_band` is retained for call-site compatibility but ignored — the
-    per-run lines themselves convey inter-run variance directly, replacing
-    the previous mean±std band rendering. `scale` multiplies values before
-    plotting (e.g. 1000 to convert Prometheus seconds → milliseconds).
+    `show_band` is retained for call-site compatibility but ignored.
     """
     if agg is None or agg[0] is None:
         return
-    arr, median, _ = agg
+    arr = agg[0]
     minutes = grid / 60.0
-    arr_s    = arr * scale
-    median_s = median * scale if median is not None else None
+    arr_s = arr * scale
 
-    # Thin lines + dot markers for every individual run. Markers make the
-    # sampled value at each grid tick directly visible (so readers can see
-    # the actual data points instead of an interpolated line), and the
-    # semi-transparent stroke lets overlapping regions visually darken —
-    # consistent runs look like one bold line; divergent runs fan out and
-    # the spread is directly visible.
-    for run_values in arr_s:
-        ax.plot(minutes, run_values, color=color, alpha=0.35,
-                linewidth=1.0, marker="o", markersize=2.5,
-                markerfacecolor=color, markeredgecolor="none")
-
-    # Bold median reference line on top (robust to outliers, never extends
-    # outside the observed value range — unlike mean±std).
-    if median_s is not None:
-        ax.plot(minutes, median_s, color=color, linewidth=2.2,
-                label=f"{label} (median)")
+    # First run line gets the legend label; subsequent runs share the colour
+    # but no label (avoids N duplicate legend entries per metric).
+    for i, run_values in enumerate(arr_s):
+        ax.plot(
+            minutes, run_values,
+            color=color, alpha=0.85, linewidth=1.2,
+            marker="o", markersize=2.5,
+            markerfacecolor=color, markeredgecolor="none",
+            label=label if i == 0 else None,
+        )
 
 
 def plot_throughput_error(grid, tput, err, vus, output, experiment, n_runs):
-    """Three-panel load-response chart on a shared time axis:
-        Panel 1 (top)    — Throughput (RPS)
-        Panel 2 (middle) — Error rate (%)
-        Panel 3 (bottom) — Virtual users (load profile, context for above)
+    """Two-panel load-response chart sharing a time axis:
+        Panel 1 (top)    — Throughput (RPS), one coloured line per run
+        Panel 2 (bottom) — Error rate (%), one coloured line per run
 
-    Each panel uses the same spaghetti-plus-median rendering as the jobs
-    chart so the visual style is consistent across the report.
+    The VU profile is drawn on each panel as a faint shaded area on a
+    twin y-axis (identical across runs by design, so one representative
+    curve is sufficient and acts as visual load context).
     """
-    fig, axes = plt.subplots(3, 1, figsize=(11, 11), sharex=True)
-    ax_rps, ax_err, ax_vus = axes
+    fig, axes = plt.subplots(2, 1, figsize=(11, 9), sharex=True)
+    ax_rps, ax_err = axes
 
     # Panel 1 — RPS
-    plot_band(ax_rps, grid, tput, "Throughput", "#1f77b4")
-    ax_rps.set_ylabel("Requests / sec", color="#1f77b4")
-    ax_rps.tick_params(axis="y", labelcolor="#1f77b4")
+    overlay_vus_background(ax_rps, grid, vus)
+    plot_per_run(ax_rps, grid, tput, label_prefix="Run")
+    ax_rps.set_ylabel("Requests / sec")
     ax_rps.grid(True, alpha=0.3)
-    ax_rps.legend(loc="upper left")
+    ax_rps.legend(loc="upper left", fontsize=9)
 
     # Panel 2 — Error rate
-    plot_band(ax_err, grid, err, "Error rate", "#d62728")
-    ax_err.set_ylabel("Error rate (%)", color="#d62728")
-    ax_err.tick_params(axis="y", labelcolor="#d62728")
-    ax_err.axhline(1.0, color="#888", linestyle="--", linewidth=1, alpha=0.7,
-                   label="1% reference")
+    overlay_vus_background(ax_err, grid, vus)
+    plot_per_run(ax_err, grid, err, label_prefix="Run")
+    ax_err.axhline(1.0, color="#888", linestyle=":", linewidth=1, alpha=0.7)
+    ax_err.set_ylabel("Error rate (%)")
+    ax_err.set_xlabel("Minutes from test start")
     ax_err.grid(True, alpha=0.3)
-    ax_err.legend(loc="upper left")
+    ax_err.legend(loc="upper left", fontsize=9)
 
-    # Panel 3 — VUs (load profile underneath, shows what input produced the
-    # response curves above)
-    plot_band(ax_vus, grid, vus, "Virtual users", "#2ca02c")
-    ax_vus.set_ylabel("VUs", color="#2ca02c")
-    ax_vus.tick_params(axis="y", labelcolor="#2ca02c")
-    ax_vus.set_xlabel("Minutes from test start")
-    ax_vus.grid(True, alpha=0.3)
-    ax_vus.legend(loc="upper left")
-
-    fig.suptitle(f"{experiment} — Throughput, Error Rate, Virtual Users "
-                 f"(per-run lines + median, n={n_runs})")
+    fig.suptitle(f"{experiment} — Throughput & Error Rate "
+                 f"(per-run lines, VU profile shaded, n={n_runs})")
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -353,7 +389,7 @@ def plot_latency(grid, p50, p95, p99, output, experiment, n_runs):
         ax.set_yscale("log")
     ax.grid(True, alpha=0.3, which="both")
     ax.legend(loc="upper left")
-    fig.suptitle(f"{experiment} — Response Time Percentiles (per-run lines + median, n={n_runs})")
+    fig.suptitle(f"{experiment} — Response Time Percentiles (per-run lines, n={n_runs})")
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -376,18 +412,19 @@ def plot_cpu_replicas(grid, replicas, cpu_pct, output, experiment, n_runs):
     ax2.tick_params(axis="y", labelcolor="#d62728")
     ax2.legend(loc="upper right")
 
-    fig.suptitle(f"{experiment} — Replicas & CPU% (per-run lines + median, n={n_runs})")
+    fig.suptitle(f"{experiment} — Replicas & CPU% (per-run lines, n={n_runs})")
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
     print(f"  → {output}")
 
 
-def plot_jobs_queue(grid, queue_depth, job_age, jobs_per_min, jobs_replicas,
+def plot_jobs_queue(grid, queue_depth, job_age, jobs_per_min, vus,
                     output, experiment, n_runs):
-    """Three-panel jobs-tier aggregate chart: queue depth + replicas, age,
-    throughput. Each line is mean across runs; band is ±1 std. Skipped if
-    no run has jobs-queue.csv data.
+    """Three-panel jobs-tier chart: queue depth, oldest pending age, jobs
+    per minute. Each panel renders one coloured line per run and overlays
+    the VU profile as a faint shaded area on a twin axis (identical input
+    across runs). Skipped silently if no run has jobs-queue.csv data.
     """
     has_data = any(agg is not None and agg[0] is not None
                    for agg in (queue_depth, job_age, jobs_per_min))
@@ -398,32 +435,31 @@ def plot_jobs_queue(grid, queue_depth, job_age, jobs_per_min, jobs_replicas,
     fig, axes = plt.subplots(3, 1, figsize=(11, 11), sharex=True)
     ax_q, ax_age, ax_tput = axes
 
-    plot_band(ax_q, grid, queue_depth, "Pending jobs", "#d62728")
-    ax_q.set_ylabel("Jobs in queue", color="#d62728")
-    ax_q.tick_params(axis="y", labelcolor="#d62728")
+    # Panel 1 — queue depth
+    overlay_vus_background(ax_q, grid, vus)
+    plot_per_run(ax_q, grid, queue_depth, label_prefix="Run")
+    ax_q.set_ylabel("Jobs in queue")
     ax_q.grid(True, alpha=0.3)
+    ax_q.legend(loc="upper left", fontsize=9)
 
-    if jobs_replicas is not None and jobs_replicas[0] is not None:
-        ax_q_r = ax_q.twinx()
-        plot_band(ax_q_r, grid, jobs_replicas, "Jobs replicas", "#9467bd")
-        ax_q_r.set_ylabel("Replica count", color="#9467bd")
-        ax_q_r.tick_params(axis="y", labelcolor="#9467bd")
-
-    plot_band(ax_age, grid, job_age, "Oldest pending age", "#ff7f0e")
-    ax_age.axhline(10, color="#888", linestyle="--", linewidth=1, alpha=0.7,
-                   label="10s SLO reference")
-    ax_age.set_ylabel("Seconds")
+    # Panel 2 — oldest pending age
+    overlay_vus_background(ax_age, grid, vus)
+    plot_per_run(ax_age, grid, job_age, label_prefix="Run")
+    ax_age.axhline(10, color="#888", linestyle=":", linewidth=1, alpha=0.7)
+    ax_age.set_ylabel("Oldest pending age (s)")
     ax_age.grid(True, alpha=0.3)
-    ax_age.legend(loc="upper left")
+    ax_age.legend(loc="upper left", fontsize=9)
 
-    plot_band(ax_tput, grid, jobs_per_min, "Jobs / min", "#1f77b4")
+    # Panel 3 — jobs per minute
+    overlay_vus_background(ax_tput, grid, vus)
+    plot_per_run(ax_tput, grid, jobs_per_min, label_prefix="Run")
     ax_tput.set_ylabel("Jobs / minute")
     ax_tput.set_xlabel("Minutes from test start")
     ax_tput.grid(True, alpha=0.3)
-    ax_tput.legend(loc="upper left")
+    ax_tput.legend(loc="upper left", fontsize=9)
 
     fig.suptitle(f"{experiment} — Jobs Queue, Age, Throughput "
-                 f"(per-run lines + median, n={n_runs})")
+                 f"(per-run lines, VU profile shaded, n={n_runs})")
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -438,7 +474,7 @@ def plot_memory(grid, web_mem, jobs_mem, output, experiment, n_runs):
     ax.set_ylabel("Memory (MB)")
     ax.grid(True, alpha=0.3)
     ax.legend(loc="upper left")
-    fig.suptitle(f"{experiment} — Memory Working Set (per-run lines + median, n={n_runs})")
+    fig.suptitle(f"{experiment} — Memory Working Set (per-run lines, n={n_runs})")
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -507,7 +543,6 @@ def main():
         "replicas": [], "cpu_pct": [],
         "web_memory": [], "jobs_memory": [],
         "jobs_queue_depth": [], "jobs_age": [], "jobs_per_min": [],
-        "jobs_replicas": [],
     }
 
     step_str = f"{args.step_seconds}s"
@@ -533,7 +568,6 @@ def main():
         # Replica count from local snapshots CSV (more reliable)
         snap_csv = r["dir"] / "k8s-snapshots.csv"
         rep = read_snapshots_csv(snap_csv, s, "web_ready_replicas")
-        jobs_rep = read_snapshots_csv(snap_csv, s, "jobs_ready_replicas")
 
         # Jobs-queue series from local CSV (collect-jobs-metrics.sh output)
         q_pending, q_age, q_jpm = read_jobs_queue_csv(r["dir"] / "jobs-queue.csv", s)
@@ -551,7 +585,6 @@ def main():
         metrics["jobs_queue_depth"].append(q_pending)
         metrics["jobs_age"].append(q_age)
         metrics["jobs_per_min"].append(q_jpm)
-        metrics["jobs_replicas"].append(jobs_rep)
 
     # Aggregate
     print("\nAggregating across runs...")
@@ -575,7 +608,7 @@ def main():
                 args.experiment, n)
     plot_jobs_queue(grid,
                     agg["jobs_queue_depth"], agg["jobs_age"],
-                    agg["jobs_per_min"],   agg["jobs_replicas"],
+                    agg["jobs_per_min"],   agg["vus"],
                     output_dir / "timeseries_jobs_queue.png",
                     args.experiment, n)
 
