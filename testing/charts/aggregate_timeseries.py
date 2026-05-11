@@ -138,23 +138,28 @@ def plot_metric(ax, grid, agg, label, color, scale=1.0):
     with np.errstate(all="ignore"):
         median = np.nanmedian(arr_s, axis=0)
 
+    # Line is intentionally thinner than the markers so each sampled point
+    # remains the dominant visual element. A thin white edge on every dot
+    # produces a "halo" that visibly separates the marker from the line
+    # underneath, regardless of how steep the segment between two ticks is.
     ax.plot(
         minutes, median,
-        color=color, linewidth=2.2, zorder=3,
-        marker="o", markersize=3.5,
-        markerfacecolor=color, markeredgecolor="none",
+        color=color, linewidth=1.2, zorder=3,
+        marker="o", markersize=5.5,
+        markerfacecolor=color,
+        markeredgecolor="white", markeredgewidth=0.9,
         label=f"{label} (median)",
     )
 
 
-# Backwards-compatible alias for the multi-metric overlay call sites
-# (latency p50/p95/p99, memory web vs jobs). The unified rendering is
-# fine for those panels: each metric gets its own colour, ribbon, dots
-# and median, layered on the same axes.
+# Backwards-compatible alias for multi-metric overlay call sites
+# (latency p50/p95/p99, memory web vs jobs). The same median-line +
+# markers rendering applies; each metric is drawn in its own colour and
+# the panels become a layered set of single curves rather than overlaid
+# bands.
 def plot_band(ax, grid, agg, label, color, show_band=True, scale=1.0):
     """Alias for plot_metric. `show_band` retained for call-site
-    compatibility but is now ignored — the ribbon is always part of the
-    rendering."""
+    compatibility but is now ignored."""
     plot_metric(ax, grid, agg, label, color, scale=scale)
 
 
