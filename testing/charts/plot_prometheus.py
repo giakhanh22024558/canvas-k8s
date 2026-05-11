@@ -1521,12 +1521,21 @@ def main():
         # Prometheus data is still used for all time-series charts.
         # p99 is not present in the k6 summary output so always comes from
         # Prometheus (noted in the CSV as a limitation).
+        _thr = k6_or_prom(k6_summary_metrics, "throughput_rps",    average_value(throughput))
+        _err = k6_or_prom(k6_summary_metrics, "error_rate_percent", average_value(error_rate))
+        # Success Throughput — RPS that returned an expected 2xx response.
+        # Performance-engineering convention: failed requests do not count
+        # as useful work delivered by the system, so capacity comparisons
+        # use this derived figure alongside the gross RPS.
+        #     successful_rps = total_rps × (1 − error_rate_percent / 100)
+        _success_rps = round(_thr * max(0.0, 1.0 - _err / 100.0), 3)
         summary_metrics = {
             "test_id":               args.testid,
             "label":                 label,
             "scaling_mode":          scaling_mode,
-            "avg_throughput_rps":    k6_or_prom(k6_summary_metrics, "throughput_rps",    average_value(throughput)),
-            "avg_error_rate_percent":k6_or_prom(k6_summary_metrics, "error_rate_percent", average_value(error_rate)),
+            "avg_throughput_rps":    _thr,
+            "avg_successful_rps":    _success_rps,
+            "avg_error_rate_percent":_err,
             "avg_p50_ms":            k6_or_prom(k6_summary_metrics, "p50",  average_value(latency["p50"]), scale=1000),
             "avg_p95_ms":            k6_or_prom(k6_summary_metrics, "p95",  average_value(latency["p95"]), scale=1000),
             # p99 now uses k6's true population p99 when available (post-fix runs
