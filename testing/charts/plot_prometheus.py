@@ -1554,8 +1554,11 @@ def main():
             # worst-case-tail aggregation, unlike the original time-average.
             "avg_p99_ms":            k6_or_prom(k6_summary_metrics, "p99", max((v for _, v in latency["p99"]), default=0), scale=1000),
             "max_vus":               round(max((value for _, value in vus), default=0), 3),
-            "max_web_restart_total": round(max((row["web_restart_total"]  for row in snapshots), default=0), 3),
-            "max_jobs_restart_total":round(max((row["jobs_restart_total"] for row in snapshots), default=0), 3),
+            # Container restartCount is a lifetime counter that does not
+            # reset at test start; report the delta (last - first) so the
+            # number reflects restart events DURING the test window only.
+            "max_web_restart_total": int(max(0, snapshots[-1]["web_restart_total"]  - snapshots[0]["web_restart_total"]))  if snapshots else 0,
+            "max_jobs_restart_total":int(max(0, snapshots[-1]["jobs_restart_total"] - snapshots[0]["jobs_restart_total"])) if snapshots else 0,
             "avg_web_memory_mb":     round(average_value(web_memory), 3),
             "avg_jobs_memory_mb":    round(average_value(jobs_memory), 3),
             "max_hpa_cpu_percent":   round(max((v for _, v in hpa_cpu), default=0), 3),
@@ -1592,8 +1595,9 @@ def main():
                 "avg_p95_ms":            k6_or_prom(k6_summary_metrics, "p95",  average_value(latency["p95"]), scale=1000),
                 "avg_p99_ms":            k6_or_prom(k6_summary_metrics, "p99", max((v for _, v in latency["p99"]), default=0), scale=1000),
                 "max_vus":               round(max((value for _, value in vus), default=0), 3),
-                "max_web_restart_total": round(max((row["web_restart_total"] for row in snapshots), default=0), 3),
-                "max_jobs_restart_total":round(max((row["jobs_restart_total"] for row in snapshots), default=0), 3),
+                # Delta over the test window (counter is lifetime-cumulative).
+                "max_web_restart_total": int(max(0, snapshots[-1]["web_restart_total"]  - snapshots[0]["web_restart_total"]))  if snapshots else 0,
+                "max_jobs_restart_total":int(max(0, snapshots[-1]["jobs_restart_total"] - snapshots[0]["jobs_restart_total"])) if snapshots else 0,
             }
         )
         latency_overlays[label] = latency
