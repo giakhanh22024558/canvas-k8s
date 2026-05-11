@@ -3,6 +3,7 @@ test_id,canvas-20260509-123559
 label,staircase
 scaling_mode,baseline
 avg_throughput_rps,5.554
+avg_successful_rps,4.621
 avg_error_rate_percent,16.79
 avg_p50_ms,141.33
 avg_p95_ms,3580.0
@@ -31,5 +32,6 @@ total_slow_queries_over_1s,0
 min_cache_hit_ratio_percent,99.97
 peak_redis_cpu_millicores,54
 peak_redis_memory_mb,8
+peak_redis_memory_percent,
 min_redis_hit_ratio_percent,50.79
 redis_evictions_total,0
