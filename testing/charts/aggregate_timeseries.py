@@ -101,16 +101,23 @@ def resample_to_grid(rel_series, grid_seconds):
 
 
 def aggregate_runs(per_run_series_list, grid_seconds):
-    """Stack runs onto common grid, return (mean, std, n_valid_per_bin)."""
+    """Stack runs onto common grid, return (stacked_array, median, n_valid_per_bin).
+
+    Spaghetti-plot pipeline: callers draw each row of `stacked_array` as one
+    semi-transparent line and `median` as a bold reference line. No mean /
+    std is computed here because the downstream plotting deliberately avoids
+    parametric variance bands (mean ± std) — bands assume distribution
+    symmetry that does not hold for metrics with a physical lower bound at
+    zero (queue depth, error rate, eviction count).
+    """
     rows = [resample_to_grid(s, grid_seconds) for s in per_run_series_list]
     arr = np.array(rows)  # shape (n_runs, n_bins)
     if arr.size == 0:
         return None, None, None
     with np.errstate(all="ignore"):
-        mean = np.nanmean(arr, axis=0)
-        std  = np.nanstd(arr, axis=0)
-        n    = np.sum(~np.isnan(arr), axis=0)
-    return mean, std, n
+        median = np.nanmedian(arr, axis=0)
+        n      = np.sum(~np.isnan(arr), axis=0)
+    return arr, median, n
 
 
 # ── per-metric query helpers ──────────────────────────────────────────────────
@@ -129,6 +136,11 @@ def q_error_rate(testid):
 def q_latency(testid, pct):
     """pct: 'p50', 'p95', 'p99' → returns avg over the percentile metric."""
     return [f'avg(k6_http_req_duration_{pct}{{testid="{testid}"}})']
+
+
+def q_vus(testid):
+    """Virtual-user count gauge — k6 pushes the running VU total every 5 s."""
+    return [f'max(k6_vus{{testid="{testid}"}})']
 
 
 def q_web_memory_mb():
@@ -230,37 +242,82 @@ def read_jobs_queue_csv(path: Path, started_at):
 # ── plotting ──────────────────────────────────────────────────────────────────
 
 def plot_band(ax, grid, agg, label, color, show_band=True, scale=1.0):
-    """agg is the (mean, std, n) tuple returned by aggregate_runs.
+    """Spaghetti plot: one thin semi-transparent line per run + bold median.
 
-    `scale` multiplies both mean and std before plotting (e.g. 1000 to
-    convert Prometheus seconds → milliseconds).
+    `agg` is the (stacked_array, median, n) tuple returned by aggregate_runs;
+    stacked_array has shape (n_runs, n_bins). The legend entry uses `label`
+    on the median line; individual run lines share the same colour but no
+    legend entry (would clutter with N duplicates).
+
+    `show_band` is retained for call-site compatibility but ignored — the
+    per-run lines themselves convey inter-run variance directly, replacing
+    the previous mean±std band rendering. `scale` multiplies values before
+    plotting (e.g. 1000 to convert Prometheus seconds → milliseconds).
     """
     if agg is None or agg[0] is None:
         return
-    mean, std, _ = agg
+    arr, median, _ = agg
     minutes = grid / 60.0
-    mean_s = mean * scale
-    std_s = std * scale if std is not None else None
-    ax.plot(minutes, mean_s, label=label, color=color, linewidth=2)
-    if show_band and std_s is not None:
-        ax.fill_between(minutes, mean_s - std_s, mean_s + std_s,
-                        alpha=0.20, color=color, linewidth=0)
+    arr_s    = arr * scale
+    median_s = median * scale if median is not None else None
+
+    # Thin lines + dot markers for every individual run. Markers make the
+    # sampled value at each grid tick directly visible (so readers can see
+    # the actual data points instead of an interpolated line), and the
+    # semi-transparent stroke lets overlapping regions visually darken —
+    # consistent runs look like one bold line; divergent runs fan out and
+    # the spread is directly visible.
+    for run_values in arr_s:
+        ax.plot(minutes, run_values, color=color, alpha=0.35,
+                linewidth=1.0, marker="o", markersize=2.5,
+                markerfacecolor=color, markeredgecolor="none")
+
+    # Bold median reference line on top (robust to outliers, never extends
+    # outside the observed value range — unlike mean±std).
+    if median_s is not None:
+        ax.plot(minutes, median_s, color=color, linewidth=2.2,
+                label=f"{label} (median)")
 
 
-def plot_throughput_error(grid, tput, err, output, experiment, n_runs):
-    fig, ax1 = plt.subplots(figsize=(11, 5))
-    plot_band(ax1, grid, tput, "Throughput (RPS)", "#1f77b4")
-    ax1.set_xlabel("Minutes from test start")
-    ax1.set_ylabel("Requests/sec", color="#1f77b4")
-    ax1.tick_params(axis="y", labelcolor="#1f77b4")
-    ax1.grid(True, alpha=0.3)
+def plot_throughput_error(grid, tput, err, vus, output, experiment, n_runs):
+    """Three-panel load-response chart on a shared time axis:
+        Panel 1 (top)    — Throughput (RPS)
+        Panel 2 (middle) — Error rate (%)
+        Panel 3 (bottom) — Virtual users (load profile, context for above)
 
-    ax2 = ax1.twinx()
-    plot_band(ax2, grid, err, "Error rate (%)", "#d62728")
-    ax2.set_ylabel("Error rate %", color="#d62728")
-    ax2.tick_params(axis="y", labelcolor="#d62728")
+    Each panel uses the same spaghetti-plus-median rendering as the jobs
+    chart so the visual style is consistent across the report.
+    """
+    fig, axes = plt.subplots(3, 1, figsize=(11, 11), sharex=True)
+    ax_rps, ax_err, ax_vus = axes
 
-    fig.suptitle(f"{experiment} — Throughput & Error Rate (mean ± std, n={n_runs})")
+    # Panel 1 — RPS
+    plot_band(ax_rps, grid, tput, "Throughput", "#1f77b4")
+    ax_rps.set_ylabel("Requests / sec", color="#1f77b4")
+    ax_rps.tick_params(axis="y", labelcolor="#1f77b4")
+    ax_rps.grid(True, alpha=0.3)
+    ax_rps.legend(loc="upper left")
+
+    # Panel 2 — Error rate
+    plot_band(ax_err, grid, err, "Error rate", "#d62728")
+    ax_err.set_ylabel("Error rate (%)", color="#d62728")
+    ax_err.tick_params(axis="y", labelcolor="#d62728")
+    ax_err.axhline(1.0, color="#888", linestyle="--", linewidth=1, alpha=0.7,
+                   label="1% reference")
+    ax_err.grid(True, alpha=0.3)
+    ax_err.legend(loc="upper left")
+
+    # Panel 3 — VUs (load profile underneath, shows what input produced the
+    # response curves above)
+    plot_band(ax_vus, grid, vus, "Virtual users", "#2ca02c")
+    ax_vus.set_ylabel("VUs", color="#2ca02c")
+    ax_vus.tick_params(axis="y", labelcolor="#2ca02c")
+    ax_vus.set_xlabel("Minutes from test start")
+    ax_vus.grid(True, alpha=0.3)
+    ax_vus.legend(loc="upper left")
+
+    fig.suptitle(f"{experiment} — Throughput, Error Rate, Virtual Users "
+                 f"(per-run lines + median, n={n_runs})")
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -285,6 +342,8 @@ def plot_latency(grid, p50, p95, p99, output, experiment, n_runs):
     # summaryTrendStats fix. Fall back to linear scale in that case so
     # the chart still renders (even if it just shows the placeholder
     # "no data" annotation from plot_band).
+    # agg[0] is now the stacked per-run array (was: mean line). nanmax still
+    # works the same way on the 2-D array.
     has_positive = any(
         agg is not None and agg[0] is not None
         and float(np.nanmax(agg[0])) > 0
@@ -294,7 +353,7 @@ def plot_latency(grid, p50, p95, p99, output, experiment, n_runs):
         ax.set_yscale("log")
     ax.grid(True, alpha=0.3, which="both")
     ax.legend(loc="upper left")
-    fig.suptitle(f"{experiment} — Response Time Percentiles (mean ± std, n={n_runs})")
+    fig.suptitle(f"{experiment} — Response Time Percentiles (per-run lines + median, n={n_runs})")
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -317,7 +376,7 @@ def plot_cpu_replicas(grid, replicas, cpu_pct, output, experiment, n_runs):
     ax2.tick_params(axis="y", labelcolor="#d62728")
     ax2.legend(loc="upper right")
 
-    fig.suptitle(f"{experiment} — Replicas & CPU% (mean ± std, n={n_runs})")
+    fig.suptitle(f"{experiment} — Replicas & CPU% (per-run lines + median, n={n_runs})")
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -364,7 +423,7 @@ def plot_jobs_queue(grid, queue_depth, job_age, jobs_per_min, jobs_replicas,
     ax_tput.legend(loc="upper left")
 
     fig.suptitle(f"{experiment} — Jobs Queue, Age, Throughput "
-                 f"(mean ± std, n={n_runs})")
+                 f"(per-run lines + median, n={n_runs})")
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -379,7 +438,7 @@ def plot_memory(grid, web_mem, jobs_mem, output, experiment, n_runs):
     ax.set_ylabel("Memory (MB)")
     ax.grid(True, alpha=0.3)
     ax.legend(loc="upper left")
-    fig.suptitle(f"{experiment} — Memory Working Set (mean ± std, n={n_runs})")
+    fig.suptitle(f"{experiment} — Memory Working Set (per-run lines + median, n={n_runs})")
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -443,7 +502,7 @@ def main():
 
     # Collect per-run series for each metric
     metrics = {
-        "throughput": [], "error_rate": [],
+        "throughput": [], "error_rate": [], "vus": [],
         "p50": [], "p95": [], "p99": [],
         "replicas": [], "cpu_pct": [],
         "web_memory": [], "jobs_memory": [],
@@ -461,6 +520,7 @@ def main():
         # k6 metrics from Prometheus
         thr = try_queries(args.prometheus_url, q_throughput(tid),  s, e, step_str)
         err = try_queries(args.prometheus_url, q_error_rate(tid),  s, e, step_str)
+        vus = try_queries(args.prometheus_url, q_vus(tid),         s, e, step_str)
         p50 = try_queries(args.prometheus_url, q_latency(tid, "p50"), s, e, step_str)
         p95 = try_queries(args.prometheus_url, q_latency(tid, "p95"), s, e, step_str)
         p99 = try_queries(args.prometheus_url, q_latency(tid, "p99"), s, e, step_str)
@@ -480,6 +540,7 @@ def main():
 
         metrics["throughput"].append(to_relative(thr, s))
         metrics["error_rate"].append(to_relative(err, s))
+        metrics["vus"].append(to_relative(vus, s))
         metrics["p50"].append(to_relative(p50, s))
         metrics["p95"].append(to_relative(p95, s))
         metrics["p99"].append(to_relative(p99, s))
@@ -500,6 +561,7 @@ def main():
     print("\nGenerating charts...")
     n = len(runs)
     plot_throughput_error(grid, agg["throughput"], agg["error_rate"],
+                          agg["vus"],
                           output_dir / "timeseries_throughput_error.png",
                           args.experiment, n)
     plot_latency(grid, agg["p50"], agg["p95"], agg["p99"],
