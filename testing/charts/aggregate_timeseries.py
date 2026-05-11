@@ -22,11 +22,22 @@ Charts generated:
 import argparse
 import csv
 import datetime as dt
+import warnings
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import requests
+
+# Silence "All-NaN slice encountered" / "Mean of empty slice" warnings from
+# nanmedian / nanmean — these fire at grid bins where every run has NaN
+# (e.g. the tail of the time grid past a shorter run's end). The resulting
+# NaN values are handled correctly by matplotlib (line gaps where no data),
+# so the warning text is pure noise.
+warnings.filterwarnings("ignore", message="All-NaN slice encountered",
+                        category=RuntimeWarning)
+warnings.filterwarnings("ignore", message="Mean of empty slice",
+                        category=RuntimeWarning)
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
