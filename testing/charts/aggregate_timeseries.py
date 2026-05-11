@@ -196,13 +196,17 @@ def detect_breakpoints(y,
 
 def apply_minute_ticks(ax):
     """Place a major x-axis tick at every minute and a minor tick every
-    30 seconds, and clamp the visible time range to start at 0 so the
-    axis never shows negative minutes (matplotlib auto-padding can
-    otherwise push the left edge to e.g. -1)."""
+    30 seconds, clamp the visible time range to start at 0, AND force
+    tick labels to render on this axis even when sharex=True would
+    normally hide them on inner panels of a multi-panel figure.
+
+    Use this on every panel of a multi-panel chart so readers can read
+    the time directly under each curve instead of mentally projecting
+    down to the bottom axis."""
     ax.set_xlim(left=0)
     ax.xaxis.set_major_locator(MultipleLocator(1))
     ax.xaxis.set_minor_locator(MultipleLocator(0.5))
-    ax.tick_params(axis="x", which="major", length=4)
+    ax.tick_params(axis="x", which="major", length=4, labelbottom=True)
     ax.tick_params(axis="x", which="minor", length=2)
 
 
@@ -455,7 +459,10 @@ def plot_throughput_error(grid, tput, tput_success, err, vus,
 
     fig.suptitle(f"{experiment} — Throughput & Error Rate "
                  f"(median across runs, n={n_runs})")
-    apply_minute_ticks(ax_err)  # bottom axis (sharex propagates)
+    # Apply on every panel so each shows its own x-axis labels, even
+    # though sharex=True would normally hide them on inner panels.
+    apply_minute_ticks(ax_rps)
+    apply_minute_ticks(ax_err)
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -561,7 +568,10 @@ def plot_jobs_queue(grid, queue_depth, job_age, jobs_per_min, vus,
 
     fig.suptitle(f"{experiment} — Jobs Queue, Age, Throughput "
                  f"(median across runs, n={n_runs})")
-    apply_minute_ticks(ax_tput)  # bottom axis (sharex propagates)
+    # Apply on every panel so each shows its own x-axis labels.
+    apply_minute_ticks(ax_q)
+    apply_minute_ticks(ax_age)
+    apply_minute_ticks(ax_tput)
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
