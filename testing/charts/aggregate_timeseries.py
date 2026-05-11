@@ -119,33 +119,57 @@ def aggregate_runs(per_run_series_list, grid_seconds):
     return arr, None, n
 
 
-# Distinct colour per run — matplotlib's default qualitative palette. Cycled
-# by run index so Run 1 is blue, Run 2 orange, Run 3 green, etc.
-RUN_COLORS = [
-    "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728",
-    "#9467bd", "#8c564b", "#e377c2", "#7f7f7f",
-]
+def plot_metric(ax, grid, agg, label, color, scale=1.0):
+    """Render one metric across N runs as:
 
+        - a shaded ribbon between min and max across runs at each grid
+          tick (data-driven, never extends outside observed values),
+        - dot markers for every individual run sample (preserves the raw
+          per-run data points so readers see what was actually measured),
+        - a bold median line as the headline reference.
 
-def plot_per_run(ax, grid, agg, label_prefix="Run", scale=1.0):
-    """Draw each run as its own coloured line with dot markers at each
-    grid sample. Used on single-metric panels (RPS, error %, queue depth,
-    job age, jobs/min) so readers can distinguish runs at a glance.
+    All three layers use the same `color` (per-metric colour); runs are
+    intentionally not distinguished individually — the median answers
+    "what was typical" and the ribbon answers "how much did runs differ",
+    which is the question a single chart should communicate.
     """
     if agg is None or agg[0] is None:
         return
     arr = agg[0]
     minutes = grid / 60.0
     arr_s = arr * scale
-    for i, run_values in enumerate(arr_s):
-        color = RUN_COLORS[i % len(RUN_COLORS)]
-        ax.plot(
-            minutes, run_values,
-            color=color, alpha=0.9, linewidth=1.4,
-            marker="o", markersize=2.8,
-            markerfacecolor=color, markeredgecolor="none",
-            label=f"{label_prefix} {i + 1}",
-        )
+
+    with np.errstate(all="ignore"):
+        median  = np.nanmedian(arr_s, axis=0)
+        run_min = np.nanmin(arr_s, axis=0)
+        run_max = np.nanmax(arr_s, axis=0)
+
+    # 1) Min-max ribbon (data-driven; cannot extend outside measured range)
+    ax.fill_between(minutes, run_min, run_max, color=color,
+                    alpha=0.18, linewidth=0, zorder=1)
+
+    # 2) Per-run dots — every measured sample visible. No connecting line
+    #    on individual runs (would compete with the median); the dots show
+    #    the actual values, the median line shows the trend.
+    for run_values in arr_s:
+        ax.plot(minutes, run_values, color=color, alpha=0.55,
+                linestyle="none", marker="o", markersize=2.8,
+                markerfacecolor=color, markeredgecolor="none", zorder=2)
+
+    # 3) Median reference line (bold, top of the z-stack)
+    ax.plot(minutes, median, color=color, linewidth=2.2, zorder=3,
+            label=f"{label} (median)")
+
+
+# Backwards-compatible alias for the multi-metric overlay call sites
+# (latency p50/p95/p99, memory web vs jobs). The unified rendering is
+# fine for those panels: each metric gets its own colour, ribbon, dots
+# and median, layered on the same axes.
+def plot_band(ax, grid, agg, label, color, show_band=True, scale=1.0):
+    """Alias for plot_metric. `show_band` retained for call-site
+    compatibility but is now ignored — the ribbon is always part of the
+    rendering."""
+    plot_metric(ax, grid, agg, label, color, scale=scale)
 
 
 def overlay_vus_background(ax, grid, vus_agg, color="#999999"):
@@ -336,24 +360,26 @@ def plot_throughput_error(grid, tput, err, vus, output, experiment, n_runs):
     fig, axes = plt.subplots(2, 1, figsize=(11, 9), sharex=True)
     ax_rps, ax_err = axes
 
-    # Panel 1 — RPS
+    # Panel 1 — RPS (blue)
     overlay_vus_background(ax_rps, grid, vus)
-    plot_per_run(ax_rps, grid, tput, label_prefix="Run")
-    ax_rps.set_ylabel("Requests / sec")
+    plot_metric(ax_rps, grid, tput, "Throughput", "#1f77b4")
+    ax_rps.set_ylabel("Requests / sec", color="#1f77b4")
+    ax_rps.tick_params(axis="y", labelcolor="#1f77b4")
     ax_rps.grid(True, alpha=0.3)
     ax_rps.legend(loc="upper left", fontsize=9)
 
-    # Panel 2 — Error rate
+    # Panel 2 — Error rate (red)
     overlay_vus_background(ax_err, grid, vus)
-    plot_per_run(ax_err, grid, err, label_prefix="Run")
+    plot_metric(ax_err, grid, err, "Error rate", "#d62728")
     ax_err.axhline(1.0, color="#888", linestyle=":", linewidth=1, alpha=0.7)
-    ax_err.set_ylabel("Error rate (%)")
+    ax_err.set_ylabel("Error rate (%)", color="#d62728")
+    ax_err.tick_params(axis="y", labelcolor="#d62728")
     ax_err.set_xlabel("Minutes from test start")
     ax_err.grid(True, alpha=0.3)
     ax_err.legend(loc="upper left", fontsize=9)
 
     fig.suptitle(f"{experiment} — Throughput & Error Rate "
-                 f"(per-run lines, VU profile shaded, n={n_runs})")
+                 f"(median, min–max ribbon, per-run dots, n={n_runs})")
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -389,7 +415,7 @@ def plot_latency(grid, p50, p95, p99, output, experiment, n_runs):
         ax.set_yscale("log")
     ax.grid(True, alpha=0.3, which="both")
     ax.legend(loc="upper left")
-    fig.suptitle(f"{experiment} — Response Time Percentiles (per-run lines, n={n_runs})")
+    fig.suptitle(f"{experiment} — Response Time Percentiles (median, min–max ribbon, per-run dots, n={n_runs})")
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -412,7 +438,7 @@ def plot_cpu_replicas(grid, replicas, cpu_pct, output, experiment, n_runs):
     ax2.tick_params(axis="y", labelcolor="#d62728")
     ax2.legend(loc="upper right")
 
-    fig.suptitle(f"{experiment} — Replicas & CPU% (per-run lines, n={n_runs})")
+    fig.suptitle(f"{experiment} — Replicas & CPU% (median, min–max ribbon, per-run dots, n={n_runs})")
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -435,31 +461,34 @@ def plot_jobs_queue(grid, queue_depth, job_age, jobs_per_min, vus,
     fig, axes = plt.subplots(3, 1, figsize=(11, 11), sharex=True)
     ax_q, ax_age, ax_tput = axes
 
-    # Panel 1 — queue depth
+    # Panel 1 — queue depth (red)
     overlay_vus_background(ax_q, grid, vus)
-    plot_per_run(ax_q, grid, queue_depth, label_prefix="Run")
-    ax_q.set_ylabel("Jobs in queue")
+    plot_metric(ax_q, grid, queue_depth, "Pending jobs", "#d62728")
+    ax_q.set_ylabel("Jobs in queue", color="#d62728")
+    ax_q.tick_params(axis="y", labelcolor="#d62728")
     ax_q.grid(True, alpha=0.3)
     ax_q.legend(loc="upper left", fontsize=9)
 
-    # Panel 2 — oldest pending age
+    # Panel 2 — oldest pending age (orange)
     overlay_vus_background(ax_age, grid, vus)
-    plot_per_run(ax_age, grid, job_age, label_prefix="Run")
+    plot_metric(ax_age, grid, job_age, "Oldest pending age", "#ff7f0e")
     ax_age.axhline(10, color="#888", linestyle=":", linewidth=1, alpha=0.7)
-    ax_age.set_ylabel("Oldest pending age (s)")
+    ax_age.set_ylabel("Oldest pending age (s)", color="#ff7f0e")
+    ax_age.tick_params(axis="y", labelcolor="#ff7f0e")
     ax_age.grid(True, alpha=0.3)
     ax_age.legend(loc="upper left", fontsize=9)
 
-    # Panel 3 — jobs per minute
+    # Panel 3 — jobs per minute (blue)
     overlay_vus_background(ax_tput, grid, vus)
-    plot_per_run(ax_tput, grid, jobs_per_min, label_prefix="Run")
-    ax_tput.set_ylabel("Jobs / minute")
+    plot_metric(ax_tput, grid, jobs_per_min, "Jobs / min", "#1f77b4")
+    ax_tput.set_ylabel("Jobs / minute", color="#1f77b4")
+    ax_tput.tick_params(axis="y", labelcolor="#1f77b4")
     ax_tput.set_xlabel("Minutes from test start")
     ax_tput.grid(True, alpha=0.3)
     ax_tput.legend(loc="upper left", fontsize=9)
 
     fig.suptitle(f"{experiment} — Jobs Queue, Age, Throughput "
-                 f"(per-run lines, VU profile shaded, n={n_runs})")
+                 f"(median, min–max ribbon, per-run dots, n={n_runs})")
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -474,7 +503,7 @@ def plot_memory(grid, web_mem, jobs_mem, output, experiment, n_runs):
     ax.set_ylabel("Memory (MB)")
     ax.grid(True, alpha=0.3)
     ax.legend(loc="upper left")
-    fig.suptitle(f"{experiment} — Memory Working Set (per-run lines, n={n_runs})")
+    fig.suptitle(f"{experiment} — Memory Working Set (median, min–max ribbon, per-run dots, n={n_runs})")
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
