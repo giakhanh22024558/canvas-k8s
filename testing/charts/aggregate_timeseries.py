@@ -287,7 +287,17 @@ def overlay_vus_background(ax, grid, vus_agg, color="#999999", offset_pt=0):
 # ── per-metric query helpers ──────────────────────────────────────────────────
 
 def q_throughput(testid):
+    """Total requests / sec — every HTTP call k6 fires is counted here,
+    regardless of response status. This is what k6 PUSHED into the system."""
     return [f'sum(rate(k6_http_reqs_total{{testid="{testid}"}}[1m]))']
+
+
+def q_throughput_success(testid):
+    """Successful requests / sec — only responses where expected_response
+    is true (2xx by default). The gap between this line and q_throughput
+    at any tick equals the failed RPS, which mirrors the error-rate
+    ratio in absolute terms."""
+    return [f'sum(rate(k6_http_reqs_total{{expected_response="true",testid="{testid}"}}[1m]))']
 
 
 def q_error_rate(testid):
@@ -405,23 +415,31 @@ def read_jobs_queue_csv(path: Path, started_at):
 
 # ── plotting ──────────────────────────────────────────────────────────────────
 
-def plot_throughput_error(grid, tput, err, vus, output, experiment, n_runs):
+def plot_throughput_error(grid, tput, tput_success, err, vus,
+                          output, experiment, n_runs):
     """Two-panel load-response chart sharing a time axis:
-        Panel 1 (top)    — Throughput (RPS), one coloured line per run
-        Panel 2 (bottom) — Error rate (%), one coloured line per run
+        Panel 1 (top)    — Throughput (RPS): two lines per panel —
+                           total RPS k6 fired (attempted) and successful
+                           RPS only. The vertical gap between them at
+                           each tick equals the failed RPS in absolute
+                           units, which mirrors the error-rate ratio in
+                           panel 2.
+        Panel 2 (bottom) — Error rate (%), one line per run.
 
     The VU profile is drawn on each panel as a faint shaded area on a
-    twin y-axis (identical across runs by design, so one representative
-    curve is sufficient and acts as visual load context).
+    twin y-axis (identical across runs by design).
     """
     fig, axes = plt.subplots(2, 1, figsize=(11, 9), sharex=True)
     ax_rps, ax_err = axes
 
-    # Panel 1 — RPS (blue)
+    # Panel 1 — RPS: total (dark blue) and successful (light blue / teal).
+    # When error rate is 0 the two lines overlap; during crashes the
+    # successful line drops while total stays up, making the failure
+    # absorbing into the system visually obvious.
     overlay_vus_background(ax_rps, grid, vus)
-    plot_metric(ax_rps, grid, tput, "Throughput", "#1f77b4")
-    ax_rps.set_ylabel("Requests / sec", color="#1f77b4")
-    ax_rps.tick_params(axis="y", labelcolor="#1f77b4")
+    plot_metric(ax_rps, grid, tput,         "Total RPS (sent)",    "#1f77b4")
+    plot_metric(ax_rps, grid, tput_success, "Successful RPS",      "#2ca02c")
+    ax_rps.set_ylabel("Requests / sec")
     ax_rps.grid(True, alpha=0.3)
     ax_rps.legend(loc="upper left", fontsize=9)
 
@@ -624,7 +642,8 @@ def main():
 
     # Collect per-run series for each metric
     metrics = {
-        "throughput": [], "error_rate": [], "vus": [],
+        "throughput": [], "throughput_success": [],
+        "error_rate": [], "vus": [],
         "p50": [], "p95": [], "p99": [],
         "replicas": [], "cpu_pct": [],
         "web_memory": [], "jobs_memory": [],
@@ -639,9 +658,10 @@ def main():
         print(f"Querying metrics for {tid}...")
 
         # k6 metrics from Prometheus
-        thr = try_queries(args.prometheus_url, q_throughput(tid),  s, e, step_str)
-        err = try_queries(args.prometheus_url, q_error_rate(tid),  s, e, step_str)
-        vus = try_queries(args.prometheus_url, q_vus(tid),         s, e, step_str)
+        thr = try_queries(args.prometheus_url, q_throughput(tid),         s, e, step_str)
+        thr_ok = try_queries(args.prometheus_url, q_throughput_success(tid), s, e, step_str)
+        err = try_queries(args.prometheus_url, q_error_rate(tid),         s, e, step_str)
+        vus = try_queries(args.prometheus_url, q_vus(tid),                s, e, step_str)
         p50 = try_queries(args.prometheus_url, q_latency(tid, "p50"), s, e, step_str)
         p95 = try_queries(args.prometheus_url, q_latency(tid, "p95"), s, e, step_str)
         p99 = try_queries(args.prometheus_url, q_latency(tid, "p99"), s, e, step_str)
@@ -659,6 +679,7 @@ def main():
         q_pending, q_age, q_jpm = read_jobs_queue_csv(r["dir"] / "jobs-queue.csv", s)
 
         metrics["throughput"].append(to_relative(thr, s))
+        metrics["throughput_success"].append(to_relative(thr_ok, s))
         metrics["error_rate"].append(to_relative(err, s))
         metrics["vus"].append(to_relative(vus, s))
         metrics["p50"].append(to_relative(p50, s))
@@ -679,8 +700,9 @@ def main():
     # Plot
     print("\nGenerating charts...")
     n = len(runs)
-    plot_throughput_error(grid, agg["throughput"], agg["error_rate"],
-                          agg["vus"],
+    plot_throughput_error(grid,
+                          agg["throughput"], agg["throughput_success"],
+                          agg["error_rate"], agg["vus"],
                           output_dir / "timeseries_throughput_error.png",
                           args.experiment, n)
     plot_latency(grid, agg["p50"], agg["p95"], agg["p99"],
