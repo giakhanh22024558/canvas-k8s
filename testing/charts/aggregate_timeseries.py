@@ -296,12 +296,48 @@ def q_throughput(testid):
     return [f'sum(rate(k6_http_reqs_total{{testid="{testid}"}}[1m]))']
 
 
-def q_throughput_success(testid):
-    """Successful requests / sec — only responses where expected_response
-    is true (2xx by default). The gap between this line and q_throughput
-    at any tick equals the failed RPS, which mirrors the error-rate
-    ratio in absolute terms."""
-    return [f'sum(rate(k6_http_reqs_total{{expected_response="true",testid="{testid}"}}[1m]))']
+def derive_success_rps(total_series, error_series):
+    """Derive per-run successful RPS as total × (1 - error_rate/100) at
+    each timestamp.
+
+    Previously we queried the successful RPS directly with
+        sum(rate(k6_http_reqs_total{expected_response="true"}[1m]))
+    but during crash windows the {expected_response="true"} series can
+    cease to exist in Prometheus (no matching samples → empty result),
+    leaving NaN gaps in the successful series while the total series
+    remains populated. When the cross-run median is then taken
+    independently for total and success, asymmetric NaN distribution
+    can make median(success) > median(total) — impossible per-run, but
+    a real artefact of medians over arrays with different NaN masks.
+
+    Deriving success from total and error per-run instead guarantees:
+        - identical NaN pattern between the two series within a run
+          (success is NaN ⟺ total is NaN);
+        - 0 ≤ success ≤ total at every timestamp within each run;
+        - therefore median(success) ≤ median(total) at every grid tick.
+
+    Inputs:
+        total_series — list of (datetime, total_rps) from q_throughput
+        error_series — list of (datetime, error_pct) from q_error_rate
+    Output:
+        list of (datetime, success_rps) aligned with total_series.
+    """
+    if not total_series:
+        return []
+    err_lookup = {ts: pct for ts, pct in error_series}
+    out = []
+    for ts, total in total_series:
+        err_pct = err_lookup.get(ts)
+        if err_pct is None:
+            # No error-rate sample at this timestamp — Prometheus drops
+            # the error-rate series when there are no failures (denominator
+            # of the ratio query has no matching members). Treat as 0%
+            # error, i.e. every request at this tick was successful.
+            success = total
+        else:
+            success = total * max(0.0, 1.0 - err_pct / 100.0)
+        out.append((ts, success))
+    return out
 
 
 def q_error_rate(testid):
@@ -668,10 +704,13 @@ def main():
         print(f"Querying metrics for {tid}...")
 
         # k6 metrics from Prometheus
-        thr = try_queries(args.prometheus_url, q_throughput(tid),         s, e, step_str)
-        thr_ok = try_queries(args.prometheus_url, q_throughput_success(tid), s, e, step_str)
-        err = try_queries(args.prometheus_url, q_error_rate(tid),         s, e, step_str)
-        vus = try_queries(args.prometheus_url, q_vus(tid),                s, e, step_str)
+        thr = try_queries(args.prometheus_url, q_throughput(tid),  s, e, step_str)
+        err = try_queries(args.prometheus_url, q_error_rate(tid),  s, e, step_str)
+        vus = try_queries(args.prometheus_url, q_vus(tid),         s, e, step_str)
+        # Derive successful RPS per-run from total and error rate. This
+        # preserves the median(success) ≤ median(total) invariant across
+        # runs; see derive_success_rps() for the asymmetric-NaN rationale.
+        thr_ok = derive_success_rps(thr, err)
         p50 = try_queries(args.prometheus_url, q_latency(tid, "p50"), s, e, step_str)
         p95 = try_queries(args.prometheus_url, q_latency(tid, "p95"), s, e, step_str)
         p99 = try_queries(args.prometheus_url, q_latency(tid, "p99"), s, e, step_str)
