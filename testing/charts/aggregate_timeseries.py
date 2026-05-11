@@ -196,8 +196,10 @@ def detect_breakpoints(y,
 
 def apply_minute_ticks(ax):
     """Place a major x-axis tick at every minute and a minor tick every
-    30 seconds. Applied to every aggregate panel so reader can scan
-    cross-chart events tick-by-tick."""
+    30 seconds, and clamp the visible time range to start at 0 so the
+    axis never shows negative minutes (matplotlib auto-padding can
+    otherwise push the left edge to e.g. -1)."""
+    ax.set_xlim(left=0)
     ax.xaxis.set_major_locator(MultipleLocator(1))
     ax.xaxis.set_minor_locator(MultipleLocator(0.5))
     ax.tick_params(axis="x", which="major", length=4)
@@ -250,7 +252,7 @@ def plot_band(ax, grid, agg, label, color, show_band=True, scale=1.0):
     plot_metric(ax, grid, agg, label, color, scale=scale)
 
 
-def overlay_vus_background(ax, grid, vus_agg, color="#999999"):
+def overlay_vus_background(ax, grid, vus_agg, color="#999999", offset_pt=0):
     """Draw VUs as a faint shaded area + thin dashed line on a twin y-axis
     behind the foreground metric. VUs are identical across runs by design
     (same k6 scenario, same ramp), so one representative line is drawn —
@@ -275,6 +277,10 @@ def overlay_vus_background(ax, grid, vus_agg, color="#999999"):
     # Push twin axis behind the foreground axis so per-run lines stay on top.
     ax_v.set_zorder(ax.get_zorder() - 1)
     ax.patch.set_visible(False)
+    # Caller may push this spine outward if the host axis already has
+    # another twin (e.g. plot_cpu_replicas has a CPU% twin on the right).
+    if offset_pt > 0:
+        ax_v.spines["right"].set_position(("outward", offset_pt))
     return ax_v
 
 
@@ -438,8 +444,10 @@ def plot_throughput_error(grid, tput, err, vus, output, experiment, n_runs):
     print(f"  → {output}")
 
 
-def plot_latency(grid, p50, p95, p99, output, experiment, n_runs):
+def plot_latency(grid, p50, p95, p99, vus, output, experiment, n_runs):
     fig, ax = plt.subplots(figsize=(11, 5))
+    # VU profile sits behind the percentile curves as a faint shaded area.
+    overlay_vus_background(ax, grid, vus)
     # Prometheus k6_http_req_duration_pXX is in seconds — scale to ms so the
     # axis label "Latency (ms)" matches the displayed values.
     plot_band(ax, grid, p50, "p50",  "#2ca02c", scale=1000)
@@ -447,25 +455,13 @@ def plot_latency(grid, p50, p95, p99, output, experiment, n_runs):
     plot_band(ax, grid, p99, "p99",  "#d62728", scale=1000)
     ax.set_xlabel("Minutes from test start")
     ax.set_ylabel("Latency (ms)")
-    # Log scale would normally be ideal here so p50 (low) and p99 (high)
-    # both fit on one axis without compressing the small values. But log
-    # scale on matplotlib raises ValueError when the dataset has no
-    # positive values (all NaN or all zero) — which happens for runs
-    # where k6 pushed only counters via prometheus_rw and never the
-    # percentile gauges, or for very early runs that predate the
-    # summaryTrendStats fix. Fall back to linear scale in that case so
-    # the chart still renders (even if it just shows the placeholder
-    # "no data" annotation from plot_band).
-    # agg[0] is now the stacked per-run array (was: mean line). nanmax still
-    # works the same way on the 2-D array.
-    has_positive = any(
-        agg is not None and agg[0] is not None
-        and float(np.nanmax(agg[0])) > 0
-        for agg in (p50, p95, p99)
-    )
-    if has_positive:
-        ax.set_yscale("log")
-    ax.grid(True, alpha=0.3, which="both")
+    # Linear scale with auto-selected round-number ticks. A log scale would
+    # compress the typical 60–300 ms band against the bottom whenever a
+    # single tail spike pushes the upper bound; linear keeps the axis
+    # evenly divided and makes p50/p95/p99 comparable at a glance for
+    # readers who are not used to logarithmic axes.
+    ax.set_ylim(bottom=0)
+    ax.grid(True, alpha=0.3)
     ax.legend(loc="upper left")
     fig.suptitle(f"{experiment} — Response Time Percentiles (median across runs, n={n_runs})")
     apply_minute_ticks(ax)
@@ -475,7 +471,7 @@ def plot_latency(grid, p50, p95, p99, output, experiment, n_runs):
     print(f"  → {output}")
 
 
-def plot_cpu_replicas(grid, replicas, cpu_pct, output, experiment, n_runs):
+def plot_cpu_replicas(grid, replicas, cpu_pct, vus, output, experiment, n_runs):
     fig, ax1 = plt.subplots(figsize=(11, 5))
     plot_band(ax1, grid, replicas, "Web replicas", "#1f77b4")
     ax1.set_xlabel("Minutes from test start")
@@ -490,6 +486,10 @@ def plot_cpu_replicas(grid, replicas, cpu_pct, output, experiment, n_runs):
     ax2.set_ylabel("CPU %", color="#d62728")
     ax2.tick_params(axis="y", labelcolor="#d62728")
     ax2.legend(loc="upper right")
+
+    # VU profile on a second twin axis, spine pushed outward by 55 pt
+    # so it doesn't overlap the CPU% spine already at the right edge.
+    overlay_vus_background(ax1, grid, vus, offset_pt=55)
 
     fig.suptitle(f"{experiment} — Replicas & CPU% (median across runs, n={n_runs})")
     apply_minute_ticks(ax1)
@@ -550,8 +550,9 @@ def plot_jobs_queue(grid, queue_depth, job_age, jobs_per_min, vus,
     print(f"  → {output}")
 
 
-def plot_memory(grid, web_mem, jobs_mem, output, experiment, n_runs):
+def plot_memory(grid, web_mem, jobs_mem, vus, output, experiment, n_runs):
     fig, ax = plt.subplots(figsize=(11, 5))
+    overlay_vus_background(ax, grid, vus)
     plot_band(ax, grid, web_mem,  "Web memory (MB)",  "#1f77b4")
     plot_band(ax, grid, jobs_mem, "Jobs memory (MB)", "#2ca02c")
     ax.set_xlabel("Minutes from test start")
@@ -683,12 +684,15 @@ def main():
                           output_dir / "timeseries_throughput_error.png",
                           args.experiment, n)
     plot_latency(grid, agg["p50"], agg["p95"], agg["p99"],
+                 agg["vus"],
                  output_dir / "timeseries_latency.png",
                  args.experiment, n)
     plot_cpu_replicas(grid, agg["replicas"], agg["cpu_pct"],
+                      agg["vus"],
                       output_dir / "timeseries_cpu_replicas.png",
                       args.experiment, n)
     plot_memory(grid, agg["web_memory"], agg["jobs_memory"],
+                agg["vus"],
                 output_dir / "timeseries_memory.png",
                 args.experiment, n)
     plot_jobs_queue(grid,
