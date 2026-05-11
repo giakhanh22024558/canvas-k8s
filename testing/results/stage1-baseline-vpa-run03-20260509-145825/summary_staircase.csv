@@ -9,8 +9,8 @@ avg_p50_ms,153.81
 avg_p95_ms,3590.0
 avg_p99_ms,46070.0
 max_vus,60.0
-max_web_restart_total,19.0
-max_jobs_restart_total,4.0
+max_web_restart_total,6
+max_jobs_restart_total,2
 avg_web_memory_mb,5145.822
 avg_jobs_memory_mb,3972.092
 max_hpa_cpu_percent,152.194
