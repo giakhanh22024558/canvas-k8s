@@ -130,15 +130,56 @@ def aggregate_runs(per_run_series_list, grid_seconds):
     return arr, None, n
 
 
+def detect_breakpoints(y, threshold_ratio=0.04):
+    """Return indices of ‘important’ points on a 1-D series.
+
+    Picks: the first and last non-NaN samples (endpoints) plus every
+    interior point where the slope changes sign AND the local change
+    magnitude exceeds `threshold_ratio` × (overall value range). The
+    threshold filters out micro-jitter so only real direction reversals
+    (peaks, valleys, knee points) get a marker.
+    """
+    y = np.asarray(y, dtype=float)
+    n = len(y)
+    if n == 0:
+        return []
+
+    valid_mask = ~np.isnan(y)
+    if not valid_mask.any():
+        return []
+
+    valid_idx = np.where(valid_mask)[0]
+    first, last = int(valid_idx[0]), int(valid_idx[-1])
+    breakpoints = {first, last}
+
+    if last - first < 2:
+        return sorted(breakpoints)
+
+    y_range = float(np.nanmax(y) - np.nanmin(y))
+    if y_range <= 0:
+        return sorted(breakpoints)  # flat line — only endpoints
+    threshold = y_range * threshold_ratio
+
+    valid_y = y[valid_idx]
+    # Sign of forward difference between consecutive valid samples
+    diffs = np.diff(valid_y)
+    for j in range(1, len(valid_y) - 1):
+        prev_d, next_d = diffs[j - 1], diffs[j]
+        if prev_d * next_d < 0 and (abs(prev_d) > threshold or abs(next_d) > threshold):
+            breakpoints.add(int(valid_idx[j]))
+
+    return sorted(breakpoints)
+
+
 def plot_metric(ax, grid, agg, label, color, scale=1.0):
     """Render one metric across N runs as a single bold median line with
-    dot markers at every grid tick.
+    dot markers placed only at significant break-points (endpoints and
+    direction-reversals above a 4 % range threshold).
 
     With N=3 the median at each tick is literally the middle observed run,
     not a parametric aggregate — it is a value that was actually measured.
-    Markers make the sampled values directly readable instead of relying
-    on an interpolated line. No min/max ribbon and no per-run dots are
-    drawn: the chart deliberately shows one curve per metric for clarity.
+    Restricting markers to break-points keeps the curve readable on long
+    runs while still flagging peaks, valleys and inflection ticks.
     """
     if agg is None or agg[0] is None:
         return
@@ -149,16 +190,18 @@ def plot_metric(ax, grid, agg, label, color, scale=1.0):
     with np.errstate(all="ignore"):
         median = np.nanmedian(arr_s, axis=0)
 
-    # Line is intentionally thinner than the markers so each sampled point
-    # remains the dominant visual element. A thin white edge on every dot
-    # produces a "halo" that visibly separates the marker from the line
-    # underneath, regardless of how steep the segment between two ticks is.
+    breakpoints = detect_breakpoints(median)
+
+    # Line is intentionally thinner than the markers so each break-point
+    # marker dominates visually. A thin white edge produces a "halo" that
+    # separates the marker from the line underneath.
     ax.plot(
         minutes, median,
-        color=color, linewidth=1.2, zorder=3,
-        marker="o", markersize=5.5,
+        color=color, linewidth=1.4, zorder=3,
+        marker="o", markersize=6.0,
         markerfacecolor=color,
         markeredgecolor="white", markeredgewidth=0.9,
+        markevery=breakpoints if breakpoints else None,
         label=f"{label} (median)",
     )
 
@@ -322,33 +365,6 @@ def read_jobs_queue_csv(path: Path, started_at):
 
 
 # ── plotting ──────────────────────────────────────────────────────────────────
-
-def plot_band(ax, grid, agg, label, color, show_band=True, scale=1.0):
-    """Multi-metric variant: every run drawn in the same colour, with the
-    metric distinguished by `label` + `color`. Used on panels that overlay
-    several metrics on one axis (latency p50/p95/p99, memory web vs jobs)
-    where per-metric colour is the primary visual key. For single-metric
-    panels prefer `plot_per_run` which colours by run index instead.
-
-    `show_band` is retained for call-site compatibility but ignored.
-    """
-    if agg is None or agg[0] is None:
-        return
-    arr = agg[0]
-    minutes = grid / 60.0
-    arr_s = arr * scale
-
-    # First run line gets the legend label; subsequent runs share the colour
-    # but no label (avoids N duplicate legend entries per metric).
-    for i, run_values in enumerate(arr_s):
-        ax.plot(
-            minutes, run_values,
-            color=color, alpha=0.85, linewidth=1.2,
-            marker="o", markersize=2.5,
-            markerfacecolor=color, markeredgecolor="none",
-            label=label if i == 0 else None,
-        )
-
 
 def plot_throughput_error(grid, tput, err, vus, output, experiment, n_runs):
     """Two-panel load-response chart sharing a time axis:
