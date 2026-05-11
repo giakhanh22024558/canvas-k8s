@@ -1416,6 +1416,12 @@ def main():
     parser.add_argument("--output-dir", default="testing/charts/output")
     parser.add_argument("--testid", default="")
     parser.add_argument("--runs-dir", default="testing/results")
+    parser.add_argument("--run-dir", default="",
+                        help="Explicit path to the run directory. "
+                             "Use when the folder has been renamed (e.g. "
+                             "stage1-baseline-vpa-run01-…) but the test_id "
+                             "in metadata.env is still the original "
+                             "canvas-<ts>. Overrides runs_dir/testid lookup.")
     parser.add_argument("--compare-testids", default="")
     parser.add_argument("--compare-labels", default="")
     args = parser.parse_args()
@@ -1429,7 +1435,11 @@ def main():
     latency_overlays = {}
 
     if args.testid:
-        run_dir = Path(args.runs_dir) / args.testid
+        # --run-dir overrides the default runs_dir/testid lookup so the
+        # script keeps working when a folder has been renamed for
+        # readability but the in-metadata test_id (used as the
+        # Prometheus label) still points to the original canvas-<ts>.
+        run_dir = Path(args.run_dir) if args.run_dir else Path(args.runs_dir) / args.testid
         start, end, metadata = run_window(args, run_dir)
         step = safe_step(start, end, args.step)
         selector = f'{{testid="{args.testid}"}}'
