@@ -455,31 +455,42 @@ def read_jobs_queue_csv(path: Path, started_at):
 
 # ── plotting ──────────────────────────────────────────────────────────────────
 
-def _plot_stacked_rps(ax, grid, tput, tput_success):
+def _plot_stacked_rps(ax, grid, tput, err):
     """Render the RPS panel as a stacked area chart.
 
     Layout (bottom-up):
-        - Green filled band [0, success_median]                — successful RPS
-        - Red filled band   [success_median, total_median]     — failed RPS
-        - Thin dark marker line on top at total_median         — chart top edge
+        - Green filled band [0, success_band]                  — successful RPS
+        - Red filled band   [success_band, total_band]         — failed RPS
+        - Thin dark marker line on top at total_band           — chart top edge
           with break-point markers consistent with other charts
 
-    Because tput_success is derived per-run from tput × (1 - error/100),
-    success ≤ total at every per-run tick, so total_median - success_median
-    is non-negative at every grid tick by construction.
+    The bands are derived from the SAME median(error_rate) used by the
+    panel below, so the two panels are visually consistent at every
+    tick by construction:
+
+        failed_band  = median(total) × median(error_rate) / 100
+        success_band = median(total) − failed_band
+
+    Aggregating with two independent medians (median(total) and
+    median(success)) would not preserve this consistency because median
+    does not distribute over multiplication — at ticks where a subset of
+    runs is in a crash cycle, median(error) on the bottom panel and the
+    implied error from the RPS stack would disagree.
     """
     if (tput is None or tput[0] is None
-            or tput_success is None or tput_success[0] is None):
+            or err is None or err[0] is None):
         return
 
     with np.errstate(all="ignore"):
-        total_med   = np.nanmedian(tput[0],         axis=0)
-        success_med = np.nanmedian(tput_success[0], axis=0)
-    # Small rounding-tolerance clamp (medians are independent reductions
-    # so the difference can in principle be slightly negative on a tick
-    # where all runs returned exactly equal values that round in opposite
-    # directions; effectively never happens in practice).
-    failed_med = np.maximum(total_med - success_med, 0.0)
+        total_med = np.nanmedian(tput[0], axis=0)
+        err_med   = np.nanmedian(err[0],  axis=0)
+    # Error rate query may return NaN at ticks where no failures exist
+    # (denominator-of-ratio empty); treat as 0 %.
+    err_med = np.where(np.isnan(err_med), 0.0, err_med)
+    err_med = np.clip(err_med, 0.0, 100.0)
+
+    failed_med  = total_med * err_med / 100.0
+    success_med = total_med - failed_med
 
     minutes = grid / 60.0
 
@@ -528,9 +539,14 @@ def plot_throughput_error(grid, tput, tput_success, err, vus,
     fig, axes = plt.subplots(2, 1, figsize=(11, 9), sharex=True)
     ax_rps, ax_err = axes
 
-    # Panel 1 — stacked area: successful (bottom) + failed (top)
+    # Panel 1 — stacked area: successful (bottom) + failed (top).
+    # The stack is derived from median(total) × median(error_rate) so
+    # this panel and the error-rate panel below are visually consistent
+    # tick-by-tick. The tput_success series is kept in the function
+    # signature (and used by callers that may want it for tables) but
+    # is no longer plotted here.
     overlay_vus_background(ax_rps, grid, vus)
-    _plot_stacked_rps(ax_rps, grid, tput, tput_success)
+    _plot_stacked_rps(ax_rps, grid, tput, err)
     ax_rps.set_ylabel("Requests / sec")
     ax_rps.set_ylim(bottom=0)
     ax_rps.grid(True, alpha=0.3)
