@@ -28,6 +28,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import requests
+from matplotlib.ticker import MultipleLocator
 
 # Silence "All-NaN slice encountered" / "Mean of empty slice" warnings from
 # nanmedian / nanmean — these fire at grid bins where every run has NaN
@@ -130,14 +131,25 @@ def aggregate_runs(per_run_series_list, grid_seconds):
     return arr, None, n
 
 
-def detect_breakpoints(y, threshold_ratio=0.04):
-    """Return indices of ‘important’ points on a 1-D series.
+def detect_breakpoints(y,
+                       reversal_threshold=0.015,
+                       step_threshold=0.06):
+    """Return indices of 'meaningful' points on a 1-D series.
 
-    Picks: the first and last non-NaN samples (endpoints) plus every
-    interior point where the slope changes sign AND the local change
-    magnitude exceeds `threshold_ratio` × (overall value range). The
-    threshold filters out micro-jitter so only real direction reversals
-    (peaks, valleys, knee points) get a marker.
+    Selection rules:
+        1. The first and last non-NaN samples (endpoints).
+        2. Local extrema — interior points where the slope changes sign
+           AND at least one adjacent slope exceeds `reversal_threshold`
+           × (overall range). Catches peaks, valleys, knees.
+        3. Step changes — points where the local first-difference itself
+           exceeds `step_threshold` × (overall range). Catches large
+           jumps within a monotonic stretch (e.g. saturation onset,
+           recovery after a spike) that case (2) would miss because
+           there is no sign reversal.
+
+    The two thresholds let micro-jitter pass while still surfacing every
+    visually meaningful change. Defaults are tuned for a 15 s grid over
+    20–60-minute runs; lower the numbers for denser markers.
     """
     y = np.asarray(y, dtype=float)
     n = len(y)
@@ -158,17 +170,38 @@ def detect_breakpoints(y, threshold_ratio=0.04):
     y_range = float(np.nanmax(y) - np.nanmin(y))
     if y_range <= 0:
         return sorted(breakpoints)  # flat line — only endpoints
-    threshold = y_range * threshold_ratio
+
+    reversal_cutoff = y_range * reversal_threshold
+    step_cutoff     = y_range * step_threshold
 
     valid_y = y[valid_idx]
-    # Sign of forward difference between consecutive valid samples
-    diffs = np.diff(valid_y)
+    diffs = np.diff(valid_y)  # forward differences
+
     for j in range(1, len(valid_y) - 1):
         prev_d, next_d = diffs[j - 1], diffs[j]
-        if prev_d * next_d < 0 and (abs(prev_d) > threshold or abs(next_d) > threshold):
+
+        # Rule 2 — slope reversal (peak / valley)
+        if prev_d * next_d < 0 and (
+            abs(prev_d) > reversal_cutoff or abs(next_d) > reversal_cutoff
+        ):
+            breakpoints.add(int(valid_idx[j]))
+            continue
+
+        # Rule 3 — large step inside a monotonic stretch
+        if abs(prev_d) > step_cutoff or abs(next_d) > step_cutoff:
             breakpoints.add(int(valid_idx[j]))
 
     return sorted(breakpoints)
+
+
+def apply_minute_ticks(ax):
+    """Place a major x-axis tick at every minute and a minor tick every
+    30 seconds. Applied to every aggregate panel so reader can scan
+    cross-chart events tick-by-tick."""
+    ax.xaxis.set_major_locator(MultipleLocator(1))
+    ax.xaxis.set_minor_locator(MultipleLocator(0.5))
+    ax.tick_params(axis="x", which="major", length=4)
+    ax.tick_params(axis="x", which="minor", length=2)
 
 
 def plot_metric(ax, grid, agg, label, color, scale=1.0):
@@ -398,6 +431,7 @@ def plot_throughput_error(grid, tput, err, vus, output, experiment, n_runs):
 
     fig.suptitle(f"{experiment} — Throughput & Error Rate "
                  f"(median across runs, n={n_runs})")
+    apply_minute_ticks(ax_err)  # bottom axis (sharex propagates)
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -434,6 +468,7 @@ def plot_latency(grid, p50, p95, p99, output, experiment, n_runs):
     ax.grid(True, alpha=0.3, which="both")
     ax.legend(loc="upper left")
     fig.suptitle(f"{experiment} — Response Time Percentiles (median across runs, n={n_runs})")
+    apply_minute_ticks(ax)
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -457,6 +492,7 @@ def plot_cpu_replicas(grid, replicas, cpu_pct, output, experiment, n_runs):
     ax2.legend(loc="upper right")
 
     fig.suptitle(f"{experiment} — Replicas & CPU% (median across runs, n={n_runs})")
+    apply_minute_ticks(ax1)
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -507,6 +543,7 @@ def plot_jobs_queue(grid, queue_depth, job_age, jobs_per_min, vus,
 
     fig.suptitle(f"{experiment} — Jobs Queue, Age, Throughput "
                  f"(median across runs, n={n_runs})")
+    apply_minute_ticks(ax_tput)  # bottom axis (sharex propagates)
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -522,6 +559,7 @@ def plot_memory(grid, web_mem, jobs_mem, output, experiment, n_runs):
     ax.grid(True, alpha=0.3)
     ax.legend(loc="upper left")
     fig.suptitle(f"{experiment} — Memory Working Set (median across runs, n={n_runs})")
+    apply_minute_ticks(ax)
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
