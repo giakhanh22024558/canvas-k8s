@@ -42,7 +42,8 @@ DEFAULT_COLOR = "#8c564b"
 
 # (display label, y-axis unit, lower-is-better)
 METRIC_META = {
-    "avg_throughput_rps":     ("Throughput",       "req/s",   False),
+    "avg_throughput_rps":     ("Total Throughput",  "req/s",   False),
+    "avg_successful_rps":     ("Successful Throughput", "req/s", False),
     "avg_error_rate_percent": ("Error Rate",        "%",       True),
     "avg_p50_ms":             ("p50 Latency",       "ms",      True),
     "avg_p95_ms":             ("p95 Latency",       "ms",      True),
@@ -57,6 +58,7 @@ SUMMARY_METRICS = [
     "avg_p95_ms",
     "avg_p99_ms",
     "avg_throughput_rps",
+    "avg_successful_rps",
     "max_web_restart_total",
     "avg_web_memory_mb",
 ]
@@ -65,7 +67,16 @@ SUMMARY_METRICS = [
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def load_summary_csv(path: Path) -> dict:
-    """Load a summary_*.csv into {metric: raw_string_value}."""
+    """Load a summary_*.csv into {metric: raw_string_value}.
+
+    Back-fills avg_successful_rps for legacy summary CSVs that pre-date
+    that column, using
+
+        successful_rps = throughput_rps × (1 − error_rate_percent / 100)
+
+    so the cross-run aggregation table picks up the metric even on runs
+    that have not been re-rendered with the latest plot_prometheus.py.
+    """
     data = {}
     with open(path, newline="", encoding="utf-8") as f:
         for row in csv.reader(f):
@@ -75,6 +86,16 @@ def load_summary_csv(path: Path) -> dict:
             if key == "metric":
                 continue
             data[key] = val
+
+    if "avg_successful_rps" not in data:
+        try:
+            thr = float(data.get("avg_throughput_rps", "nan"))
+            err = float(data.get("avg_error_rate_percent", "nan"))
+            if thr == thr and err == err:  # both non-NaN
+                data["avg_successful_rps"] = f"{thr * max(0.0, 1.0 - err / 100.0):.3f}"
+        except (TypeError, ValueError):
+            pass
+
     return data
 
 

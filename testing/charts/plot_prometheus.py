@@ -1521,12 +1521,21 @@ def main():
         # Prometheus data is still used for all time-series charts.
         # p99 is not present in the k6 summary output so always comes from
         # Prometheus (noted in the CSV as a limitation).
+        _thr = k6_or_prom(k6_summary_metrics, "throughput_rps",    average_value(throughput))
+        _err = k6_or_prom(k6_summary_metrics, "error_rate_percent", average_value(error_rate))
+        # Success Throughput — RPS that returned an expected 2xx response.
+        # Performance engineering convention: report "successful RPS" rather
+        # than gross RPS, because failed requests do not represent useful
+        # work delivered by the system. Derived here from the k6 summary
+        # values to ensure perfect consistency with the totals row.
+        _success_rps = round(_thr * max(0.0, 1.0 - _err / 100.0), 3)
         summary_metrics = {
             "test_id":               args.testid,
             "label":                 label,
             "scaling_mode":          scaling_mode,
-            "avg_throughput_rps":    k6_or_prom(k6_summary_metrics, "throughput_rps",    average_value(throughput)),
-            "avg_error_rate_percent":k6_or_prom(k6_summary_metrics, "error_rate_percent", average_value(error_rate)),
+            "avg_throughput_rps":    _thr,
+            "avg_successful_rps":    _success_rps,
+            "avg_error_rate_percent":_err,
             "avg_p50_ms":            k6_or_prom(k6_summary_metrics, "p50",  average_value(latency["p50"]), scale=1000),
             "avg_p95_ms":            k6_or_prom(k6_summary_metrics, "p95",  average_value(latency["p95"]), scale=1000),
             # p99 now uses k6's true population p99 when available (post-fix runs
@@ -1562,13 +1571,17 @@ def main():
         latency, throughput, error_rate, vus, _fallback_used = apply_k6_summary_fallbacks(
             latency, throughput, error_rate, vus, start, end, args.step, k6_summary_metrics
         )
+        _thr = k6_or_prom(k6_summary_metrics, "throughput_rps",    average_value(throughput))
+        _err = k6_or_prom(k6_summary_metrics, "error_rate_percent", average_value(error_rate))
+        _success_rps = round(_thr * max(0.0, 1.0 - _err / 100.0), 3)
         comparison_rows.append(
             {
                 "test_id":               testid,
                 "label":                 label,
                 "scaling_mode":          infer_scaling_mode(snapshots),
-                "avg_throughput_rps":    k6_or_prom(k6_summary_metrics, "throughput_rps",    average_value(throughput)),
-                "avg_error_rate_percent":k6_or_prom(k6_summary_metrics, "error_rate_percent", average_value(error_rate)),
+                "avg_throughput_rps":    _thr,
+                "avg_successful_rps":    _success_rps,
+                "avg_error_rate_percent":_err,
                 "avg_p50_ms":            k6_or_prom(k6_summary_metrics, "p50",  average_value(latency["p50"]), scale=1000),
                 "avg_p95_ms":            k6_or_prom(k6_summary_metrics, "p95",  average_value(latency["p95"]), scale=1000),
                 "avg_p99_ms":            k6_or_prom(k6_summary_metrics, "p99", max((v for _, v in latency["p99"]), default=0), scale=1000),
