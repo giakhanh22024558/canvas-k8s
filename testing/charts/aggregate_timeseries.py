@@ -455,16 +455,72 @@ def read_jobs_queue_csv(path: Path, started_at):
 
 # ── plotting ──────────────────────────────────────────────────────────────────
 
+def _plot_stacked_rps(ax, grid, tput, tput_success):
+    """Render the RPS panel as a stacked area chart.
+
+    Layout (bottom-up):
+        - Green filled band [0, success_median]                — successful RPS
+        - Red filled band   [success_median, total_median]     — failed RPS
+        - Thin dark marker line on top at total_median         — chart top edge
+          with break-point markers consistent with other charts
+
+    Because tput_success is derived per-run from tput × (1 - error/100),
+    success ≤ total at every per-run tick, so total_median - success_median
+    is non-negative at every grid tick by construction.
+    """
+    if (tput is None or tput[0] is None
+            or tput_success is None or tput_success[0] is None):
+        return
+
+    with np.errstate(all="ignore"):
+        total_med   = np.nanmedian(tput[0],         axis=0)
+        success_med = np.nanmedian(tput_success[0], axis=0)
+    # Small rounding-tolerance clamp (medians are independent reductions
+    # so the difference can in principle be slightly negative on a tick
+    # where all runs returned exactly equal values that round in opposite
+    # directions; effectively never happens in practice).
+    failed_med = np.maximum(total_med - success_med, 0.0)
+
+    minutes = grid / 60.0
+
+    # Successful (green) at the bottom
+    ax.fill_between(minutes, 0, success_med,
+                    color="#2ca02c", alpha=0.55, linewidth=0,
+                    label="Successful RPS (median)")
+    # Failed (red) stacked on top, height = failed_med
+    ax.fill_between(minutes, success_med, success_med + failed_med,
+                    color="#d62728", alpha=0.55, linewidth=0,
+                    label="Failed RPS (median)")
+
+    # Thin marker line tracing the top edge so the chart still has the
+    # break-point markers that every other panel uses for cross-chart
+    # alignment.
+    top_edge = success_med + failed_med
+    breakpoints = detect_breakpoints(top_edge)
+    ax.plot(
+        minutes, top_edge,
+        color="#1f3a5f", linewidth=1.0, zorder=3,
+        marker="o", markersize=4.0,
+        markerfacecolor="#1f3a5f",
+        markeredgecolor="white", markeredgewidth=0.6,
+        markevery=breakpoints if breakpoints else None,
+        label="Total RPS (median)",
+    )
+
+
 def plot_throughput_error(grid, tput, tput_success, err, vus,
                           output, experiment, n_runs):
     """Two-panel load-response chart sharing a time axis:
-        Panel 1 (top)    — Throughput (RPS): two lines per panel —
-                           total RPS k6 fired (attempted) and successful
-                           RPS only. The vertical gap between them at
-                           each tick equals the failed RPS in absolute
-                           units, which mirrors the error-rate ratio in
-                           panel 2.
-        Panel 2 (bottom) — Error rate (%), one line per run.
+        Panel 1 (top)    — RPS shown as a stacked area chart:
+                           bottom band = median successful RPS (green),
+                           top band    = median failed RPS (red).
+                           Total height = total RPS. When error rate is
+                           low the red band is a thin strip; during a
+                           crash window the green band collapses and red
+                           fills the panel. A thin marker line traces
+                           the top edge so the breakpoint markers from
+                           the other charts remain consistent.
+        Panel 2 (bottom) — Error rate (%) line.
 
     The VU profile is drawn on each panel as a faint shaded area on a
     twin y-axis (identical across runs by design).
@@ -472,14 +528,11 @@ def plot_throughput_error(grid, tput, tput_success, err, vus,
     fig, axes = plt.subplots(2, 1, figsize=(11, 9), sharex=True)
     ax_rps, ax_err = axes
 
-    # Panel 1 — RPS: total (dark blue) and successful (light blue / teal).
-    # When error rate is 0 the two lines overlap; during crashes the
-    # successful line drops while total stays up, making the failure
-    # absorbing into the system visually obvious.
+    # Panel 1 — stacked area: successful (bottom) + failed (top)
     overlay_vus_background(ax_rps, grid, vus)
-    plot_metric(ax_rps, grid, tput,         "Total RPS (sent)",    "#1f77b4")
-    plot_metric(ax_rps, grid, tput_success, "Successful RPS",      "#2ca02c")
+    _plot_stacked_rps(ax_rps, grid, tput, tput_success)
     ax_rps.set_ylabel("Requests / sec")
+    ax_rps.set_ylim(bottom=0)
     ax_rps.grid(True, alpha=0.3)
     ax_rps.legend(loc="upper left", fontsize=9)
 
