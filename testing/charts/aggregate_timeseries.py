@@ -120,18 +120,14 @@ def aggregate_runs(per_run_series_list, grid_seconds):
 
 
 def plot_metric(ax, grid, agg, label, color, scale=1.0):
-    """Render one metric across N runs as:
+    """Render one metric across N runs as a single bold median line with
+    dot markers at every grid tick.
 
-        - a shaded ribbon between min and max across runs at each grid
-          tick (data-driven, never extends outside observed values),
-        - dot markers for every individual run sample (preserves the raw
-          per-run data points so readers see what was actually measured),
-        - a bold median line as the headline reference.
-
-    All three layers use the same `color` (per-metric colour); runs are
-    intentionally not distinguished individually — the median answers
-    "what was typical" and the ribbon answers "how much did runs differ",
-    which is the question a single chart should communicate.
+    With N=3 the median at each tick is literally the middle observed run,
+    not a parametric aggregate — it is a value that was actually measured.
+    Markers make the sampled values directly readable instead of relying
+    on an interpolated line. No min/max ribbon and no per-run dots are
+    drawn: the chart deliberately shows one curve per metric for clarity.
     """
     if agg is None or agg[0] is None:
         return
@@ -140,25 +136,15 @@ def plot_metric(ax, grid, agg, label, color, scale=1.0):
     arr_s = arr * scale
 
     with np.errstate(all="ignore"):
-        median  = np.nanmedian(arr_s, axis=0)
-        run_min = np.nanmin(arr_s, axis=0)
-        run_max = np.nanmax(arr_s, axis=0)
+        median = np.nanmedian(arr_s, axis=0)
 
-    # 1) Min-max ribbon (data-driven; cannot extend outside measured range)
-    ax.fill_between(minutes, run_min, run_max, color=color,
-                    alpha=0.18, linewidth=0, zorder=1)
-
-    # 2) Per-run dots — every measured sample visible. No connecting line
-    #    on individual runs (would compete with the median); the dots show
-    #    the actual values, the median line shows the trend.
-    for run_values in arr_s:
-        ax.plot(minutes, run_values, color=color, alpha=0.55,
-                linestyle="none", marker="o", markersize=2.8,
-                markerfacecolor=color, markeredgecolor="none", zorder=2)
-
-    # 3) Median reference line (bold, top of the z-stack)
-    ax.plot(minutes, median, color=color, linewidth=2.2, zorder=3,
-            label=f"{label} (median)")
+    ax.plot(
+        minutes, median,
+        color=color, linewidth=2.2, zorder=3,
+        marker="o", markersize=3.5,
+        markerfacecolor=color, markeredgecolor="none",
+        label=f"{label} (median)",
+    )
 
 
 # Backwards-compatible alias for the multi-metric overlay call sites
@@ -379,7 +365,7 @@ def plot_throughput_error(grid, tput, err, vus, output, experiment, n_runs):
     ax_err.legend(loc="upper left", fontsize=9)
 
     fig.suptitle(f"{experiment} — Throughput & Error Rate "
-                 f"(median, min–max ribbon, per-run dots, n={n_runs})")
+                 f"(median across runs, n={n_runs})")
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -415,7 +401,7 @@ def plot_latency(grid, p50, p95, p99, output, experiment, n_runs):
         ax.set_yscale("log")
     ax.grid(True, alpha=0.3, which="both")
     ax.legend(loc="upper left")
-    fig.suptitle(f"{experiment} — Response Time Percentiles (median, min–max ribbon, per-run dots, n={n_runs})")
+    fig.suptitle(f"{experiment} — Response Time Percentiles (median across runs, n={n_runs})")
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -438,7 +424,7 @@ def plot_cpu_replicas(grid, replicas, cpu_pct, output, experiment, n_runs):
     ax2.tick_params(axis="y", labelcolor="#d62728")
     ax2.legend(loc="upper right")
 
-    fig.suptitle(f"{experiment} — Replicas & CPU% (median, min–max ribbon, per-run dots, n={n_runs})")
+    fig.suptitle(f"{experiment} — Replicas & CPU% (median across runs, n={n_runs})")
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -488,7 +474,7 @@ def plot_jobs_queue(grid, queue_depth, job_age, jobs_per_min, vus,
     ax_tput.legend(loc="upper left", fontsize=9)
 
     fig.suptitle(f"{experiment} — Jobs Queue, Age, Throughput "
-                 f"(median, min–max ribbon, per-run dots, n={n_runs})")
+                 f"(median across runs, n={n_runs})")
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
@@ -503,7 +489,7 @@ def plot_memory(grid, web_mem, jobs_mem, output, experiment, n_runs):
     ax.set_ylabel("Memory (MB)")
     ax.grid(True, alpha=0.3)
     ax.legend(loc="upper left")
-    fig.suptitle(f"{experiment} — Memory Working Set (median, min–max ribbon, per-run dots, n={n_runs})")
+    fig.suptitle(f"{experiment} — Memory Working Set (median across runs, n={n_runs})")
     fig.tight_layout()
     fig.savefig(output, dpi=130)
     plt.close(fig)
