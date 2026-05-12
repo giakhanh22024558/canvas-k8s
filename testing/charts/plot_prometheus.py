@@ -170,6 +170,106 @@ def apply_time_axis(ax):
     ax.tick_params(axis="x", rotation=20)
 
 
+def apply_minute_axis(ax, test_start):
+    """Switch x-axis from absolute datetime to minutes-from-test-start, with
+    a major tick at every minute and minor ticks at 30-second intervals."""
+    from matplotlib.ticker import FuncFormatter, MultipleLocator
+    if test_start is None:
+        return
+    def fmt(value, _pos):
+        # value is matplotlib's internal numeric for datetime (days since epoch)
+        try:
+            ts = mdates.num2date(value)
+            seconds = (ts - test_start).total_seconds() if hasattr(test_start, 'tzinfo') else 0
+            return f"{int(seconds / 60)}"
+        except Exception:
+            return ""
+    # Simpler approach: callers should already plot in seconds-from-start
+    # (numeric) instead of datetime. This helper assumes that, and just sets
+    # locators + xlim.
+    ax.set_xlim(left=0)
+    ax.xaxis.set_major_locator(MultipleLocator(1))
+    ax.xaxis.set_minor_locator(MultipleLocator(0.5))
+    ax.tick_params(axis="x", which="major", length=4, labelbottom=True)
+    ax.tick_params(axis="x", which="minor", length=2)
+
+
+def to_minutes_from_start(series_with_datetime, test_start):
+    """Convert [(datetime, value), ...] -> ([minutes, ...], [values, ...]).
+
+    Used to render per-run charts on a relative-minute x-axis aligned
+    with the aggregate charts.
+    """
+    if not series_with_datetime or test_start is None:
+        return [], []
+    xs, ys = [], []
+    for t, v in series_with_datetime:
+        xs.append((t - test_start).total_seconds() / 60.0)
+        ys.append(v)
+    return xs, ys
+
+
+def overlay_vus_per_run(ax, vus_values, test_start, color="#999999"):
+    """Faint shaded VU profile overlay on twin y-axis, matching the style
+    used by overlay_vus_background in aggregate_timeseries.py. Returns the
+    twin axis so callers can offset its spine when another twin already
+    occupies the right edge."""
+    if not vus_values or test_start is None:
+        return None
+    xs, ys = to_minutes_from_start(vus_values, test_start)
+    if not xs:
+        return None
+    ax_v = ax.twinx()
+    ax_v.fill_between(xs, 0, ys, color=color, alpha=0.12, linewidth=0, zorder=0)
+    ax_v.plot(xs, ys, color=color, alpha=0.55, linewidth=1.0,
+              linestyle="--", zorder=0, label="Virtual users")
+    ax_v.set_ylabel("VUs", color=color, fontsize=9)
+    ax_v.tick_params(axis="y", labelcolor=color, labelsize=8)
+    ax_v.set_ylim(bottom=0)
+    ax_v.set_zorder(ax.get_zorder() - 1)
+    ax.patch.set_visible(False)
+    return ax_v
+
+
+def overlay_rps_per_run(ax, throughput_values, test_start, color="#9ec5d8"):
+    """Faint shaded RPS profile overlay, same style as VU overlay but for
+    successful-rate-context on charts like the latency timeline."""
+    if not throughput_values or test_start is None:
+        return None
+    xs, ys = to_minutes_from_start(throughput_values, test_start)
+    if not xs:
+        return None
+    ax_r = ax.twinx()
+    ax_r.fill_between(xs, 0, ys, color=color, alpha=0.15, linewidth=0, zorder=0)
+    ax_r.plot(xs, ys, color=color, alpha=0.6, linewidth=1.0,
+              linestyle="--", zorder=0, label="RPS")
+    ax_r.set_ylabel("Requests / sec", color=color, fontsize=9)
+    ax_r.tick_params(axis="y", labelcolor=color, labelsize=8)
+    ax_r.set_ylim(bottom=0)
+    ax_r.set_zorder(ax.get_zorder() - 1)
+    ax.patch.set_visible(False)
+    return ax_r
+
+
+def restart_delta_series(snapshots, field):
+    """Return (minutes_from_start, restart_count_during_test) — counter is
+    rebased to 0 at the first snapshot so the line shows how many restarts
+    happened DURING the test window, not the cumulative pod-lifetime value
+    that may include events from before the test started.
+    """
+    if not snapshots:
+        return [], []
+    test_start = snapshots[0]["timestamp"]
+    base = snapshots[0].get(field, 0) or 0
+    xs, ys = [], []
+    for row in snapshots:
+        minutes = (row["timestamp"] - test_start).total_seconds() / 60.0
+        delta = max(0, (row.get(field, 0) or 0) - base)
+        xs.append(minutes)
+        ys.append(delta)
+    return xs, ys
+
+
 def annotate_saturation(axes, saturation_time, saturation_vu, end_time=None):
     """Disabled by request — the inferred saturation point was deemed
     misleading on charts where the system degrades gracefully without an
@@ -321,26 +421,57 @@ def plot_breakpoint_saturation(output_dir, label, throughput, error_rate,
     return out
 
 
-def plot_latency_timeline(output_dir, metrics_by_label):
+def plot_latency_timeline(output_dir, metrics_by_label,
+                          throughput_values=None, test_start=None):
+    """Response-time percentiles (P50/P95/P99) over time.
+
+    When called for a single run, an RPS overlay is drawn as a faint
+    shaded twin-axis background so the reader can correlate latency
+    spikes with throughput dips during crash windows.
+    """
     fig, ax = plt.subplots(figsize=(12, 5))
     colors = {"p50": "#1f77b4", "p95": "#ff7f0e", "p99": "#d62728"}
+
+    # Determine test_start for minute axis (use first available series)
+    if test_start is None:
+        for _label, series in metrics_by_label.items():
+            for metric_name in ("p50", "p95", "p99"):
+                values = series.get(metric_name, [])
+                if values:
+                    test_start = values[0][0]
+                    break
+            if test_start is not None:
+                break
+
+    # RPS overlay (only meaningful for single-run mode)
+    if test_start is not None and throughput_values and len(metrics_by_label) == 1:
+        overlay_rps_per_run(ax, throughput_values, test_start)
 
     for label, metric_series in metrics_by_label.items():
         for metric_name in ("p50", "p95", "p99"):
             values = metric_series.get(metric_name, [])
             if not values:
                 continue
-            xs = [x for x, _ in values]
-            ys = [y * 1000 for _, y in values]
+            if test_start is not None:
+                xs, ys_raw = to_minutes_from_start(values, test_start)
+                ys = [y * 1000 for y in ys_raw]
+            else:
+                xs = [x for x, _ in values]
+                ys = [y * 1000 for _, y in values]
             legend = metric_name.upper() if len(metrics_by_label) == 1 else f"{label} {metric_name.upper()}"
-            ax.plot(xs, ys, label=legend, linewidth=2, color=colors[metric_name], alpha=0.9 if len(metrics_by_label) == 1 else 0.7)
+            ax.plot(xs, ys, label=legend, linewidth=2, color=colors[metric_name],
+                    alpha=0.9 if len(metrics_by_label) == 1 else 0.7)
 
     ax.set_title("Response Time Timeline")
-    ax.set_xlabel("Time")
+    ax.set_xlabel("Minutes from test start" if test_start is not None else "Time")
     ax.set_ylabel("Latency (ms)")
-    ax.legend()
+    ax.set_ylim(bottom=0)
+    ax.legend(loc="upper left", fontsize=9)
     ax.grid(alpha=0.25)
-    apply_time_axis(ax)
+    if test_start is not None:
+        apply_minute_axis(ax, test_start)
+    else:
+        apply_time_axis(ax)
     fig.tight_layout()
     fig.savefig(output_dir / "response_time_timeline.png")
     plt.close(fig)
@@ -348,77 +479,101 @@ def plot_latency_timeline(output_dir, metrics_by_label):
 
 def plot_throughput_error(output_dir, label, throughput_values, error_values,
                           k6_error_rate_percent=None, vus_values=None,
-                          saturation_time=None, saturation_vu=None):
+                          saturation_time=None, saturation_vu=None,
+                          test_start=None):
+    """Per-run throughput + error chart redesigned to match the aggregate
+    chart style:
+        Panel 1 — RPS stacked area: green = successful, red = failed (on top)
+                  with a thin dark line tracing the total at the top edge.
+        Panel 2 — Error rate %, plotted as a line with 1 % reference line.
+    VU profile overlaid on each panel as a faint shaded twin axis.
+    X-axis: minutes from test start, major tick per minute.
+    """
     if not throughput_values and not error_values:
         return
 
-    fig, ax1 = plt.subplots(figsize=(12, 5))
+    if test_start is None and throughput_values:
+        test_start = throughput_values[0][0]
+    if test_start is None and error_values:
+        test_start = error_values[0][0]
+    if test_start is None:
+        return
 
+    fig, axes = plt.subplots(2, 1, figsize=(12, 9), sharex=True)
+    ax_rps, ax_err = axes
+
+    # ── Panel 1: RPS stacked area (success at bottom, failed on top) ─────────
+    overlay_vus_per_run(ax_rps, vus_values, test_start)
+
+    # Align throughput and error timestamps so we can compute failed RPS
+    # per tick = total × (error / 100). Use a dict lookup keyed on timestamp
+    # to avoid relying on identical sample positions.
     if throughput_values:
-        xs = [x for x, _ in throughput_values]
-        ys = [y for _, y in throughput_values]
-        ax1.plot(xs, ys, color="#1f77b4", label="Throughput", linewidth=2)
+        err_map = {ts: pct for ts, pct in (error_values or [])}
+        xs_min, total_ys, success_ys, failed_ys = [], [], [], []
+        for ts, total in throughput_values:
+            minutes = (ts - test_start).total_seconds() / 60.0
+            err_pct = err_map.get(ts)
+            if err_pct is None:
+                # No error sample at this tick -> assume 0% error
+                success = total
+                failed = 0.0
+            else:
+                err_pct = max(0.0, min(100.0, err_pct))
+                failed = total * err_pct / 100.0
+                success = max(0.0, total - failed)
+            xs_min.append(minutes)
+            total_ys.append(total)
+            success_ys.append(success)
+            failed_ys.append(failed)
 
-    # For breakpoint tests: overlay VU ramp as a shaded area so the reader
-    # can directly see which VU level triggered the collapse.
-    if vus_values:
-        ax_vu = ax1.twinx()
-        ax_vu.spines["right"].set_position(("outward", 60))
-        xs_vu = [x for x, _ in vus_values]
-        ys_vu = [y for _, y in vus_values]
-        ax_vu.fill_between(xs_vu, ys_vu, alpha=0.12, color="#7db7e8")
-        ax_vu.plot(xs_vu, ys_vu, color="#7db7e8", linewidth=1.5,
-                   linestyle="--", label="Virtual Users", alpha=0.8)
-        ax_vu.set_ylabel("Virtual Users", color="#7db7e8")
-        ax_vu.tick_params(axis="y", labelcolor="#7db7e8")
-        ax_vu.set_ylim(bottom=0)
+        # Green band: successful at bottom
+        ax_rps.fill_between(xs_min, 0, success_ys,
+                            color="#2ca02c", alpha=0.55, linewidth=0,
+                            label="Successful RPS")
+        # Red band: failed stacked on top
+        ax_rps.fill_between(xs_min, success_ys,
+                            [s + f for s, f in zip(success_ys, failed_ys)],
+                            color="#d62728", alpha=0.55, linewidth=0,
+                            label="Failed RPS")
+        # Thin marker line tracing top edge
+        ax_rps.plot(xs_min, total_ys,
+                    color="#1f3a5f", linewidth=1.0, zorder=3,
+                    marker="o", markersize=3.0,
+                    markerfacecolor="#1f3a5f",
+                    markeredgecolor="white", markeredgewidth=0.6,
+                    label="Total RPS")
 
-    ax1.set_title(f"Throughput vs Error Rate ({label})")
-    ax1.set_xlabel("Time")
-    ax1.set_ylabel("Requests/sec", color="#1f77b4")
-    ax1.tick_params(axis="y", labelcolor="#1f77b4")
-    ax1.grid(alpha=0.25)
-    apply_time_axis(ax1)
+    ax_rps.set_ylabel("Requests / sec")
+    ax_rps.set_ylim(bottom=0)
+    ax_rps.grid(True, alpha=0.3)
+    ax_rps.legend(loc="upper left", fontsize=9)
 
-    ax2 = ax1.twinx()
+    # ── Panel 2: Error rate ──────────────────────────────────────────────────
+    overlay_vus_per_run(ax_err, vus_values, test_start)
     if error_values:
-        xs = [x for x, _ in error_values]
-        ys = [y for _, y in error_values]
-        ax2.plot(xs, ys, color="#d62728", label="Error rate (1-min rolling, %)", linewidth=1.5, alpha=0.6)
-
-    # Fix the error rate axis to 0–110 % so crash spikes that reach 100 % are
-    # clearly visible with breathing room above the line rather than clipping
-    # at the top edge. The extra 10 pp headroom also prevents matplotlib from
-    # auto-scaling to e.g. 96–104 % when crash windows dominate, which would
-    # hide the stable near-zero baseline phases.
-    ax2.set_ylim(0, 110)
-    ax2.set_ylabel("Error rate (%)", color="#d62728")
-    ax2.tick_params(axis="y", labelcolor="#d62728")
-
-    # Overlay k6 final-summary error rate as a dashed horizontal line.
-    # This is the ground-truth value (computed over every request in the test)
-    # and should be used for reporting. The Prometheus time-series above shows
-    # how error rate evolved during the test; this line anchors it to reality.
+        xs_err, ys_err = to_minutes_from_start(error_values, test_start)
+        ax_err.plot(xs_err, ys_err, color="#d62728", linewidth=1.5,
+                    label="Error rate (1-min rolling, %)")
     if k6_error_rate_percent is not None:
-        ax2.axhline(
-            y=k6_error_rate_percent,
-            color="#d62728",
-            linewidth=2,
-            linestyle="--",
+        ax_err.axhline(
+            y=k6_error_rate_percent, color="#d62728", linewidth=1.5,
+            linestyle="--", alpha=0.7,
             label=f"Error rate (k6 summary: {k6_error_rate_percent:.2f}%)",
         )
+    ax_err.axhline(1.0, color="#888", linestyle=":", linewidth=1, alpha=0.7)
+    ax_err.set_ylim(0, 110)
+    ax_err.set_ylabel("Error rate (%)")
+    ax_err.set_xlabel("Minutes from test start")
+    ax_err.grid(True, alpha=0.3)
+    ax_err.legend(loc="upper left", fontsize=9)
 
-    # Collect all line handles for legend (including VU axis if present)
-    all_lines = ax1.get_lines() + ax2.get_lines()
-    if vus_values:
-        all_lines += ax_vu.get_lines()
-    if all_lines:
-        ax1.legend(all_lines, [ln.get_label() for ln in all_lines], loc="upper left")
-
-    end_time = throughput_values[-1][0] if throughput_values else None
+    fig.suptitle(f"Throughput & Error Rate ({label})")
+    apply_minute_axis(ax_rps, test_start)
+    apply_minute_axis(ax_err, test_start)
     fig.tight_layout()
-    annotate_saturation(ax1, saturation_time, saturation_vu, end_time)
-    fig.savefig(output_dir / f"throughput_error_rate_{slugify(label)}.png", bbox_inches="tight")
+    fig.savefig(output_dir / f"throughput_error_rate_{slugify(label)}.png",
+                bbox_inches="tight")
     plt.close(fig)
 
 
@@ -903,39 +1058,51 @@ def compute_jobs_summary(jobs_rows):
     }
 
 
-def plot_cpu_replicas(output_dir, label, cpu_values, snapshots):
+def plot_cpu_replicas(output_dir, label, cpu_values, snapshots,
+                      vus_values=None, test_start=None):
     if not cpu_values and not snapshots:
         return
 
+    if test_start is None and cpu_values:
+        test_start = cpu_values[0][0]
+    if test_start is None and snapshots:
+        test_start = snapshots[0]["timestamp"]
+    if test_start is None:
+        return
+
     fig, ax1 = plt.subplots(figsize=(12, 5))
+
+    # VU overlay first so foreground series stack on top
+    overlay_vus_per_run(ax1, vus_values, test_start)
+
     if cpu_values:
-        xs = [x for x, _ in cpu_values]
-        ys = [y for _, y in cpu_values]
+        xs, ys = to_minutes_from_start(cpu_values, test_start)
         ax1.plot(xs, ys, color="#2ca02c", linewidth=2, label="Web CPU")
 
     ax1.set_title(f"Canvas Web CPU and Replica Count ({label})")
-    ax1.set_xlabel("Time")
+    ax1.set_xlabel("Minutes from test start")
     ax1.set_ylabel("CPU cores", color="#2ca02c")
     ax1.tick_params(axis="y", labelcolor="#2ca02c")
     ax1.grid(alpha=0.25)
-    apply_time_axis(ax1)
 
     ax2 = ax1.twinx()
     replica_line_drawn = False
     if snapshots:
-        xs = [row["timestamp"] for row in snapshots]
-        ys = [row["web_ready_replicas"] or row["web_spec_replicas"] for row in snapshots]
+        rep_series = [(row["timestamp"], row["web_ready_replicas"] or row["web_spec_replicas"])
+                      for row in snapshots]
+        xs_rep, ys_rep = to_minutes_from_start(rep_series, test_start)
         # Only draw replica line if it actually changes — flat lines (baseline=1,
         # prescaled=5) carry no information and clutter the chart.
-        if len(set(ys)) > 1:
-            ax2.step(xs, ys, where="post", color="#9467bd", linewidth=2, label="Ready replicas")
+        if len(set(ys_rep)) > 1:
+            # Push spine outward so it doesn't overlap the VU twin axis
+            ax2.spines["right"].set_position(("outward", 55))
+            ax2.step(xs_rep, ys_rep, where="post", color="#9467bd",
+                     linewidth=2, label="Ready replicas")
             replica_line_drawn = True
     if replica_line_drawn:
         ax2.set_ylabel("Replica count", color="#9467bd")
         ax2.tick_params(axis="y", labelcolor="#9467bd")
     else:
-        # Hide the right axis entirely when the replica line is suppressed so
-        # the chart doesn't show a confusing empty purple axis.
         ax2.set_yticks([])
         ax2.set_ylabel("")
 
@@ -943,6 +1110,7 @@ def plot_cpu_replicas(output_dir, label, cpu_values, snapshots):
     if handles:
         ax1.legend(handles, [line.get_label() for line in handles], loc="upper left")
 
+    apply_minute_axis(ax1, test_start)
     fig.tight_layout()
     fig.savefig(output_dir / f"cpu_replicas_{slugify(label)}.png")
     plt.close(fig)
@@ -969,46 +1137,72 @@ def parse_memory_limit_mb(limit_str):
 
 
 def plot_memory(output_dir, label, web_memory_values, jobs_memory_values,
-               web_memory_limit_mb=None, saturation_time=None, saturation_vu=None):
+                web_memory_limit_mb=None, jobs_memory_limit_mb=None,
+                saturation_time=None, saturation_vu=None,
+                vus_values=None, test_start=None):
     """Memory working-set (MB) for canvas-web and canvas-jobs over time.
 
-    Matches Grafana panels 6 and 7 — same metric, same unit (MB decimal),
-    same Running-pod-only filter applied during collection.
+    Matches Grafana panels 6 and 7 — same metric, same unit (decimal MB),
+    same Running-pod-only filter applied during collection. The underlying
+    Prometheus query divides container_memory_working_set_bytes by 1_000_000,
+    so the values plotted here ARE decimal MB regardless of how Kubernetes
+    expresses the limit. parse_memory_limit_mb performs the same
+    binary-to-decimal conversion (e.g. 8Gi -> 8589.93 MB) so the limit
+    reference line is on the same numeric scale as the data.
 
-    web_memory_limit_mb: if provided, draws a red dashed line showing the
-    container memory limit so OOMKill risk is immediately visible.
+    Fallback limits match the current deployment manifest values
+    (deployment-web.yaml: memory 8Gi, deployment-jobs.yaml: memory 4Gi)
+    when no environment.env snapshot was captured at test time.
     """
     if not web_memory_values and not jobs_memory_values:
         return
 
+    # Fallbacks if environment.env was not captured at run time
+    if web_memory_limit_mb is None:
+        web_memory_limit_mb = parse_memory_limit_mb("8Gi")      # current manifest
+    if jobs_memory_limit_mb is None:
+        jobs_memory_limit_mb = parse_memory_limit_mb("4Gi")     # current manifest
+
+    if test_start is None and web_memory_values:
+        test_start = web_memory_values[0][0]
+    if test_start is None and jobs_memory_values:
+        test_start = jobs_memory_values[0][0]
+    if test_start is None:
+        return
+
     fig, ax = plt.subplots(figsize=(12, 5))
+
+    # VU overlay first so foreground lines stack above
+    overlay_vus_per_run(ax, vus_values, test_start)
+
     if web_memory_values:
-        xs = [x for x, _ in web_memory_values]
-        ys = [y for _, y in web_memory_values]
+        xs, ys = to_minutes_from_start(web_memory_values, test_start)
         ax.plot(xs, ys, color="#1f77b4", label="canvas-web (MB)", linewidth=2)
     if jobs_memory_values:
-        xs = [x for x, _ in jobs_memory_values]
-        ys = [y for _, y in jobs_memory_values]
+        xs, ys = to_minutes_from_start(jobs_memory_values, test_start)
         ax.plot(xs, ys, color="#ff7f0e", label="canvas-jobs (MB)", linewidth=2)
 
     if web_memory_limit_mb is not None:
         ax.axhline(
-            y=web_memory_limit_mb,
-            color="#d62728",
-            linewidth=2,
-            linestyle="--",
-            label=f"Web memory limit ({web_memory_limit_mb/1024:.1f} GiB)",
+            y=web_memory_limit_mb, color="#1f77b4",
+            linewidth=1.5, linestyle="--", alpha=0.7,
+            label=f"Web limit ({web_memory_limit_mb/1024:.1f} GiB ≈ {web_memory_limit_mb:.0f} MB)",
+        )
+    if jobs_memory_limit_mb is not None:
+        ax.axhline(
+            y=jobs_memory_limit_mb, color="#ff7f0e",
+            linewidth=1.5, linestyle="--", alpha=0.7,
+            label=f"Jobs limit ({jobs_memory_limit_mb/1024:.1f} GiB ≈ {jobs_memory_limit_mb:.0f} MB)",
         )
 
     ax.set_title(f"Memory Working Set ({label})")
-    ax.set_xlabel("Time")
-    ax.set_ylabel("Memory (MB)")
-    ax.legend()
+    ax.set_xlabel("Minutes from test start")
+    ax.set_ylabel("Memory (MB, decimal)")
+    ax.set_ylim(bottom=0)
+    ax.legend(loc="upper left", fontsize=9)
     ax.grid(alpha=0.25)
-    apply_time_axis(ax)
-    end_time = web_memory_values[-1][0] if web_memory_values else None
+    apply_minute_axis(ax, test_start)
     fig.tight_layout()
-    annotate_saturation(ax, saturation_time, saturation_vu, end_time)
     fig.savefig(output_dir / f"memory_{slugify(label)}.png", bbox_inches="tight")
     plt.close(fig)
 
@@ -1041,23 +1235,41 @@ def plot_hpa_cpu(output_dir, label, hpa_cpu_values):
 
 
 def plot_restart_counts(output_dir, label, snapshots,
-                        saturation_time=None, saturation_vu=None):
+                        saturation_time=None, saturation_vu=None,
+                        vus_values=None):
+    """Pod restart count DURING the test, rebased to zero at test start.
+
+    `web_restart_total` and `jobs_restart_total` in the snapshot CSV are
+    Kubernetes container restartCount values — lifetime counters that do
+    not reset when the test begins and can be non-zero from prior incidents.
+    Subtracting the first sample isolates restarts that happened in the
+    test window only.
+    """
     if not snapshots:
         return
 
+    test_start = snapshots[0]["timestamp"]
+
     fig, ax = plt.subplots(figsize=(12, 5))
-    xs = [row["timestamp"] for row in snapshots]
-    ax.step(xs, [row["web_restart_total"] for row in snapshots], where="post", label="Web restarts", linewidth=2)
-    ax.step(xs, [row["jobs_restart_total"] for row in snapshots], where="post", label="Jobs restarts", linewidth=2)
+    overlay_vus_per_run(ax, vus_values, test_start)
+
+    xs_web,  ys_web  = restart_delta_series(snapshots, "web_restart_total")
+    xs_jobs, ys_jobs = restart_delta_series(snapshots, "jobs_restart_total")
+    if xs_web:
+        ax.step(xs_web,  ys_web,  where="post",
+                color="#d62728", linewidth=2, label="Web restarts (in-test)")
+    if xs_jobs:
+        ax.step(xs_jobs, ys_jobs, where="post",
+                color="#ff7f0e", linewidth=2, label="Jobs restarts (in-test)")
+
     ax.set_title(f"Pod Restart Count ({label})")
-    ax.set_xlabel("Time")
-    ax.set_ylabel("Restart count")
-    ax.legend()
+    ax.set_xlabel("Minutes from test start")
+    ax.set_ylabel("Restart count (from test start)")
+    ax.set_ylim(bottom=0)
+    ax.legend(loc="upper left", fontsize=9)
     ax.grid(alpha=0.25)
-    apply_time_axis(ax)
-    end_time = xs[-1] if xs else None
+    apply_minute_axis(ax, test_start)
     fig.tight_layout()
-    annotate_saturation(ax, saturation_time, saturation_vu, end_time)
     fig.savefig(output_dir / f"pod_restart_count_{slugify(label)}.png", bbox_inches="tight")
     plt.close(fig)
 
@@ -1476,13 +1688,15 @@ def main():
                 latency_p95=latency.get("p95"),
             )
 
-        plot_latency_timeline(output_dir, {label: latency})
+        plot_latency_timeline(output_dir, {label: latency},
+                              throughput_values=throughput, test_start=start)
         plot_throughput_error(
             output_dir, label, throughput, error_rate,
             k6_error_rate_percent=k6_summary_metrics.get("error_rate_percent"),
-            vus_values=vus if is_breakpoint else None,
+            vus_values=vus,            # always show VU profile, not just breakpoint
             saturation_time=saturation_time,
             saturation_vu=saturation_vu,
+            test_start=start,
         )
         # For breakpoint: also generate the dedicated composite saturation chart
         if is_breakpoint:
@@ -1494,12 +1708,14 @@ def main():
             # VU profile is identical for all long-stress runs (same stages every time)
             # so it is omitted from per-run output. Generate once for thesis methodology.
             pass  # plot_vu_profile(output_dir, label, vus)
-        plot_cpu_replicas(output_dir, label, web_cpu, snapshots)
+        plot_cpu_replicas(output_dir, label, web_cpu, snapshots,
+                          vus_values=vus, test_start=start)
         plot_memory(
             output_dir, label, web_memory, jobs_memory,
             web_memory_limit_mb=web_mem_limit_mb,
             saturation_time=saturation_time,
             saturation_vu=saturation_vu,
+            vus_values=vus, test_start=start,
         )
         # HPA CPU chart is only meaningful when an HPA is actually active.
         # For baseline (1 pod fixed) and prescaled (N pods fixed) the metric is
@@ -1512,16 +1728,18 @@ def main():
             output_dir, label, snapshots,
             saturation_time=saturation_time,
             saturation_vu=saturation_vu,
+            vus_values=vus,
         )
         scaling_summary = plot_scale_latency(output_dir, label, snapshots) or {}
-        # Jobs-tier chart (queue depth + age + throughput). Skipped silently
-        # if jobs-queue.csv is absent — old runs predate the collector.
-        plot_jobs_queue(output_dir, label, jobs_rows, snapshots)
+        # Per-run jobs-queue, db-health, and redis-health charts disabled
+        # by request — these aren't cited in the thesis text. Aggregate
+        # versions are still produced via aggregate_timeseries.py. Summary
+        # CSV values are still computed below so they remain available
+        # for the per-run summary_*.csv tables.
+        # plot_jobs_queue(output_dir, label, jobs_rows, snapshots)
+        # plot_db_health(output_dir, label, pg_rows)
+        # plot_redis_health(output_dir, label, redis_rows)
         jobs_summary = compute_jobs_summary(jobs_rows)
-        # DB and cache health charts (defends "DB is not the bottleneck"
-        # claim). Skipped silently if collectors weren't running.
-        plot_db_health(output_dir, label, pg_rows)
-        plot_redis_health(output_dir, label, redis_rows)
         db_summary = compute_db_summary(pg_rows, redis_rows)
 
         # For summary CSV values prefer the k6 final-summary numbers when
