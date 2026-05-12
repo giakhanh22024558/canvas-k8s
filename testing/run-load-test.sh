@@ -229,6 +229,22 @@ cleanup() {
     kill "$K8S_SNAPSHOT_PID" >/dev/null 2>&1 || true
     wait "$K8S_SNAPSHOT_PID" 2>/dev/null || true
   fi
+
+  # Stop on-SUT collectors when the run did NOT complete. The happy path
+  # routes through finalize-run.sh on the SUT which calls stop-collectors.sh
+  # itself; here we only handle interruption (Ctrl+C, k6 failure, operator
+  # abort, etc.) so the next test run doesn't trip the "Collectors already
+  # running" guard. Done unconditionally in remote mode — stop-collectors.sh
+  # is idempotent (it no-ops if nothing's running) and will also clean up
+  # collectors from any PRIOR interrupted run that left them behind.
+  if [[ -n "$SUT_SSH_HOST" && "$RUN_COMPLETED" != "true" ]]; then
+    echo ""
+    echo "Stopping collectors on SUT ($SUT_SSH_HOST) after incomplete run ..."
+    ssh $SSH_OPTS "$SUT_SSH_HOST" \
+      "cd $SUT_REPO_DIR && bash testing/stop-collectors.sh" \
+      || echo "WARN: remote stop-collectors.sh failed — may need manual cleanup."
+  fi
+
   if [[ -f "$RUN_DIR/metadata.env" ]] && ! grep -q "^ended_at=" "$RUN_DIR/metadata.env"; then
     echo "ended_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$RUN_DIR/metadata.env"
   fi
