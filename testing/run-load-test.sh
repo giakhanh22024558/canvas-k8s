@@ -8,26 +8,19 @@ load_testing_env
 BASE_URL="${BASE_URL:-http://canvas.io.vn}"
 PROM_URL="${PROM_URL:-http://127.0.0.1:30090/api/v1/write}"
 TEST_TYPE="${TEST_TYPE:-load}"
-# Run-folder name embeds EXPERIMENT_NAME (always) and optional RUN_LABEL so
-# `ls testing/results/` is self-describing. Examples:
-#   EXPERIMENT_NAME=stage2-breakpoint                       → stage2-breakpoint-20260509-163250
-#   EXPERIMENT_NAME=stage2-breakpoint RUN_LABEL=run02       → stage2-breakpoint-run02-20260509-163250
+# Run-folder name embeds EXPERIMENT_NAME (when set) so `ls testing/results/`
+# is self-describing — e.g. "stage2-breakpoint-20260509-163250". Multiple
+# runs of the same experiment are distinguished by the timestamp suffix.
+# Falls back to the legacy "canvas-<timestamp>" form only when EXPERIMENT_NAME
+# is not provided.
 #
-# RUN_LABEL is purely a display-time convenience. It is folded into both the
-# folder name and TEST_ID so:
-#   - the Prometheus testid label (which k6 pushes) matches the folder name,
-#   - downstream tools can resolve a run by either folder basename or
-#     metadata.env test_id without ambiguity,
-#   - aggregate_timeseries.py discovers runs by folder prefix and reads
-#     test_id from metadata.env at query time.
+# EXPERIMENT_NAME must be exported in the calling shell:
+#   EXPERIMENT_NAME=stage2-breakpoint bash testing/run-load-test.sh
+# Setting it inline on the same command line (without `export`) works for
+# bash, but Make/CI wrappers should `export EXPERIMENT_NAME=...` explicitly.
 if [[ -z "${TEST_ID:-}" ]]; then
   default_prefix="${EXPERIMENT_NAME:-canvas}"
-  ts="$(date +%Y%m%d-%H%M%S)"
-  if [[ -n "${RUN_LABEL:-}" ]]; then
-    TEST_ID="${default_prefix}-${RUN_LABEL}-${ts}"
-  else
-    TEST_ID="${default_prefix}-${ts}"
-  fi
+  TEST_ID="${default_prefix}-$(date +%Y%m%d-%H%M%S)"
 fi
 RESULTS_DIR="${RESULTS_DIR:-$SCRIPT_DIR/results}"
 RUN_DIR="$RESULTS_DIR/$TEST_ID"
