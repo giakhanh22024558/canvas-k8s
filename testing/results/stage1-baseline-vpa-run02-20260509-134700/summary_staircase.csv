@@ -11,8 +11,8 @@ avg_p99_ms,43770.0
 max_vus,60.0
 max_web_restart_total,6
 max_jobs_restart_total,2
-avg_web_memory_mb,5023.237
-avg_jobs_memory_mb,3620.192
+avg_web_memory_mb,2229.208
+avg_jobs_memory_mb,2934.703
 max_hpa_cpu_percent,244.958
 prom_fallback_used,0
 peak_queue_depth,570
