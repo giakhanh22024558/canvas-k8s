@@ -135,7 +135,11 @@ JOBS_MEMORY_LIMIT="${JOBS_MEMORY_LIMIT:-}"
 
 echo "Charts generated in $RUN_DIR"
 
-git add "testing/results/$TEST_ID/"
+# Use `git add -A` (not plain `git add`) so chart files that no longer
+# exist on disk (e.g. breakpoint_saturation_*.png after that chart was
+# deprecated) get staged as deletions. Plain `git add` only stages
+# additions/modifications and would leave stale files lingering in git.
+git add -A "testing/results/$TEST_ID/"
 
 if git diff --cached --quiet; then
   echo "No new result files to commit for $TEST_ID."

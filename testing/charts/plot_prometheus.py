@@ -330,182 +330,114 @@ def restart_delta_series(snapshots, field):
     return xs, ys
 
 
-def annotate_saturation(axes, saturation_time, saturation_vu, end_time=None):
-    """Disabled by request — the inferred saturation point was deemed
-    misleading on charts where the system degrades gracefully without an
-    obvious threshold crossing. Calls are kept in the codebase so the
-    surrounding chart wiring still works, but no red dashed line, no
-    shaded collapse region, and no text label are drawn.
-
-    Re-enable by restoring the previous body if a future stage wants
-    the marker back.
-    """
-    return
-
-
 def detect_saturation_point(snapshots, vus_values,
                             error_rate=None, latency_p95=None,
                             error_threshold_pct=1.0,
                             latency_threshold_seconds=5.0):
-    """Return (saturation_datetime, vu_at_saturation) for breakpoint tests.
+    """Return (saturation_datetime, vu_at_saturation, reason_label) for
+    breakpoint tests, or (None, None, None) when no signal is observed.
 
     Saturation is the EARLIEST of:
-      (A) First sample where web_restart_total increments from 0 — i.e. the
-          first OOMKill (the original definition).
+      (A) First sample where web_restart_total increments from 0 — i.e.
+          the first OOMKill (the original hard-failure definition).
       (B) First sample where error_rate (% of failed requests in the
-          Prometheus rolling window) crosses `error_threshold_pct` (default 1%).
+          Prometheus rolling window) crosses `error_threshold_pct`
+          (default 1%).
       (C) First sample where p95 latency (seconds) crosses
           `latency_threshold_seconds` (default 5s).
 
     With well-resourced pods on a max-packed node the system can survive
-    100 VUs without an OOMKill, but error rate or tail latency will degrade
-    well before that — so cases (B) and (C) catch threshold-based
+    100 VUs without an OOMKill, but error rate or tail latency will
+    degrade well before that — so cases (B) and (C) catch threshold-based
     saturation that case (A) alone misses. VU count is interpolated from
-    the k6 VU time-series at the nearest timestamp to whichever case fires
-    first.
-
-    Returns (None, None) when no signal is observed.
+    the k6 VU time-series at the nearest timestamp to whichever case
+    fires first. The reason label is suitable for direct use in a chart
+    annotation ("error_rate ≥ 1%", "p95 ≥ 5s", "OOMKill").
     """
     candidates = []
 
-    # (A) OOMKill
+    # (A) OOMKill — first restart event recorded in the snapshot CSV.
     for i, row in enumerate(snapshots[1:], start=1):
         if row["web_restart_total"] > snapshots[i - 1]["web_restart_total"]:
-            candidates.append((row["timestamp"], "oomkill"))
+            candidates.append((row["timestamp"], "OOMKill"))
             break
 
-    # (B) error rate threshold — error_rate values are already percent (Prometheus
-    # series multiplies by 100 server-side or in our query construction).
+    # (B) error rate threshold — values are already percent.
     if error_rate:
         for ts, val in error_rate:
             if val is not None and val >= error_threshold_pct:
-                candidates.append((ts, f"error_rate>={error_threshold_pct:g}%"))
+                candidates.append((ts, f"error_rate ≥ {error_threshold_pct:g}%"))
                 break
 
     # (C) p95 latency threshold — Prometheus emits p95 in seconds.
     if latency_p95:
         for ts, val in latency_p95:
             if val is not None and val >= latency_threshold_seconds:
-                candidates.append((ts, f"p95>={latency_threshold_seconds:g}s"))
+                candidates.append((ts, f"p95 ≥ {latency_threshold_seconds:g}s"))
                 break
 
     if not candidates:
-        return None, None
+        return None, None, None
 
     # Earliest signal wins.
-    sat_time, _reason = min(candidates, key=lambda c: c[0])
+    sat_time, reason = min(candidates, key=lambda c: c[0])
 
-    # Nearest VU sample to the saturation timestamp
+    # Nearest VU sample to the saturation timestamp.
     sat_vu = None
     if vus_values:
         closest = min(vus_values, key=lambda tv: abs((tv[0] - sat_time).total_seconds()))
         sat_vu = closest[1]
 
-    return sat_time, sat_vu
+    return sat_time, sat_vu, reason
 
 
-def plot_breakpoint_saturation(output_dir, label, throughput, error_rate,
-                               vus, snapshots, saturation_time, saturation_vu):
-    """Composite chart for breakpoint tests, matching the throughput_error_rate
-    chart style:
-        Panel 1 — RPS stacked area: green = successful, red = failed (on top)
-                  with a thin dark line tracing the total at the top edge.
-        Panel 2 — Error rate %, plotted as a line with a 1 % reference line.
-    VU profile overlaid on each panel as a faint shaded twin axis. X-axis:
-    minutes from test start, major tick per minute. A vertical red dashed
-    line marks the saturation point in both panels, with a shaded collapse
-    region — this is the breakpoint-specific addition.
+def _draw_saturation_marker(axes, saturation_time, saturation_vu, reason,
+                            test_start, end_time=None):
+    """Draw a vertical dashed line + shaded post-saturation region on each
+    axis in `axes`, plus a single text label on the topmost axis.
+
+    Times are converted to "minutes from test_start" to match the x-axis
+    used by the chart. No-op when saturation_time is None (test held up).
     """
-    if not throughput and not error_rate and not vus:
+    if saturation_time is None or test_start is None or not axes:
         return
+    sat_min = (saturation_time - test_start).total_seconds() / 60.0
+    end_min = None
+    if end_time is not None:
+        end_min = (end_time - test_start).total_seconds() / 60.0
 
-    # Anchor x-axis at the first available sample so minute ticks line up.
-    test_start = None
-    if throughput:
-        test_start = throughput[0][0]
-    elif error_rate:
-        test_start = error_rate[0][0]
-    elif vus:
-        test_start = vus[0][0]
-    if test_start is None:
-        return
+    for axis in axes:
+        axis.axvline(sat_min, color="#d62728", linestyle="--",
+                     linewidth=1.5, alpha=0.85, zorder=4)
+        if end_min is not None and end_min > sat_min:
+            axis.axvspan(sat_min, end_min, color="#d62728",
+                         alpha=0.07, zorder=0)
 
-    fig, axes = plt.subplots(2, 1, figsize=(12, 9), sharex=True)
-    ax_rps, ax_err = axes
-
-    # ── Panel 1: RPS stacked area (success at bottom, failed on top) ─────────
-    overlay_vus_per_run(ax_rps, vus, test_start)
-
-    if throughput:
-        err_map = {ts: pct for ts, pct in (error_rate or [])}
-        xs_min, total_ys, success_ys, failed_ys = [], [], [], []
-        for ts, total in throughput:
-            minutes = (ts - test_start).total_seconds() / 60.0
-            err_pct = err_map.get(ts)
-            if err_pct is None:
-                success = total
-                failed = 0.0
-            else:
-                err_pct = max(0.0, min(100.0, err_pct))
-                failed = total * err_pct / 100.0
-                success = max(0.0, total - failed)
-            xs_min.append(minutes)
-            total_ys.append(total)
-            success_ys.append(success)
-            failed_ys.append(failed)
-
-        ax_rps.fill_between(xs_min, 0, success_ys,
-                            color="#2ca02c", alpha=0.55, linewidth=0,
-                            label="Successful RPS")
-        ax_rps.fill_between(xs_min, success_ys,
-                            [s + f for s, f in zip(success_ys, failed_ys)],
-                            color="#d62728", alpha=0.55, linewidth=0,
-                            label="Failed RPS")
-        ax_rps.plot(xs_min, total_ys,
-                    color="#1f3a5f", linewidth=1.0, zorder=3,
-                    marker="o", markersize=3.0,
-                    markerfacecolor="#1f3a5f",
-                    markeredgecolor="white", markeredgewidth=0.6,
-                    label="Total RPS")
-
-    ax_rps.set_ylabel("Requests / sec")
-    ax_rps.set_ylim(bottom=0)
-    ax_rps.grid(True, alpha=0.3)
-    ax_rps.legend(loc="upper left", fontsize=9)
-
-    # ── Panel 2: Error rate ──────────────────────────────────────────────────
-    overlay_vus_per_run(ax_err, vus, test_start)
-    if error_rate:
-        xs_err, ys_err = to_minutes_from_start(error_rate, test_start)
-        ax_err.plot(xs_err, ys_err, color="#d62728", linewidth=1.5,
-                    label="Error rate (1-min rolling, %)")
-    ax_err.axhline(1.0, color="#888", linestyle=":", linewidth=1, alpha=0.7)
-    ax_err.set_ylim(0, 110)
-    ax_err.set_ylabel("Error rate (%)")
-    ax_err.set_xlabel("Minutes from test start")
-    ax_err.grid(True, alpha=0.3)
-    ax_err.legend(loc="upper left", fontsize=9)
-
-    fig.suptitle(f"Breakpoint Test — Load Profile & System Response ({label})")
-    apply_minute_axis(ax_rps, test_start)
-    apply_minute_axis(ax_err, test_start)
-    fig.tight_layout()
-
-    # Saturation marker hook — annotate_saturation is currently a no-op (the
-    # inferred saturation point was deemed misleading on graceful-degradation
-    # charts) but the wiring is preserved so it can be re-enabled per stage.
-    end_time = None
-    if throughput:
-        end_time = throughput[-1][0]
-    elif vus:
-        end_time = vus[-1][0]
-    annotate_saturation([ax_rps, ax_err], saturation_time, saturation_vu,
-                        end_time)
-
-    out = output_dir / f"breakpoint_saturation_{slugify(label)}.png"
-    fig.savefig(out, dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    return out
+    # Single text label anchored to the top-of-chart on the first axis.
+    # Build it from VU and reason so the reader knows both "when did it
+    # start failing" and "what failure".
+    parts = ["Saturation"]
+    if saturation_vu is not None:
+        parts.append(f"@ {saturation_vu:.0f} VUs")
+    if reason:
+        parts.append(f"({reason})")
+    label = "\n".join([parts[0] + (" " + parts[1] if len(parts) > 1 else ""),
+                       parts[2]] if len(parts) >= 3 else [" ".join(parts)])
+    top_ax = axes[0]
+    ymin, ymax = top_ax.get_ylim()
+    top_ax.annotate(
+        label,
+        xy=(sat_min, ymax),
+        xytext=(6, -8),
+        textcoords="offset points",
+        color="#a40000",
+        fontsize=9,
+        fontweight="bold",
+        verticalalignment="top",
+        bbox=dict(boxstyle="round,pad=0.25",
+                  facecolor="white", edgecolor="#d62728", alpha=0.92),
+        zorder=5,
+    )
 
 
 def plot_latency_timeline(output_dir, metrics_by_label,
@@ -567,6 +499,7 @@ def plot_latency_timeline(output_dir, metrics_by_label,
 def plot_throughput_error(output_dir, label, throughput_values, error_values,
                           k6_error_rate_percent=None, vus_values=None,
                           saturation_time=None, saturation_vu=None,
+                          saturation_reason=None,
                           test_start=None):
     """Per-run throughput + error chart redesigned to match the aggregate
     chart style:
@@ -575,6 +508,12 @@ def plot_throughput_error(output_dir, label, throughput_values, error_values,
         Panel 2 — Error rate %, plotted as a line with 1 % reference line.
     VU profile overlaid on each panel as a faint shaded twin axis.
     X-axis: minutes from test start, major tick per minute.
+
+    When `saturation_time` is provided (only breakpoint tests at present),
+    a vertical red dashed line + shaded post-saturation region + label box
+    mark the inferred saturation point on both panels — see
+    detect_saturation_point for how the timestamp / VU count / reason
+    label are produced.
     """
     if not throughput_values and not error_values:
         return
@@ -659,6 +598,19 @@ def plot_throughput_error(output_dir, label, throughput_values, error_values,
     apply_minute_axis(ax_rps, test_start)
     apply_minute_axis(ax_err, test_start)
     fig.tight_layout()
+
+    # Saturation marker drawn AFTER tight_layout so the annotation's
+    # ylim-anchored position uses the finalised axis limits.
+    if saturation_time is not None:
+        end_time = None
+        if throughput_values:
+            end_time = throughput_values[-1][0]
+        elif error_values:
+            end_time = error_values[-1][0]
+        _draw_saturation_marker(
+            [ax_rps, ax_err], saturation_time, saturation_vu,
+            saturation_reason, test_start, end_time=end_time,
+        )
     fig.savefig(output_dir / f"throughput_error_rate_{slugify(label)}.png",
                 bbox_inches="tight")
     plt.close(fig)
@@ -2120,10 +2072,11 @@ def main():
 
         # For breakpoint tests, detect the saturation point (earliest of:
         # first OOMKill, first error_rate >=1%, or first p95 >=5s) and the
-        # VU count at that moment — used to annotate all charts.
-        saturation_time, saturation_vu = (None, None)
+        # VU count + reason at that moment — drawn as a marker on the
+        # throughput chart. Other test types skip detection (None marker).
+        saturation_time, saturation_vu, saturation_reason = (None, None, None)
         if is_breakpoint:
-            saturation_time, saturation_vu = detect_saturation_point(
+            saturation_time, saturation_vu, saturation_reason = detect_saturation_point(
                 snapshots, vus,
                 error_rate=error_rate,
                 latency_p95=latency.get("p95"),
@@ -2137,18 +2090,14 @@ def main():
             vus_values=vus,            # always show VU profile, not just breakpoint
             saturation_time=saturation_time,
             saturation_vu=saturation_vu,
+            saturation_reason=saturation_reason,
             test_start=start,
         )
-        # For breakpoint: also generate the dedicated composite saturation chart
-        if is_breakpoint:
-            plot_breakpoint_saturation(
-                output_dir, label, throughput, error_rate, vus,
-                snapshots, saturation_time, saturation_vu,
-            )
-        else:
-            # VU profile is identical for all long-stress runs (same stages every time)
-            # so it is omitted from per-run output. Generate once for thesis methodology.
-            pass  # plot_vu_profile(output_dir, label, vus)
+        # VU profile is identical for all long-stress runs (same stages every time)
+        # so it is omitted from per-run output. Saturation marker — when relevant —
+        # is now drawn directly on plot_throughput_error above; the previous
+        # dedicated breakpoint_saturation chart was a near-duplicate and has
+        # been removed.
         plot_cpu_replicas(
             output_dir, label,
             web_cpu_per_pod, jobs_cpu_per_pod, snapshots,
