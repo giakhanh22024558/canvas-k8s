@@ -150,35 +150,64 @@ def select_first_series(result):
     return series[0][1] if series else []
 
 
-def _parse_per_pod_memory(result):
-    """Build a dict {pod_name: [(timestamp, value_MiB), ...]} from a
+def _parse_per_pod_series(result, scale=1.0):
+    """Build a dict {pod_name: [(timestamp, scaled_value), ...]} from a
     Prometheus query that returns one series per pod (no aggregation).
 
-    Each cAdvisor sample is in bytes; we divide by 1 048 576 here so the
-    chart can plot directly in MiB (binary, displayed as "MB") without
-    any further scaling. This matches the per-pod-limit reference line
-    which is also derived in MiB by parse_memory_limit_mb.
+    During a container restart the same pod name may appear with two
+    different cgroup `id` labels briefly. Upstream filters usually trim
+    the dead one, but as belt-and-braces we keep only the highest sample
+    per (pod, timestamp) so a transient overlap cannot create a phantom
+    doubled line.
 
-    During a pod restart the SAME pod name may appear with two different
-    cgroup `id` labels for ~30s. The upstream `unless on(id)` freshness
-    filter usually trims the dead one before it lands here, but as
-    belt-and-braces we keep only the highest sample per (pod, timestamp)
-    so a transient overlap cannot create a phantom doubled line.
+    `scale` lets callers convert units inline — memory passes
+    1 / 1 048 576 to land in MiB; CPU passes 1.0 because the rate()
+    output is already in cores.
     """
     series = parse_series(result)
-    pod_to_samples = {}  # pod -> {ts -> max_value_MiB}
+    pod_to_samples = {}  # pod -> {ts -> max_value}
     for label, values in series:
         pod = label.get("pod") or label.get("container_label_io_kubernetes_pod_name") or "unknown"
         bucket = pod_to_samples.setdefault(pod, {})
-        for ts, raw_bytes in values:
-            value_mib = raw_bytes / 1048576.0
+        for ts, raw in values:
+            v = raw * scale
             prior = bucket.get(ts)
-            if prior is None or value_mib > prior:
-                bucket[ts] = value_mib
+            if prior is None or v > prior:
+                bucket[ts] = v
     return {
         pod: sorted(samples.items())
         for pod, samples in pod_to_samples.items()
     }
+
+
+def _parse_per_pod_memory(result):
+    """Per-pod memory in MiB (binary, displayed as 'MB' on charts)."""
+    return _parse_per_pod_series(result, scale=1.0 / 1048576.0)
+
+
+def _parse_per_pod_cpu(result):
+    """Per-pod CPU cores (rate(seconds_total[1m]) is already in cores)."""
+    return _parse_per_pod_series(result, scale=1.0)
+
+
+def parse_cpu_limit_cores(limit_str):
+    """Convert a Kubernetes CPU limit string to a float number of cores.
+
+    Examples: '4' → 4.0; '1500m' → 1.5; '100m' → 0.1; '' / None → None.
+    The trailing 'm' suffix denotes millicores (1/1000 of a core), the
+    convention used everywhere in kubectl / kube-state-metrics output.
+    """
+    if not limit_str:
+        return None
+    s = str(limit_str).strip()
+    if not s:
+        return None
+    try:
+        if s.endswith("m"):
+            return float(s[:-1]) / 1000.0
+        return float(s)
+    except ValueError:
+        return None
 
 
 def try_queries(base_url, queries, start, end, step):
@@ -1116,61 +1145,172 @@ def compute_jobs_summary(jobs_rows):
     }
 
 
-def plot_cpu_replicas(output_dir, label, cpu_values, snapshots,
-                      vus_values=None, test_start=None):
-    if not cpu_values and not snapshots:
+def plot_cpu_replicas(output_dir, label,
+                      web_cpu_per_pod, jobs_cpu_per_pod, snapshots,
+                      web_cpu_limit_cores=None, jobs_cpu_limit_cores=None,
+                      vus_values=None, test_start=None,
+                      split_threshold=4):
+    """Per-pod CPU consumption (cores) + replica step lines + per-pod
+    CPU-limit reference lines.
+
+    Mirrors the per-pod treatment of plot_memory so the chart story for
+    OOM-style limit comparisons is identical for CPU throttle risk:
+    every line is a single pod, every limit line is per-pod, the eye
+    immediately sees who is approaching their ceiling.
+
+    Layout adapts to pod count:
+      - ≤ split_threshold combined pods: single panel with both
+        deployments on the same axes.
+      - > split_threshold: two stacked panels (web top, jobs bottom,
+        sharex) so the legend never gets crowded.
+
+    Replica step lines remain on a twin axis next to each deployment
+    panel, but are drawn ONLY when the replica count actually changes —
+    a flat line at constant N pods adds no information and clutters
+    the chart (HPA-driven changes only).
+
+    Line palette, marker cycle, and spawn-order sort match plot_memory
+    so a reader can visually align CPU and memory charts pod-by-pod.
+    """
+    web_has_data = bool(web_cpu_per_pod)
+    jobs_has_data = bool(jobs_cpu_per_pod)
+    if not web_has_data and not jobs_has_data and not snapshots:
         return
 
-    if test_start is None and cpu_values:
-        test_start = cpu_values[0][0]
+    # spawn-order helper — identical heuristic to plot_memory.
+    def _spawn_order(pod_dict):
+        def _key(pod):
+            series = pod_dict.get(pod) or []
+            first_ts = series[0][0] if series else None
+            return (first_ts is None, first_ts, pod)
+        return sorted((pod_dict or {}).keys(), key=_key)
+
+    web_pods = _spawn_order(web_cpu_per_pod)
+    jobs_pods = _spawn_order(jobs_cpu_per_pod)
+
+    if test_start is None:
+        for pod_dict in (web_cpu_per_pod, jobs_cpu_per_pod):
+            for pod in sorted((pod_dict or {}).keys()):
+                series = pod_dict[pod]
+                if series:
+                    test_start = series[0][0]
+                    break
+            if test_start is not None:
+                break
     if test_start is None and snapshots:
         test_start = snapshots[0]["timestamp"]
     if test_start is None:
         return
 
-    fig, ax1 = plt.subplots(figsize=(12, 5))
+    total_pods = len(web_pods) + len(jobs_pods)
+    split = total_pods > split_threshold
 
-    # VU overlay first so foreground series stack on top
-    overlay_vus_per_run(ax1, vus_values, test_start)
-
-    if cpu_values:
-        xs, ys = to_minutes_from_start(cpu_values, test_start)
-        ax1.plot(xs, ys, color="#2ca02c", linewidth=2, label="Web CPU")
-
-    ax1.set_title(f"Canvas Web CPU and Replica Count ({label})")
-    ax1.set_xlabel("Minutes from test start")
-    ax1.set_ylabel("CPU cores", color="#2ca02c")
-    ax1.tick_params(axis="y", labelcolor="#2ca02c")
-    ax1.grid(alpha=0.25)
-
-    ax2 = ax1.twinx()
-    replica_line_drawn = False
-    if snapshots:
-        rep_series = [(row["timestamp"], row["web_ready_replicas"] or row["web_spec_replicas"])
-                      for row in snapshots]
-        xs_rep, ys_rep = to_minutes_from_start(rep_series, test_start)
-        # Only draw replica line if it actually changes — flat lines (baseline=1,
-        # prescaled=5) carry no information and clutter the chart.
-        if len(set(ys_rep)) > 1:
-            # Push spine outward so it doesn't overlap the VU twin axis
-            ax2.spines["right"].set_position(("outward", 55))
-            ax2.step(xs_rep, ys_rep, where="post", color="#9467bd",
-                     linewidth=2, label="Ready replicas")
-            replica_line_drawn = True
-    if replica_line_drawn:
-        ax2.set_ylabel("Replica count", color="#9467bd")
-        ax2.tick_params(axis="y", labelcolor="#9467bd")
+    if split:
+        fig, (ax_web, ax_jobs) = plt.subplots(
+            2, 1, figsize=(12, 8), sharex=True,
+        )
+        axes_for_vus = [ax_web, ax_jobs]
     else:
-        ax2.set_yticks([])
-        ax2.set_ylabel("")
+        fig, ax = plt.subplots(figsize=(12, 5))
+        ax_web = ax
+        ax_jobs = ax
+        axes_for_vus = [ax]
 
-    handles = ax1.get_lines() + ax2.get_lines()
-    if handles:
-        ax1.legend(handles, [line.get_label() for line in handles], loc="upper left")
+    for axis in axes_for_vus:
+        overlay_vus_per_run(axis, vus_values, test_start)
 
-    apply_minute_axis(ax1, test_start)
+    # Same hue palette + marker cycle as plot_memory so visual identity
+    # of "pod #1" is consistent across the two charts.
+    web_palette = ["#1f77b4", "#17becf", "#2ca02c", "#9467bd", "#1a55a3",
+                   "#5e35b1", "#00838f", "#558b2f", "#0d47a1", "#4527a0"]
+    jobs_palette = ["#ff7f0e", "#d62728", "#8c564b", "#e377c2", "#bcbd22",
+                    "#c2185b", "#f57f17", "#5d4037", "#bf360c", "#827717"]
+    marker_cycle = ["o", "s", "D", "^", "v", "P", "X", "h", "*", ">"]
+
+    def _plot_deployment(ax_target, pods, pod_dict, palette, prefix):
+        for i, pod in enumerate(pods):
+            series = pod_dict.get(pod) or []
+            if not series:
+                continue
+            xs, ys = to_minutes_from_start(series, test_start)
+            ax_target.plot(
+                xs, ys,
+                color=palette[i % len(palette)],
+                linewidth=1.8, alpha=0.95,
+                marker=marker_cycle[i % len(marker_cycle)],
+                markersize=4.0,
+                markerfacecolor=palette[i % len(palette)],
+                markeredgecolor="white", markeredgewidth=0.6,
+                markevery=max(1, len(xs) // 12),
+                label=_short_pod_label(pod, prefix) + " (cores)",
+            )
+
+    _plot_deployment(ax_web, web_pods, web_cpu_per_pod, web_palette, "web")
+    _plot_deployment(ax_jobs, jobs_pods, jobs_cpu_per_pod, jobs_palette, "jobs")
+
+    # Per-pod CPU limit lines — drawn on the panel that contains the data.
+    if web_cpu_limit_cores is not None and web_has_data:
+        ax_web.axhline(
+            y=web_cpu_limit_cores, color="#1f77b4",
+            linewidth=1.5, linestyle="--", alpha=0.7,
+            label=f"Web limit ({web_cpu_limit_cores:g} cores)",
+        )
+    if jobs_cpu_limit_cores is not None and jobs_has_data:
+        ax_jobs.axhline(
+            y=jobs_cpu_limit_cores, color="#ff7f0e",
+            linewidth=1.5, linestyle="--", alpha=0.7,
+            label=f"Jobs limit ({jobs_cpu_limit_cores:g} cores)",
+        )
+
+    # Replica step lines on twin axis — only drawn when count changes.
+    def _maybe_replica(ax_target, key, color, deployment_label):
+        if not snapshots:
+            return
+        rep_series = [
+            (row["timestamp"], row[key] or row[key.replace("ready", "spec")])
+            for row in snapshots
+        ]
+        xs_rep, ys_rep = to_minutes_from_start(rep_series, test_start)
+        if len(set(ys_rep)) <= 1:
+            return  # flat — skip
+        ax2 = ax_target.twinx()
+        # Push spine outward so it doesn't collide with the VU twin axis.
+        ax2.spines["right"].set_position(("outward", 55))
+        ax2.step(xs_rep, ys_rep, where="post", color=color,
+                 linewidth=2, linestyle="-.",
+                 label=f"{deployment_label} replicas")
+        ax2.set_ylabel(f"{deployment_label} replicas", color=color, fontsize=9)
+        ax2.tick_params(axis="y", labelcolor=color)
+
+    if web_has_data:
+        _maybe_replica(ax_web, "web_ready_replicas", "#9467bd", "Web")
+    if jobs_has_data:
+        # Snapshot CSV may not carry jobs_ready_replicas; gate gracefully.
+        if snapshots and "jobs_ready_replicas" in snapshots[0]:
+            _maybe_replica(ax_jobs, "jobs_ready_replicas", "#9467bd", "Jobs")
+
+    if split:
+        ax_web.set_title(f"Canvas CPU — per pod ({label})", fontsize=12)
+        ax_web.set_ylabel("Web CPU (cores)")
+        ax_jobs.set_ylabel("Jobs CPU (cores)")
+        ax_jobs.set_xlabel("Minutes from test start")
+        for axis in (ax_web, ax_jobs):
+            axis.set_ylim(bottom=0)
+            axis.legend(loc="upper left", fontsize=9)
+            axis.grid(alpha=0.25)
+            apply_minute_axis(axis, test_start)
+    else:
+        ax.set_title(f"Canvas CPU — per pod ({label})")
+        ax.set_xlabel("Minutes from test start")
+        ax.set_ylabel("CPU (cores)")
+        ax.set_ylim(bottom=0)
+        ax.legend(loc="upper left", fontsize=9)
+        ax.grid(alpha=0.25)
+        apply_minute_axis(ax, test_start)
+
     fig.tight_layout()
-    fig.savefig(output_dir / f"cpu_replicas_{slugify(label)}.png")
+    fig.savefig(output_dir / f"cpu_replicas_{slugify(label)}.png",
+                bbox_inches="tight")
     plt.close(fig)
 
 
@@ -1719,6 +1859,11 @@ def collect_run_metrics(base_url, selector, start, end, step):
     # CPU query: filter to Running pods only (matches Grafana panel exactly).
     # Without the phase join, Terminating / CrashLoopBackOff pods are included,
     # which inflates the CPU reading during pod-crash windows.
+    #
+    # Aggregate web_cpu (sum-across-pods) is kept for callers that need a
+    # cluster-wide capacity view. The chart now consumes per-pod series
+    # instead so OOM-style throttle-risk reads directly against the per-pod
+    # CPU limit reference line; see plot_cpu_replicas.
     cpu_result, _ = try_queries(
         base_url,
         [
@@ -1731,6 +1876,33 @@ def collect_run_metrics(base_url, selector, start, end, step):
         step,
     )
     web_cpu = select_first_series(cpu_result)
+
+    # Per-pod CPU (no aggregation) for both deployments. parse_series
+    # preserves the `pod` label; _parse_per_pod_cpu groups by pod name.
+    # rate() over a 1-minute window naturally goes to zero a minute after
+    # a container exits, so no ghost-cgroup filter is needed (unlike the
+    # memory metric which freezes at the last value for ~30s).
+    web_cpu_per_pod_result, _ = try_queries(
+        base_url,
+        [
+            'rate(container_cpu_usage_seconds_total{namespace="canvas",pod=~"canvas-web-.*",container="web"}[1m])',
+            'rate(container_cpu_usage_seconds_total{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"}[1m]) * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}',
+            'rate(container_cpu_usage_seconds_total{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-web-.*"}[1m])',
+        ],
+        start, end, step,
+    )
+    web_cpu_per_pod = _parse_per_pod_cpu(web_cpu_per_pod_result)
+
+    jobs_cpu_per_pod_result, _ = try_queries(
+        base_url,
+        [
+            'rate(container_cpu_usage_seconds_total{namespace="canvas",pod=~"canvas-jobs-.*",container="jobs"}[1m])',
+            'rate(container_cpu_usage_seconds_total{namespace="canvas",pod=~"canvas-jobs-.*",container!="",container!="POD"}[1m]) * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}',
+            'rate(container_cpu_usage_seconds_total{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-jobs-.*"}[1m])',
+        ],
+        start, end, step,
+    )
+    jobs_cpu_per_pod = _parse_per_pod_cpu(jobs_cpu_per_pod_result)
 
     # Memory — working set bytes (excludes file cache, matches kubectl top).
     # Divide by 1 000 000 → MB (decimal, matches Grafana unit "decmbytes").
@@ -1844,7 +2016,8 @@ def collect_run_metrics(base_url, selector, start, end, step):
     )
     hpa_cpu = select_first_series(hpa_cpu_result)
 
-    return (latency, throughput, error_rate, vus, web_cpu,
+    return (latency, throughput, error_rate, vus,
+            web_cpu, web_cpu_per_pod, jobs_cpu_per_pod,
             web_memory, jobs_memory,
             web_memory_per_pod, jobs_memory_per_pod,
             hpa_cpu)
@@ -1900,7 +2073,8 @@ def main():
         pg_rows = load_postgres_health(run_dir / "postgres-health.csv")
         redis_rows = load_redis_health(run_dir / "redis-health.csv")
 
-        (latency, throughput, error_rate, vus, web_cpu,
+        (latency, throughput, error_rate, vus,
+         web_cpu, web_cpu_per_pod, jobs_cpu_per_pod,
          web_memory, jobs_memory,
          web_memory_per_pod, jobs_memory_per_pod,
          hpa_cpu) = collect_run_metrics(
@@ -1927,6 +2101,18 @@ def main():
             parse_memory_limit_mb(args.jobs_memory_limit)
             or parse_memory_limit_mb(metadata.get("jobs_memory_limit", ""))
             or parse_memory_limit_mb(env_snapshot.get("jobs_memory_limit", ""))
+        )
+
+        # CPU limits — same precedence as memory but read from
+        # web_cpu_limit / jobs_cpu_limit keys in environment.env, parsed
+        # as cores. None disables the limit reference line.
+        web_cpu_limit_cores = (
+            parse_cpu_limit_cores(metadata.get("web_cpu_limit", ""))
+            or parse_cpu_limit_cores(env_snapshot.get("web_cpu_limit", ""))
+        )
+        jobs_cpu_limit_cores = (
+            parse_cpu_limit_cores(metadata.get("jobs_cpu_limit", ""))
+            or parse_cpu_limit_cores(env_snapshot.get("jobs_cpu_limit", ""))
         )
 
         scaling_mode = infer_scaling_mode(snapshots)
@@ -1963,8 +2149,13 @@ def main():
             # VU profile is identical for all long-stress runs (same stages every time)
             # so it is omitted from per-run output. Generate once for thesis methodology.
             pass  # plot_vu_profile(output_dir, label, vus)
-        plot_cpu_replicas(output_dir, label, web_cpu, snapshots,
-                          vus_values=vus, test_start=start)
+        plot_cpu_replicas(
+            output_dir, label,
+            web_cpu_per_pod, jobs_cpu_per_pod, snapshots,
+            web_cpu_limit_cores=web_cpu_limit_cores,
+            jobs_cpu_limit_cores=jobs_cpu_limit_cores,
+            vus_values=vus, test_start=start,
+        )
         plot_memory(
             output_dir, label,
             web_memory_per_pod, jobs_memory_per_pod,
@@ -2053,7 +2244,8 @@ def main():
         label = compare_labels[index] if index < len(compare_labels) else metadata.get("test_type", testid)
         snapshots = load_snapshots(run_dir / "k8s-snapshots.csv")
         k6_summary_metrics = parse_k6_summary_metrics(run_dir / "k6-summary.txt")
-        (latency, throughput, error_rate, vus, web_cpu,
+        (latency, throughput, error_rate, vus,
+         web_cpu, web_cpu_per_pod, jobs_cpu_per_pod,
          web_memory, jobs_memory,
          web_memory_per_pod, jobs_memory_per_pod,
          hpa_cpu) = collect_run_metrics(
