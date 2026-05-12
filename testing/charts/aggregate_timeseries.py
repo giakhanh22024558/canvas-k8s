@@ -358,14 +358,28 @@ def q_vus(testid):
 
 
 def q_web_memory_mb():
+    # Primary query filters to running containers via
+    # kube_pod_container_status_running == 1 to exclude ghost cgroups from
+    # recently-killed containers (cAdvisor keeps reporting them for ~30-60s
+    # before kernel GC). Without this filter, sum() inflates working set
+    # during crash-loop workloads (Stage 1 single replica with 6 OOMKills
+    # would sum 1 active + up to 3 ghosts × 3 GiB each = 9-12 GiB).
     return [
+        'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-web-.*",container="web"} '
+        '* on(pod,container) group_left() (kube_pod_container_status_running{namespace="canvas",container="web"} == 1)) '
+        '/ 1000000',
+        # Fallback 1: legacy namespace-aware query without running filter.
         'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"} * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}) / 1000000',
+        # Fallback 2: pre-namespace-label cAdvisor scheme.
         'sum(container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-web-.*",container!="",container!="POD"}) / 1000000',
     ]
 
 
 def q_jobs_memory_mb():
     return [
+        'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-jobs-.*",container="jobs"} '
+        '* on(pod,container) group_left() (kube_pod_container_status_running{namespace="canvas",container="jobs"} == 1)) '
+        '/ 1000000',
         'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-jobs-.*",container!="",container!="POD"} * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}) / 1000000',
         'sum(container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-jobs-.*",container!="",container!="POD"}) / 1000000',
     ]
