@@ -720,14 +720,15 @@ def plot_memory(grid, web_mem, jobs_mem, vus, output, experiment, n_runs):
 # ── main ──────────────────────────────────────────────────────────────────────
 
 def discover_runs(results_dir: Path, experiment: str):
-    """Find all subdirectories matching <experiment>-*-run* with metadata.env."""
+    """Find all subdirectories starting with `<experiment>-` that contain a
+    valid metadata.env. Accepts both the simple `<experiment>-<timestamp>`
+    folder name (no RUN_LABEL) and the `<experiment>-<run_label>-<timestamp>`
+    form produced when RUN_LABEL is set in run-load-test.sh."""
     runs = []
     for d in sorted(results_dir.iterdir()):
         if not d.is_dir():
             continue
         if not d.name.startswith(experiment + "-"):
-            continue
-        if "-run" not in d.name:
             continue
         meta = load_env_file(d / "metadata.env")
         if "started_at" not in meta or "ended_at" not in meta:
