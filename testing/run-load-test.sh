@@ -103,14 +103,51 @@ fi
 
 mkdir -p "$RUN_DIR"
 
+# ── SSH plumbing (declared early so pre-test ops can route via SUT) ──────────
+# When this script runs on a dedicated load-generator host, the cluster lives
+# on a separate SUT. Setting SUT_SSH_HOST in testing.env switches every
+# cluster-side operation (snapshot, HPA reset, on-SUT collectors, finalize)
+# to run via SSH on the SUT instead of locally. Leaving it unset keeps the
+# legacy single-host behaviour where kubectl is on the same machine as k6.
+SUT_SSH_HOST="${SUT_SSH_HOST:-}"
+SUT_REPO_DIR="${SUT_REPO_DIR:-/home/ubuntu/canvas-k8s}"
+SUT_SSH_KEY="${SUT_SSH_KEY:-}"
+SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
+[[ -n "$SUT_SSH_KEY" ]] && SSH_OPTS="$SSH_OPTS -i $SUT_SSH_KEY"
+
+# Returns 0 (true) when cluster ops should run via SSH, 1 (false) when local.
+remote_mode() { [[ -n "$SUT_SSH_HOST" ]]; }
+
 # Capture cluster state immediately — before any pod restarts, cooldowns, or
 # test activity mutates the environment. This is the ground truth snapshot:
 # resource limits, HPA config, replica counts, and git commit at test time.
 # The plotting script reads environment.env to draw the memory limit line.
-if command -v kubectl >/dev/null 2>&1; then
+#
+# In remote mode the kubectl calls run on the SUT, then both output files are
+# scp'd back so the run folder on the load gen has a complete record.
+snapshot_captured=false
+if remote_mode; then
+  echo "Capturing cluster snapshot via SSH ($SUT_SSH_HOST) ..."
+  remote_snap_dir="/tmp/canvas-snap-$TEST_ID"
+  if ssh $SSH_OPTS "$SUT_SSH_HOST" \
+       "mkdir -p $remote_snap_dir && cd $SUT_REPO_DIR && bash testing/capture-cluster-env.sh $remote_snap_dir/environment.env"; then
+    scp $SSH_OPTS "$SUT_SSH_HOST:$remote_snap_dir/environment.env"      "$RUN_DIR/environment.env"      2>/dev/null || true
+    scp $SSH_OPTS "$SUT_SSH_HOST:$remote_snap_dir/cluster-snapshot.txt" "$RUN_DIR/cluster-snapshot.txt" 2>/dev/null || true
+    ssh $SSH_OPTS "$SUT_SSH_HOST" "rm -rf $remote_snap_dir" || true
+    snapshot_captured=true
+  else
+    echo "WARN: remote capture-cluster-env.sh failed — proceeding without snapshot."
+  fi
+elif command -v kubectl >/dev/null 2>&1; then
   ensure_kubeconfig
   echo "Capturing cluster snapshot to $RUN_DIR/ ..."
   bash "$SCRIPT_DIR/capture-cluster-env.sh" "$RUN_DIR/environment.env" || true
+  snapshot_captured=true
+else
+  echo "kubectl not available and SUT_SSH_HOST unset — skipping cluster snapshot."
+fi
+
+if [[ "$snapshot_captured" == "true" ]]; then
 
   # Print the full pre-test snapshot for the operator to verify the cluster
   # is in the expected state before any load is applied. Both files are
@@ -139,8 +176,6 @@ if command -v kubectl >/dev/null 2>&1; then
     echo "============================================================"
     echo ""
   fi
-else
-  echo "kubectl not available — skipping cluster snapshot."
 fi
 
 # Operator confirmation gate. Default behaviour is to require explicit
@@ -223,66 +258,20 @@ echo "Submission flow enabled: $submission_enabled"
   echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 } > "$RUN_DIR/metadata.env"
 
-hpa_clean_start() {
-  # Detect if HPA is active in the canvas namespace
-  local hpa_count
-  hpa_count=$(kubectl get hpa -n canvas --no-headers 2>/dev/null | wc -l)
-  if [[ "$hpa_count" -eq 0 ]]; then
-    echo "HPA not detected — skipping clean-start reset."
-    return 0
-  fi
-
-  echo "HPA detected — performing clean start (scale to 1 replica + pod restart)..."
-
-  # Clamp HPA maxReplicas to 1 BEFORE scaling down.
-  # Without this, HPA reads stale high-CPU metrics from the previous test
-  # and immediately re-scales back to 5 pods, defeating the clean start.
-  echo "Clamping HPA maxReplicas to 1 to prevent scale-up during warmup..."
-  kubectl patch hpa canvas-web  -n canvas -p '{"spec":{"maxReplicas":1}}' 2>/dev/null || true
-  kubectl patch hpa canvas-jobs -n canvas -p '{"spec":{"maxReplicas":1}}' 2>/dev/null || true
-
-  # Force replicas back to 1 immediately (bypasses HPA scale-down cooldown)
-  kubectl scale deployment canvas-web  -n canvas --replicas=1 2>/dev/null || true
-  kubectl scale deployment canvas-jobs -n canvas --replicas=1 2>/dev/null || true
-
-  # Restart pods so restart counters reset to 0 in snapshots
-  kubectl rollout restart deployment/canvas-web  -n canvas
-  kubectl rollout restart deployment/canvas-jobs -n canvas
-
-  # Wait until pods are fully ready before starting the test
-  echo "Waiting for canvas-web rollout..."
-  kubectl rollout status deployment/canvas-web  -n canvas --timeout=120s
-  echo "Waiting for canvas-jobs rollout..."
-  kubectl rollout status deployment/canvas-jobs -n canvas --timeout=120s
-
-  # Readiness probe passing ≠ Rails fully warmed up. A Canvas pod needs
-  # time after becoming "Ready" to finish loading gems, open DB connection
-  # pools, and compile routes. Without this sleep, k6 setup() hits a
-  # half-warm pod and retries, inflating early error metrics.
-  #
-  # 4 minutes (was 2): the extra time lets HPA evaluate at least 4 scrape
-  # cycles of near-zero CPU before load starts, so the baseline is clean.
-  # It also prevents the pod from being overwhelmed at the very first VU
-  # ramp before HPA has had any chance to collect metrics and scale out.
-  echo "Waiting 4 minutes for Rails to warm up after restart..."
-  sleep 240
-
-  # Restore HPA maxReplicas so it can scale freely during the actual test
-  echo "Restoring HPA maxReplicas (web=5, jobs=3)..."
-  kubectl patch hpa canvas-web  -n canvas -p '{"spec":{"maxReplicas":5}}' 2>/dev/null || true
-  kubectl patch hpa canvas-jobs -n canvas -p '{"spec":{"maxReplicas":3}}' 2>/dev/null || true
-
-  echo "Clean start complete. Current pod state:"
-  kubectl get pods -n canvas
-  echo "Current HPA state:"
-  kubectl get hpa  -n canvas
-  echo "Warmup complete — starting test."
-}
-
-if command -v kubectl >/dev/null 2>&1; then
+# HPA clean-start is implemented in testing/hpa-clean-start.sh — that script is
+# the single source of truth. Local runs invoke it directly; remote runs SSH
+# into the SUT and execute the same script from the SUT's checkout.
+if remote_mode; then
+  echo "Running HPA clean-start on SUT ($SUT_SSH_HOST) ..."
+  ssh $SSH_OPTS "$SUT_SSH_HOST" \
+    "cd $SUT_REPO_DIR && bash testing/hpa-clean-start.sh" \
+    || echo "WARN: remote hpa-clean-start.sh failed — continuing anyway."
+  # Cluster snapshot collection runs on the SUT via start-collectors.sh (next
+  # block), so we deliberately skip the local collect-k8s-snapshots.sh here.
+elif command -v kubectl >/dev/null 2>&1; then
   ensure_kubeconfig
   if kubectl get namespace canvas >/dev/null 2>&1; then
-    hpa_clean_start
+    bash "$SCRIPT_DIR/hpa-clean-start.sh"
     bash "$SCRIPT_DIR/collect-k8s-snapshots.sh" "$SNAPSHOT_FILE" &
     K8S_SNAPSHOT_PID="$!"
     echo "Collecting Kubernetes snapshots to $SNAPSHOT_FILE"
@@ -293,18 +282,11 @@ else
   echo "Skipping Kubernetes snapshot collection because kubectl is unavailable."
 fi
 
-# ── Optional: trigger start-collectors.sh on the SUT before k6 starts ────────
-# When SUT_SSH_HOST is set in testing.env, this script is running on a
-# dedicated load gen and needs the SUT to spin up the four collectors
-# (jobs queue, Postgres, Redis, k8s-snapshots) in parallel with the test.
-# The post-test finalize-run.sh will stop them and fold the CSVs in.
-SUT_SSH_HOST="${SUT_SSH_HOST:-}"
-SUT_REPO_DIR="${SUT_REPO_DIR:-/home/ubuntu/canvas-k8s}"
-SUT_SSH_KEY="${SUT_SSH_KEY:-}"
-SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
-[[ -n "$SUT_SSH_KEY" ]] && SSH_OPTS="$SSH_OPTS -i $SUT_SSH_KEY"
-
-if [[ -n "$SUT_SSH_HOST" ]]; then
+# ── Trigger start-collectors.sh on the SUT (remote mode only) ────────────────
+# The four collectors (jobs queue, Postgres, Redis, k8s-snapshots) run on the
+# SUT alongside the workload they observe. finalize-run.sh stops them and
+# folds the CSVs into the run folder after k6 finishes.
+if remote_mode; then
   echo ""
   echo "Starting collectors on SUT ($SUT_SSH_HOST) ..."
   ssh $SSH_OPTS "$SUT_SSH_HOST" \
@@ -352,7 +334,7 @@ if [[ "$RUN_COMPLETED" != "true" ]]; then
   exit 0
 fi
 
-if [[ -n "$SUT_SSH_HOST" ]]; then
+if remote_mode; then
   echo ""
   echo "Triggering finalize-run.sh on SUT ($SUT_SSH_HOST) for $TEST_ID ..."
   # The SUT's finalize-run.sh does everything in one shot:
