@@ -1140,28 +1140,21 @@ def plot_memory(output_dir, label, web_memory_values, jobs_memory_values,
                 web_memory_limit_mb=None, jobs_memory_limit_mb=None,
                 saturation_time=None, saturation_vu=None,
                 vus_values=None, test_start=None):
-    """Memory working-set (MB) for canvas-web and canvas-jobs over time.
+    """Memory working-set (decimal MB) for canvas-web and canvas-jobs over time.
 
-    Matches Grafana panels 6 and 7 — same metric, same unit (decimal MB),
-    same Running-pod-only filter applied during collection. The underlying
-    Prometheus query divides container_memory_working_set_bytes by 1_000_000,
-    so the values plotted here ARE decimal MB regardless of how Kubernetes
-    expresses the limit. parse_memory_limit_mb performs the same
-    binary-to-decimal conversion (e.g. 8Gi -> 8589.93 MB) so the limit
-    reference line is on the same numeric scale as the data.
+    Data source: container_memory_working_set_bytes from cAdvisor, summed
+    across Running pods in the canvas namespace, divided by 1_000_000.
+    parse_memory_limit_mb performs the matching binary→decimal conversion
+    so the reference line uses the same scale as the data.
 
-    Fallback limits match the current deployment manifest values
-    (deployment-web.yaml: memory 8Gi, deployment-jobs.yaml: memory 4Gi)
-    when no environment.env snapshot was captured at test time.
+    Limit reference lines are only drawn when the caller passes explicit
+    values (via metadata.env or CLI flag). No fallback is applied because
+    the deployment manifest at chart-rendering time may differ from the
+    manifest that was active when the run executed (e.g. cluster currently
+    in prescaled mode but historical run was baseline).
     """
     if not web_memory_values and not jobs_memory_values:
         return
-
-    # Fallbacks if environment.env was not captured at run time
-    if web_memory_limit_mb is None:
-        web_memory_limit_mb = parse_memory_limit_mb("8Gi")      # current manifest
-    if jobs_memory_limit_mb is None:
-        jobs_memory_limit_mb = parse_memory_limit_mb("4Gi")     # current manifest
 
     if test_start is None and web_memory_values:
         test_start = web_memory_values[0][0]
@@ -1636,6 +1629,14 @@ def main():
                              "canvas-<ts>. Overrides runs_dir/testid lookup.")
     parser.add_argument("--compare-testids", default="")
     parser.add_argument("--compare-labels", default="")
+    parser.add_argument("--web-memory-limit", default="",
+                        help="Web container memory limit (e.g. '8Gi', '1Gi'). "
+                             "Drawn as a horizontal reference line on memory_*.png. "
+                             "Overrides metadata.env web_memory_limit. Omit to "
+                             "render no limit line.")
+    parser.add_argument("--jobs-memory-limit", default="",
+                        help="Jobs container memory limit (e.g. '4Gi'). "
+                             "Same semantics as --web-memory-limit.")
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir)
@@ -1669,10 +1670,24 @@ def main():
             latency, throughput, error_rate, vus, start, end, step, k6_summary_metrics
         )
 
-        # Parse memory limit from environment snapshot so the memory chart can
-        # draw a red limit line — makes OOMKill risk immediately visible.
+        # Memory limit reference lines come from one of three sources, in
+        # decreasing precedence:
+        #   1. --web-memory-limit / --jobs-memory-limit CLI flags
+        #   2. metadata.env (web_memory_limit, jobs_memory_limit keys)
+        #   3. environment.env snapshot captured at run time
+        # If none provide a value, no limit line is drawn (the deployment
+        # manifest at chart-rendering time may not match the historical run).
         env_snapshot = load_env_file(run_dir / "environment.env")
-        web_mem_limit_mb = parse_memory_limit_mb(env_snapshot.get("web_memory_limit", ""))
+        web_mem_limit_mb = (
+            parse_memory_limit_mb(args.web_memory_limit)
+            or parse_memory_limit_mb(metadata.get("web_memory_limit", ""))
+            or parse_memory_limit_mb(env_snapshot.get("web_memory_limit", ""))
+        )
+        jobs_mem_limit_mb = (
+            parse_memory_limit_mb(args.jobs_memory_limit)
+            or parse_memory_limit_mb(metadata.get("jobs_memory_limit", ""))
+            or parse_memory_limit_mb(env_snapshot.get("jobs_memory_limit", ""))
+        )
 
         scaling_mode = infer_scaling_mode(snapshots)
         is_breakpoint = (label == "breakpoint")
@@ -1713,6 +1728,7 @@ def main():
         plot_memory(
             output_dir, label, web_memory, jobs_memory,
             web_memory_limit_mb=web_mem_limit_mb,
+            jobs_memory_limit_mb=jobs_mem_limit_mb,
             saturation_time=saturation_time,
             saturation_vu=saturation_vu,
             vus_values=vus, test_start=start,

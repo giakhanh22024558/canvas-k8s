@@ -116,13 +116,22 @@ echo "Generating charts..."
 METADATA_TESTID="$(grep '^test_id=' "$RUN_DIR/metadata.env" 2>/dev/null | cut -d= -f2 || true)"
 PROM_TESTID="${METADATA_TESTID:-$TEST_ID}"
 
+# Optional memory-limit override for the memory chart's reference line.
+# Set WEB_MEMORY_LIMIT / JOBS_MEMORY_LIMIT (e.g. "1Gi", "8Gi") when
+# re-rendering historical runs where the manifest at run time differed
+# from the manifest currently checked out.
+WEB_MEMORY_LIMIT="${WEB_MEMORY_LIMIT:-}"
+JOBS_MEMORY_LIMIT="${JOBS_MEMORY_LIMIT:-}"
+
 "$PYTHON" "$SCRIPT_DIR/charts/plot_prometheus.py" \
   --testid "$PROM_TESTID" \
   --runs-dir "$RESULTS_DIR" \
   --run-dir "$RUN_DIR" \
   --prometheus-url "$PROM_QUERY_URL" \
   --output-dir "$RUN_DIR" \
-  --step "$STEP"
+  --step "$STEP" \
+  --web-memory-limit "$WEB_MEMORY_LIMIT" \
+  --jobs-memory-limit "$JOBS_MEMORY_LIMIT"
 
 echo "Charts generated in $RUN_DIR"
 
