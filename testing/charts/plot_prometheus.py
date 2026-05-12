@@ -330,193 +330,6 @@ def restart_delta_series(snapshots, field):
     return xs, ys
 
 
-def _find_persistent_breach(series, threshold,
-                            min_sustained_samples=8,
-                            tail_window_samples=10,
-                            tail_cooldown_samples=8):
-    """Return the earliest timestamp where `series` enters a sustained
-    AND non-recovering breach of `threshold`. Returns None otherwise.
-
-    Two tests must BOTH pass for a candidate timestamp to qualify:
-
-      (1) Sustained breach — series stays at-or-above threshold for at
-          least `min_sustained_samples` consecutive samples starting at
-          that timestamp. Filters out 1-2 sample spikes.
-
-      (2) Tail not recovered — the average value over the last
-          `tail_window_samples` samples of the workload phase (excluding
-          `tail_cooldown_samples` trailing samples that belong to the VU
-          ramp-down) must ALSO be at-or-above threshold. Filters out
-          longer blips that the system absorbed: if by the end of the
-          full-load phase the metric has dropped back below threshold,
-          the system clearly survived the workload and the "breach" was
-          a transient ramp-up artefact, not true saturation.
-
-    Concrete example — Stage 2 run01:
-      • Error rate spiked to 5% from min ~9 to min ~13 (≈16 samples ≥ 1%)
-      • Recovered to ~0% by min 14 onward
-      • Final 0.96% overall, 0 OOMKills, system healthy at 100 VUs
-      • Tail average at min 14–16 ≈ 0.3% < 1% threshold → BREACH REJECTED
-      • Correct outcome: no saturation marker drawn.
-
-    Defaults assume a 15-second sample grid and breakpoint test layout:
-        min_sustained = 8 samples (2 min)
-        tail_window   = 10 samples (2.5 min) preceding cooldown
-        tail_cooldown = 8 samples (2 min final ramp-down stage)
-    """
-    if not series:
-        return None
-    n = len(series)
-
-    # Tail-recovery gate: examine the last full-load window, excluding the
-    # cooldown ramp-down. If the metric has already settled below
-    # threshold by then, the system survived the workload.
-    full_load_end = n - tail_cooldown_samples
-    if full_load_end < min_sustained_samples:
-        # Series too short to evaluate — defensive bail-out.
-        return None
-    tail_start = max(0, full_load_end - tail_window_samples)
-    tail_vals = [v for _, v in series[tail_start:full_load_end] if v is not None]
-    if not tail_vals:
-        return None
-    tail_avg = sum(tail_vals) / len(tail_vals)
-    if tail_avg < threshold:
-        return None  # System recovered before the workload phase ended.
-
-    # Tail confirms genuine non-recovering degradation. Now find the
-    # EARLIEST sustained-breach timestamp within the workload window
-    # so the marker points at the onset, not the steady state.
-    for i in range(full_load_end):
-        ts, val = series[i]
-        if val is None or val < threshold:
-            continue
-        sustained = 0
-        for j in range(i, full_load_end):
-            v = series[j][1]
-            if v is None or v < threshold:
-                break
-            sustained += 1
-            if sustained >= min_sustained_samples:
-                return ts
-    return None
-
-
-def detect_saturation_point(snapshots, vus_values,
-                            error_rate=None, latency_p95=None,
-                            error_threshold_pct=1.0,
-                            latency_threshold_seconds=5.0,
-                            min_sustained_samples=8):
-    """Return (saturation_datetime, vu_at_saturation, reason_label) for
-    breakpoint tests, or (None, None, None) when no real saturation is
-    observed.
-
-    Saturation is the EARLIEST of:
-      (A) First sample where web_restart_total increments — i.e. the
-          first OOMKill. Hard failure, instant signal.
-      (B) Earliest timestamp where error_rate stays ≥ `error_threshold_pct`
-          for at least `min_sustained_samples` consecutive ticks.
-      (C) Earliest timestamp where p95 latency stays ≥
-          `latency_threshold_seconds` for the same window.
-
-    The sustained-breach requirement matters because graceful degradation
-    produces transient blips during ramp-up (e.g. Stage 2 run01 hit 5%
-    error briefly at minute 11 then recovered to 0%). The naive "first
-    crossing" detector flagged that as saturation @ 50 VUs even though
-    the system clearly held up to 100 VUs with overall 0.96% error rate.
-    Requiring the breach to persist for `min_sustained_samples` ticks
-    (default 8 ≈ 2 minutes on a 15-second grid) filters out those
-    transient spikes while still catching real saturation when error
-    rate or latency stays degraded.
-
-    Returns (None, None, None) — meaning "no marker drawn" — for runs
-    where the system absorbed the load gracefully. That's the right
-    answer: drawing a marker at a transient blip is more misleading
-    than drawing none at all.
-    """
-    candidates = []
-
-    # (A) OOMKill — first restart event recorded in the snapshot CSV.
-    # No "sustained" requirement: an OOMKill is by definition a hard
-    # failure event, not a measurement.
-    for i, row in enumerate(snapshots[1:], start=1):
-        if row["web_restart_total"] > snapshots[i - 1]["web_restart_total"]:
-            candidates.append((row["timestamp"], "OOMKill"))
-            break
-
-    # (B) sustained AND non-recovering error rate breach.
-    err_ts = _find_persistent_breach(error_rate, error_threshold_pct,
-                                     min_sustained_samples=min_sustained_samples)
-    if err_ts is not None:
-        candidates.append((err_ts, f"error_rate ≥ {error_threshold_pct:g}%"))
-
-    # (C) sustained AND non-recovering p95 latency breach.
-    p95_ts = _find_persistent_breach(latency_p95, latency_threshold_seconds,
-                                     min_sustained_samples=min_sustained_samples)
-    if p95_ts is not None:
-        candidates.append((p95_ts, f"p95 ≥ {latency_threshold_seconds:g}s"))
-
-    if not candidates:
-        return None, None, None
-
-    sat_time, reason = min(candidates, key=lambda c: c[0])
-
-    sat_vu = None
-    if vus_values:
-        closest = min(vus_values, key=lambda tv: abs((tv[0] - sat_time).total_seconds()))
-        sat_vu = closest[1]
-
-    return sat_time, sat_vu, reason
-
-
-def _draw_saturation_marker(axes, saturation_time, saturation_vu, reason,
-                            test_start, end_time=None):
-    """Draw a vertical dashed line + shaded post-saturation region on each
-    axis in `axes`, plus a single text label on the topmost axis.
-
-    Times are converted to "minutes from test_start" to match the x-axis
-    used by the chart. No-op when saturation_time is None (test held up).
-    """
-    if saturation_time is None or test_start is None or not axes:
-        return
-    sat_min = (saturation_time - test_start).total_seconds() / 60.0
-    end_min = None
-    if end_time is not None:
-        end_min = (end_time - test_start).total_seconds() / 60.0
-
-    for axis in axes:
-        axis.axvline(sat_min, color="#d62728", linestyle="--",
-                     linewidth=1.5, alpha=0.85, zorder=4)
-        if end_min is not None and end_min > sat_min:
-            axis.axvspan(sat_min, end_min, color="#d62728",
-                         alpha=0.07, zorder=0)
-
-    # Single text label anchored to the top-of-chart on the first axis.
-    # Build it from VU and reason so the reader knows both "when did it
-    # start failing" and "what failure".
-    parts = ["Saturation"]
-    if saturation_vu is not None:
-        parts.append(f"@ {saturation_vu:.0f} VUs")
-    if reason:
-        parts.append(f"({reason})")
-    label = "\n".join([parts[0] + (" " + parts[1] if len(parts) > 1 else ""),
-                       parts[2]] if len(parts) >= 3 else [" ".join(parts)])
-    top_ax = axes[0]
-    ymin, ymax = top_ax.get_ylim()
-    top_ax.annotate(
-        label,
-        xy=(sat_min, ymax),
-        xytext=(6, -8),
-        textcoords="offset points",
-        color="#a40000",
-        fontsize=9,
-        fontweight="bold",
-        verticalalignment="top",
-        bbox=dict(boxstyle="round,pad=0.25",
-                  facecolor="white", edgecolor="#d62728", alpha=0.92),
-        zorder=5,
-    )
-
-
 def plot_latency_timeline(output_dir, metrics_by_label,
                           throughput_values=None, test_start=None):
     """Response-time percentiles (P50/P95/P99) over time.
@@ -575,22 +388,19 @@ def plot_latency_timeline(output_dir, metrics_by_label,
 
 def plot_throughput_error(output_dir, label, throughput_values, error_values,
                           k6_error_rate_percent=None, vus_values=None,
-                          saturation_time=None, saturation_vu=None,
-                          saturation_reason=None,
                           test_start=None):
-    """Per-run throughput + error chart redesigned to match the aggregate
-    chart style:
+    """Per-run throughput + error chart:
         Panel 1 — RPS stacked area: green = successful, red = failed (on top)
                   with a thin dark line tracing the total at the top edge.
         Panel 2 — Error rate %, plotted as a line with 1 % reference line.
     VU profile overlaid on each panel as a faint shaded twin axis.
     X-axis: minutes from test start, major tick per minute.
 
-    When `saturation_time` is provided (only breakpoint tests at present),
-    a vertical red dashed line + shaded post-saturation region + label box
-    mark the inferred saturation point on both panels — see
-    detect_saturation_point for how the timestamp / VU count / reason
-    label are produced.
+    Saturation point is intentionally NOT marked here — automated detection
+    proved unreliable on graceful-degradation runs (transient ramp-up blips
+    were flagged as "saturation" even when the system fully recovered).
+    Read saturation visually from the chart: RPS plateau in panel 1
+    combined with elevated/rising error rate in panel 2.
     """
     if not throughput_values and not error_values:
         return
@@ -675,19 +485,6 @@ def plot_throughput_error(output_dir, label, throughput_values, error_values,
     apply_minute_axis(ax_rps, test_start)
     apply_minute_axis(ax_err, test_start)
     fig.tight_layout()
-
-    # Saturation marker drawn AFTER tight_layout so the annotation's
-    # ylim-anchored position uses the finalised axis limits.
-    if saturation_time is not None:
-        end_time = None
-        if throughput_values:
-            end_time = throughput_values[-1][0]
-        elif error_values:
-            end_time = error_values[-1][0]
-        _draw_saturation_marker(
-            [ax_rps, ax_err], saturation_time, saturation_vu,
-            saturation_reason, test_start, end_time=end_time,
-        )
     fig.savefig(output_dir / f"throughput_error_rate_{slugify(label)}.png",
                 bbox_inches="tight")
     plt.close(fig)
@@ -1387,7 +1184,6 @@ def _short_pod_label(pod_name, deployment_prefix):
 def plot_memory(output_dir, label,
                 web_memory_per_pod, jobs_memory_per_pod,
                 web_memory_limit_mb=None, jobs_memory_limit_mb=None,
-                saturation_time=None, saturation_vu=None,
                 vus_values=None, test_start=None,
                 split_threshold=4):
     """One line per pod so OOM risk is directly visible against the
@@ -1568,7 +1364,6 @@ def plot_hpa_cpu(output_dir, label, hpa_cpu_values):
 
 
 def plot_restart_counts(output_dir, label, snapshots,
-                        saturation_time=None, saturation_vu=None,
                         vus_values=None):
     """Pod restart count DURING the test, rebased to zero at test start.
 
@@ -2145,19 +1940,13 @@ def main():
         )
 
         scaling_mode = infer_scaling_mode(snapshots)
-        is_breakpoint = (label == "breakpoint")
 
-        # For breakpoint tests, detect the saturation point (earliest of:
-        # first OOMKill, first error_rate >=1%, or first p95 >=5s) and the
-        # VU count + reason at that moment — drawn as a marker on the
-        # throughput chart. Other test types skip detection (None marker).
-        saturation_time, saturation_vu, saturation_reason = (None, None, None)
-        if is_breakpoint:
-            saturation_time, saturation_vu, saturation_reason = detect_saturation_point(
-                snapshots, vus,
-                error_rate=error_rate,
-                latency_p95=latency.get("p95"),
-            )
+        # Saturation marker was removed because automated detection
+        # produced misleading results on graceful-degradation runs (a
+        # transient ramp-up blip that the system absorbed was being
+        # flagged as "saturation"). Saturation is now read VISUALLY
+        # from the charts — see testing/README or the thesis methodology
+        # chapter for the rubric.
 
         plot_latency_timeline(output_dir, {label: latency},
                               throughput_values=throughput, test_start=start)
@@ -2165,16 +1954,11 @@ def main():
             output_dir, label, throughput, error_rate,
             k6_error_rate_percent=k6_summary_metrics.get("error_rate_percent"),
             vus_values=vus,            # always show VU profile, not just breakpoint
-            saturation_time=saturation_time,
-            saturation_vu=saturation_vu,
-            saturation_reason=saturation_reason,
             test_start=start,
         )
         # VU profile is identical for all long-stress runs (same stages every time)
-        # so it is omitted from per-run output. Saturation marker — when relevant —
-        # is now drawn directly on plot_throughput_error above; the previous
-        # dedicated breakpoint_saturation chart was a near-duplicate and has
-        # been removed.
+        # so it is omitted from per-run output. The previous dedicated
+        # breakpoint_saturation chart was a near-duplicate and has been removed.
         plot_cpu_replicas(
             output_dir, label,
             web_cpu_per_pod, jobs_cpu_per_pod, snapshots,
@@ -2187,8 +1971,6 @@ def main():
             web_memory_per_pod, jobs_memory_per_pod,
             web_memory_limit_mb=web_mem_limit_mb,
             jobs_memory_limit_mb=jobs_mem_limit_mb,
-            saturation_time=saturation_time,
-            saturation_vu=saturation_vu,
             vus_values=vus, test_start=start,
         )
         # HPA CPU chart is only meaningful when an HPA is actually active.
@@ -2200,8 +1982,6 @@ def main():
             plot_hpa_cpu(output_dir, label, hpa_cpu)
         plot_restart_counts(
             output_dir, label, snapshots,
-            saturation_time=saturation_time,
-            saturation_vu=saturation_vu,
             vus_values=vus,
         )
         scaling_summary = plot_scale_latency(output_dir, label, snapshots) or {}
