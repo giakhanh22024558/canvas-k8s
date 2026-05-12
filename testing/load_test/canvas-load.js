@@ -46,15 +46,22 @@ const profilePresets = {
     ],
   },
   breakpoint: {
+    // Reaches 200 VUs to push past the throughput knee observed in
+    // Stage 2 (capped-at-100 run01 showed only graceful degradation).
+    // Coarser steps below 100 because that region is already known
+    // healthy; finer steps above (130, 160, 200) so the saturation
+    // knee has more sample points. Kept in sync with the STAGES_JSON
+    // default in testing/run-load-test.sh — see that file for the
+    // rationale. 9 stages × 2 min = 18 min total.
     stages: [
-      { duration: "2m", target: 10 },
       { duration: "2m", target: 20 },
-      { duration: "2m", target: 30 },
       { duration: "2m", target: 40 },
-      { duration: "2m", target: 50 },
       { duration: "2m", target: 60 },
       { duration: "2m", target: 80 },
       { duration: "2m", target: 100 },
+      { duration: "2m", target: 130 },
+      { duration: "2m", target: 160 },
+      { duration: "2m", target: 200 },
       { duration: "2m", target: 0 },
     ],
   },
