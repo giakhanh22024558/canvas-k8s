@@ -1573,15 +1573,22 @@ def collect_run_metrics(base_url, selector, start, end, step):
     # reading to 6-12 GiB even though kernel-enforced per-container limit is
     # 3 GiB. The primary query below filters to only currently-Running
     # containers via kube_pod_container_status_running == 1.
+    # Primary query uses `unless on(id) (time() - container_last_seen > 30)` to
+    # remove ghost cgroup series whose data is stale. Each container instance
+    # (live or dead) has a unique `id` label (cgroup path); cAdvisor exports
+    # container_last_seen indicating when each cgroup was last observed alive.
+    # Filtering by id+freshness was empirically verified to eliminate the
+    # 6 GiB+ spikes seen in Stage 1 baseline runs during OOMKill transitions
+    # (e.g. 12:45:50 in Stage 1 run01: 6867 MB without filter → 492 MB with).
     web_memory_result, _ = try_queries(
         base_url,
         [
-            # Primary: filter to running containers only (excludes ghost cgroups
-            # from recently-killed containers that cAdvisor still reports).
+            # Primary: drop cgroup series whose last_seen is older than 30s.
             'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-web-.*",container="web"} '
-            '* on(pod,container) group_left() (kube_pod_container_status_running{namespace="canvas",container="web"} == 1)) '
+            'unless on(id) '
+            '(time() - container_last_seen{namespace="canvas",pod=~"canvas-web-.*",container="web"} > 30)) '
             '/ 1000000',
-            # Fallback 1: older namespace-aware schema without the running filter.
+            # Fallback 1: older namespace-aware schema without freshness filter.
             'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"} * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}) / 1000000',
             # Fallback 2: legacy cAdvisor label scheme (pre-namespace label).
             'sum(container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-web-.*",container!="",container!="POD"}) / 1000000',
@@ -1595,11 +1602,12 @@ def collect_run_metrics(base_url, selector, start, end, step):
     jobs_memory_result, _ = try_queries(
         base_url,
         [
-            # Primary: running-container filter (see web_memory comment).
+            # Primary: drop stale cgroup series (see web_memory comment above).
             'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-jobs-.*",container="jobs"} '
-            '* on(pod,container) group_left() (kube_pod_container_status_running{namespace="canvas",container="jobs"} == 1)) '
+            'unless on(id) '
+            '(time() - container_last_seen{namespace="canvas",pod=~"canvas-jobs-.*",container="jobs"} > 30)) '
             '/ 1000000',
-            # Fallback 1: older namespace-aware schema without the running filter.
+            # Fallback 1: older namespace-aware schema without freshness filter.
             'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-jobs-.*",container!="",container!="POD"} * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}) / 1000000',
             # Fallback 2: legacy cAdvisor label scheme.
             'sum(container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-jobs-.*",container!="",container!="POD"}) / 1000000',

@@ -358,17 +358,19 @@ def q_vus(testid):
 
 
 def q_web_memory_mb():
-    # Primary query filters to running containers via
-    # kube_pod_container_status_running == 1 to exclude ghost cgroups from
-    # recently-killed containers (cAdvisor keeps reporting them for ~30-60s
-    # before kernel GC). Without this filter, sum() inflates working set
-    # during crash-loop workloads (Stage 1 single replica with 6 OOMKills
-    # would sum 1 active + up to 3 ghosts × 3 GiB each = 9-12 GiB).
+    # Primary query drops ghost cgroup series via `unless on(id)`. Each
+    # container instance (live or dead) has a unique `id` label (cgroup
+    # path); container_last_seen indicates when cAdvisor last observed each.
+    # During a crash-loop, a previous container instance's cgroup persists
+    # in cAdvisor for ~30-60s before kernel GC, inflating naive sum() by
+    # 2-4× (Stage 1 baseline observed 6867 MB without filter → 492 MB with
+    # filter at the same OOMKill-transition timestamp).
     return [
         'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-web-.*",container="web"} '
-        '* on(pod,container) group_left() (kube_pod_container_status_running{namespace="canvas",container="web"} == 1)) '
+        'unless on(id) '
+        '(time() - container_last_seen{namespace="canvas",pod=~"canvas-web-.*",container="web"} > 30)) '
         '/ 1000000',
-        # Fallback 1: legacy namespace-aware query without running filter.
+        # Fallback 1: legacy namespace-aware query without freshness filter.
         'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"} * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}) / 1000000',
         # Fallback 2: pre-namespace-label cAdvisor scheme.
         'sum(container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-web-.*",container!="",container!="POD"}) / 1000000',
@@ -378,7 +380,8 @@ def q_web_memory_mb():
 def q_jobs_memory_mb():
     return [
         'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-jobs-.*",container="jobs"} '
-        '* on(pod,container) group_left() (kube_pod_container_status_running{namespace="canvas",container="jobs"} == 1)) '
+        'unless on(id) '
+        '(time() - container_last_seen{namespace="canvas",pod=~"canvas-jobs-.*",container="jobs"} > 30)) '
         '/ 1000000',
         'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-jobs-.*",container!="",container!="POD"} * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}) / 1000000',
         'sum(container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-jobs-.*",container!="",container!="POD"}) / 1000000',
