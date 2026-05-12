@@ -108,9 +108,18 @@ rm -f "$RUN_DIR"/summary_comparison.csv
 
 echo "Generating charts..."
 
+# Folders renamed for readability (e.g. stage1-baseline-vpa-run01-...) keep the
+# original test_id (canvas-<ts>) inside metadata.env so Prometheus selectors
+# continue to match the k6-pushed series. When the folder name differs from
+# the in-metadata test_id, pass --run-dir so plot_prometheus.py reads from
+# the renamed folder while still querying Prometheus with the original label.
+METADATA_TESTID="$(grep '^test_id=' "$RUN_DIR/metadata.env" 2>/dev/null | cut -d= -f2 || true)"
+PROM_TESTID="${METADATA_TESTID:-$TEST_ID}"
+
 "$PYTHON" "$SCRIPT_DIR/charts/plot_prometheus.py" \
-  --testid "$TEST_ID" \
+  --testid "$PROM_TESTID" \
   --runs-dir "$RESULTS_DIR" \
+  --run-dir "$RUN_DIR" \
   --prometheus-url "$PROM_QUERY_URL" \
   --output-dir "$RUN_DIR" \
   --step "$STEP"
