@@ -95,22 +95,61 @@ mkdir -p "$RUN_DIR"
 # The plotting script reads environment.env to draw the memory limit line.
 if command -v kubectl >/dev/null 2>&1; then
   ensure_kubeconfig
-  echo "Capturing cluster snapshot to $RUN_DIR/environment.env ..."
+  echo "Capturing cluster snapshot to $RUN_DIR/ ..."
   bash "$SCRIPT_DIR/capture-cluster-env.sh" "$RUN_DIR/environment.env" || true
+
+  # Print the full pre-test snapshot for the operator to verify the cluster
+  # is in the expected state before any load is applied. Both files are
+  # written by capture-cluster-env.sh:
+  #   - environment.env       — machine-readable key=value
+  #   - cluster-snapshot.txt  — human-readable kubectl output bundle
   if [[ -f "$RUN_DIR/environment.env" ]]; then
     echo ""
     echo "============================================================"
     echo "  CLUSTER SNAPSHOT — pre-test state"
+    echo "  (environment.env)"
     echo "============================================================"
     while IFS='=' read -r key value; do
       [[ -z "$key" || "$key" == \#* ]] && continue
       printf "  %-35s %s\n" "$key" "$value"
     done < "$RUN_DIR/environment.env"
     echo "============================================================"
+  fi
+  if [[ -f "$RUN_DIR/cluster-snapshot.txt" ]]; then
+    echo ""
+    echo "============================================================"
+    echo "  CLUSTER SNAPSHOT — kubectl bundle"
+    echo "  (cluster-snapshot.txt)"
+    echo "============================================================"
+    cat "$RUN_DIR/cluster-snapshot.txt"
+    echo "============================================================"
     echo ""
   fi
 else
   echo "kubectl not available — skipping cluster snapshot."
+fi
+
+# Operator confirmation gate. Default behaviour is to require explicit
+# 'y' before the test starts so a stale or misconfigured cluster does
+# not silently consume hours of testing time. Set SKIP_CONFIRM=true on
+# the command line for unattended / matrix runs.
+SKIP_CONFIRM="${SKIP_CONFIRM:-false}"
+if [[ "$SKIP_CONFIRM" == "true" ]]; then
+  echo "SKIP_CONFIRM=true — proceeding without operator confirmation."
+else
+  echo ""
+  echo "Test configuration:"
+  echo "  EXPERIMENT_NAME = ${EXPERIMENT_NAME:-<unset, defaulting to canvas>}"
+  echo "  TEST_TYPE       = $TEST_TYPE"
+  echo "  TEST_ID         = $TEST_ID"
+  echo "  RUN_DIR         = $RUN_DIR"
+  echo ""
+  read -rp "Proceed with load test against the cluster shown above? [y/N]: " _confirm
+  if [[ "${_confirm,,}" != "y" ]]; then
+    echo "Aborted by operator. Removing empty run folder: $RUN_DIR"
+    rm -rf "$RUN_DIR"
+    exit 0
+  fi
 fi
 
 # Track whether the run reached a "completed" state (k6 produced a usable
