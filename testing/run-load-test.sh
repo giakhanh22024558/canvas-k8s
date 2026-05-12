@@ -8,14 +8,26 @@ load_testing_env
 BASE_URL="${BASE_URL:-http://canvas.io.vn}"
 PROM_URL="${PROM_URL:-http://127.0.0.1:30090/api/v1/write}"
 TEST_TYPE="${TEST_TYPE:-load}"
-# Run-folder name embeds the EXPERIMENT_NAME tag when set, falling back to the
-# legacy canvas-<timestamp> form. Doing this in the folder itself (not just in
-# metadata.env) makes cross-stage `ls` listings self-describing — e.g.
-# "stage2-breakpoint-run02-20260509-163250" — and lets aggregate scripts
-# discover runs by name prefix without parsing every metadata file.
+# Run-folder name embeds EXPERIMENT_NAME (always) and optional RUN_LABEL so
+# `ls testing/results/` is self-describing. Examples:
+#   EXPERIMENT_NAME=stage2-breakpoint                       → stage2-breakpoint-20260509-163250
+#   EXPERIMENT_NAME=stage2-breakpoint RUN_LABEL=run02       → stage2-breakpoint-run02-20260509-163250
+#
+# RUN_LABEL is purely a display-time convenience. It is folded into both the
+# folder name and TEST_ID so:
+#   - the Prometheus testid label (which k6 pushes) matches the folder name,
+#   - downstream tools can resolve a run by either folder basename or
+#     metadata.env test_id without ambiguity,
+#   - aggregate_timeseries.py discovers runs by folder prefix and reads
+#     test_id from metadata.env at query time.
 if [[ -z "${TEST_ID:-}" ]]; then
   default_prefix="${EXPERIMENT_NAME:-canvas}"
-  TEST_ID="${default_prefix}-$(date +%Y%m%d-%H%M%S)"
+  ts="$(date +%Y%m%d-%H%M%S)"
+  if [[ -n "${RUN_LABEL:-}" ]]; then
+    TEST_ID="${default_prefix}-${RUN_LABEL}-${ts}"
+  else
+    TEST_ID="${default_prefix}-${ts}"
+  fi
 fi
 RESULTS_DIR="${RESULTS_DIR:-$SCRIPT_DIR/results}"
 RUN_DIR="$RESULTS_DIR/$TEST_ID"
