@@ -526,6 +526,97 @@ def load_snapshots(path):
     return rows
 
 
+def compute_resource_area(snapshots, env_snapshot):
+    """Compute resource-time-area metrics for HPA-vs-prescaled efficiency.
+
+    Resource-time area = integral of (replicas × per-pod request) over the
+    test duration. Quantifies how much CPU/memory the cluster *reserved*
+    on behalf of the workload — the right accounting unit because the
+    K8s scheduler bin-packs by request, not by actual usage. Charging is
+    also by reserved capacity in any pay-per-pod model.
+
+    Prescaled fleets: integrand is constant → simple rectangle.
+    HPA-driven fleets: integrand is a step function tracking replica
+    count → staircase area, smaller than the prescaled rectangle by the
+    "savings".
+
+    Replica counts are integrated via the trapezoidal rule, which gives
+    the exact area for a step function as long as the sample spacing is
+    not coarser than the replica-change events (with a 15 s snapshot
+    grid and HPA stabilisation windows ≥ 60 s, that holds).
+
+    Returns a dict of metrics ready to drop into the summary CSV; empty
+    dict when there is not enough data to compute. Test duration is
+    measured from first to last snapshot — cooldown ramp-down IS
+    included because that's still "test resources consumed", and HPA's
+    scale-down during cooldown is a real efficiency benefit that should
+    not be hidden by trimming the tail.
+    """
+    if not snapshots or len(snapshots) < 2:
+        return {}
+
+    # Per-pod requests from environment.env (captured at test start).
+    # parse_memory_limit_mb returns MiB → divide by 1024 for GiB.
+    web_cpu_req_per_pod  = parse_cpu_limit_cores(env_snapshot.get("web_cpu_request", "")) or 0.0
+    web_mem_req_per_pod  = (parse_memory_limit_mb(env_snapshot.get("web_memory_request", "")) or 0.0) / 1024.0
+    jobs_cpu_req_per_pod = parse_cpu_limit_cores(env_snapshot.get("jobs_cpu_request", "")) or 0.0
+    jobs_mem_req_per_pod = (parse_memory_limit_mb(env_snapshot.get("jobs_memory_request", "")) or 0.0) / 1024.0
+
+    # Trapezoidal integration: for each adjacent pair of snapshots, accrue
+    # (mean replicas across the interval × per-pod request × Δt).
+    web_cpu_core_seconds  = 0.0
+    web_mem_gib_seconds   = 0.0
+    jobs_cpu_core_seconds = 0.0
+    jobs_mem_gib_seconds  = 0.0
+    web_replicas_samples  = []
+    jobs_replicas_samples = []
+
+    for i in range(1, len(snapshots)):
+        prev = snapshots[i - 1]
+        curr = snapshots[i]
+        dt_seconds = (curr["timestamp"] - prev["timestamp"]).total_seconds()
+        if dt_seconds <= 0:
+            continue
+        web_avg = ((prev.get("web_ready_replicas") or 0)
+                   + (curr.get("web_ready_replicas") or 0)) / 2.0
+        jobs_avg = ((prev.get("jobs_ready_replicas") or 0)
+                    + (curr.get("jobs_ready_replicas") or 0)) / 2.0
+        web_cpu_core_seconds  += web_avg  * web_cpu_req_per_pod  * dt_seconds
+        web_mem_gib_seconds   += web_avg  * web_mem_req_per_pod  * dt_seconds
+        jobs_cpu_core_seconds += jobs_avg * jobs_cpu_req_per_pod * dt_seconds
+        jobs_mem_gib_seconds  += jobs_avg * jobs_mem_req_per_pod * dt_seconds
+        web_replicas_samples.append(prev.get("web_ready_replicas") or 0)
+        jobs_replicas_samples.append(prev.get("jobs_ready_replicas") or 0)
+
+    web_replicas_samples.append(snapshots[-1].get("web_ready_replicas") or 0)
+    jobs_replicas_samples.append(snapshots[-1].get("jobs_ready_replicas") or 0)
+
+    test_duration_s = (snapshots[-1]["timestamp"] - snapshots[0]["timestamp"]).total_seconds()
+    test_duration_min = test_duration_s / 60.0
+
+    # Convert seconds → minutes for thesis-friendly units. core·min and
+    # GiB·min are easy to multiply by an hourly cloud-instance rate
+    # ($/core-hr, $/GB-hr) for cost framing.
+    total_web_cpu_core_min  = web_cpu_core_seconds  / 60.0
+    total_web_mem_gib_min   = web_mem_gib_seconds   / 60.0
+    total_jobs_cpu_core_min = jobs_cpu_core_seconds / 60.0
+    total_jobs_mem_gib_min  = jobs_mem_gib_seconds  / 60.0
+
+    return {
+        "test_duration_minutes":         round(test_duration_min, 2),
+        "total_web_cpu_core_minutes":    round(total_web_cpu_core_min,  3),
+        "total_web_memory_gib_minutes":  round(total_web_mem_gib_min,   3),
+        "total_jobs_cpu_core_minutes":   round(total_jobs_cpu_core_min, 3),
+        "total_jobs_memory_gib_minutes": round(total_jobs_mem_gib_min,  3),
+        "total_cpu_core_minutes":        round(total_web_cpu_core_min + total_jobs_cpu_core_min, 3),
+        "total_memory_gib_minutes":      round(total_web_mem_gib_min  + total_jobs_mem_gib_min,  3),
+        "peak_web_replicas":             max(web_replicas_samples),
+        "peak_jobs_replicas":            max(jobs_replicas_samples),
+        "avg_web_replicas":              round(sum(web_replicas_samples)  / len(web_replicas_samples),  2),
+        "avg_jobs_replicas":             round(sum(jobs_replicas_samples) / len(jobs_replicas_samples), 2),
+    }
+
+
 def load_jobs_queue(path):
     """Load jobs-queue.csv produced by collect-jobs-metrics.sh.
 
@@ -1179,6 +1270,105 @@ def _short_pod_label(pod_name, deployment_prefix):
     if 3 <= len(suffix) <= 10:
         return f"{deployment_prefix}-{suffix}"
     return pod_name
+
+
+def plot_replicas_vs_vus(output_dir, label, snapshots, vus_values,
+                         test_start=None):
+    """Dual-axis elasticity chart for HPA-vs-prescaled comparison:
+        Left Y:  VUs (load — the demand signal)
+        Right Y: Replicas (web + jobs step lines — the supply response)
+        X:       Minutes from test start
+
+    Prescaled fleets render as flat horizontal replica lines regardless
+    of VU ramp — visualises "supply does not track demand". The reader
+    sees both the load curve and the constant supply on the same axes,
+    making the over-provisioning during low-load minutes self-evident.
+
+    HPA-driven fleets render as a staircase that lags the VU ramp by
+    ~1-2 minutes (HPA's metrics-server sampling window plus its
+    stabilisation delay) — visualises both scalability (up-scaling
+    under load) and elasticity (down-scaling during cool-down).
+
+    Companion to the resource-time-area metrics in summary_*.csv:
+    the chart shows the qualitative shape, the metrics give the
+    quantitative savings (% CPU·min and % memory·min saved vs. the
+    prescaled rectangle).
+    """
+    if not snapshots:
+        return
+    if test_start is None and snapshots:
+        test_start = snapshots[0]["timestamp"]
+    if test_start is None:
+        return
+
+    fig, ax_vu = plt.subplots(figsize=(12, 5))
+
+    # Left axis: VUs — drawn as a faint filled area so the right-axis
+    # replica step lines dominate the foreground.
+    if vus_values:
+        xs_vu, ys_vu = to_minutes_from_start(vus_values, test_start)
+        ax_vu.fill_between(xs_vu, 0, ys_vu, color="#9e9e9e", alpha=0.22, linewidth=0)
+        ax_vu.plot(xs_vu, ys_vu, color="#555555", linewidth=1.4,
+                   linestyle="--", label="Virtual Users (VUs)")
+    ax_vu.set_xlabel("Minutes from test start")
+    ax_vu.set_ylabel("Virtual Users", color="#555555")
+    ax_vu.tick_params(axis="y", labelcolor="#555555")
+    ax_vu.set_ylim(bottom=0)
+    ax_vu.grid(alpha=0.25)
+
+    # Right axis: Replicas — bold step lines, one per deployment.
+    ax_rep = ax_vu.twinx()
+    ys_all_rep = []
+    web_series = [
+        (row["timestamp"],
+         row.get("web_ready_replicas") if row.get("web_ready_replicas") is not None
+         else row.get("web_spec_replicas") or 0)
+        for row in snapshots
+    ]
+    xs_w, ys_w = to_minutes_from_start(web_series, test_start)
+    ax_rep.step(xs_w, ys_w, where="post", color="#1f77b4",
+                linewidth=2.4, label="Web replicas", zorder=3)
+    ys_all_rep.extend(ys_w)
+
+    jobs_have_data = any(row.get("jobs_ready_replicas") is not None
+                        or row.get("jobs_spec_replicas") is not None
+                        for row in snapshots)
+    if jobs_have_data:
+        jobs_series = [
+            (row["timestamp"],
+             row.get("jobs_ready_replicas") if row.get("jobs_ready_replicas") is not None
+             else row.get("jobs_spec_replicas") or 0)
+            for row in snapshots
+        ]
+        xs_j, ys_j = to_minutes_from_start(jobs_series, test_start)
+        ax_rep.step(xs_j, ys_j, where="post", color="#ff7f0e",
+                    linewidth=2.4, label="Jobs replicas", zorder=3)
+        ys_all_rep.extend(ys_j)
+
+    max_rep = max(ys_all_rep) if ys_all_rep else 1
+    ax_rep.set_ylim(bottom=0, top=max(max_rep + 1, 3))
+    ax_rep.set_ylabel("Replica count", color="#1f77b4")
+    ax_rep.tick_params(axis="y", labelcolor="#1f77b4")
+    # Force integer ticks on the replica axis — replica counts are
+    # whole pods; fractional gridlines on the y-axis make no sense.
+    from matplotlib.ticker import MaxNLocator
+    ax_rep.yaxis.set_major_locator(MaxNLocator(integer=True))
+
+    # Combined legend on the left axis.
+    handles_l, labels_l = ax_vu.get_legend_handles_labels()
+    handles_r, labels_r = ax_rep.get_legend_handles_labels()
+    ax_vu.legend(handles_l + handles_r, labels_l + labels_r,
+                 loc="upper left", fontsize=9)
+
+    scaling_mode = infer_scaling_mode(snapshots)
+    ax_vu.set_title(
+        f"Elasticity Profile — VUs vs Replicas ({label}, {scaling_mode})"
+    )
+    apply_minute_axis(ax_vu, test_start)
+    fig.tight_layout()
+    fig.savefig(output_dir / f"replicas_vs_vus_{slugify(label)}.png",
+                bbox_inches="tight")
+    plt.close(fig)
 
 
 def plot_memory(output_dir, label,
@@ -1984,7 +2174,19 @@ def main():
             output_dir, label, snapshots,
             vus_values=vus,
         )
+        # Elasticity chart — dual-axis VUs vs replicas. Companion to the
+        # resource-time-area metrics computed below; the chart shows the
+        # qualitative shape, the metrics give the quantitative savings.
+        plot_replicas_vs_vus(
+            output_dir, label, snapshots, vus,
+            test_start=start,
+        )
         scaling_summary = plot_scale_latency(output_dir, label, snapshots) or {}
+        # Resource-Time Area metrics — quantify how much CPU/memory the
+        # cluster reserved on behalf of the workload. Comparable across
+        # prescaled (flat rectangle) and HPA (staircase) runs to read
+        # off the % saved by elastic scaling.
+        resource_area = compute_resource_area(snapshots, env_snapshot)
         # Per-run jobs-queue, db-health, and redis-health charts disabled
         # by request — these aren't cited in the thesis text. Aggregate
         # versions are still produced via aggregate_timeseries.py. Summary
@@ -2039,6 +2241,7 @@ def main():
         summary_metrics.update({key: round(value, 3) if isinstance(value, float) else value for key, value in scaling_summary.items()})
         summary_metrics.update(jobs_summary)
         summary_metrics.update(db_summary)
+        summary_metrics.update(resource_area)
         write_summary(output_dir, label, summary_metrics)
         comparison_rows.append(summary_metrics)
         latency_overlays[label] = latency
