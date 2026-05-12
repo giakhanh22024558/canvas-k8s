@@ -77,9 +77,25 @@ case "$TEST_TYPE" in
     export STAGES_JSON="${STAGES_JSON:-[{\"duration\":\"2m\",\"target\":10},{\"duration\":\"5m\",\"target\":10},{\"duration\":\"2m\",\"target\":30},{\"duration\":\"5m\",\"target\":30},{\"duration\":\"2m\",\"target\":60},{\"duration\":\"5m\",\"target\":60},{\"duration\":\"2m\",\"target\":0}]}"
     ;;
   breakpoint)
-    # Slowly ramp VUs until the system breaks — finds the saturation point
-    # Ramps from 1 to 100 VUs over 20 minutes, holding each level for 2 minutes
-    export STAGES_JSON="${STAGES_JSON:-[{\"duration\":\"2m\",\"target\":10},{\"duration\":\"2m\",\"target\":20},{\"duration\":\"2m\",\"target\":30},{\"duration\":\"2m\",\"target\":40},{\"duration\":\"2m\",\"target\":50},{\"duration\":\"2m\",\"target\":60},{\"duration\":\"2m\",\"target\":80},{\"duration\":\"2m\",\"target\":100},{\"duration\":\"2m\",\"target\":0}]}"
+    # Ramp VUs through saturation — find the load level where the system
+    # actually breaks (RPS plateau + sustained latency/error degradation,
+    # not just transient ramp-up blips).
+    #
+    # Profile: 9 stages × 2 min = 18 min total. Reaches 200 VUs because
+    # Stage 2 run01 (capped at 100) showed only graceful degradation —
+    # P95 hockey-stick around 40 VUs and RPS plateau ~32 RPS from 60 VUs,
+    # but zero pod restarts and error rate recovered to 0%. To find the
+    # hard saturation point we need to push well past the throughput knee:
+    # 200 VUs is ~3× the observed RPS-saturation point and should produce
+    # either sustained error elevation, OOMKills, or P99 > 10s.
+    #
+    # Coarser steps in the lower range (≤100 VUs) than the previous
+    # profile because that whole region was confirmed healthy in run01;
+    # finer steps above 100 VUs (130, 160, 200) so the saturation knee
+    # has more sample points to land on.
+    #
+    # Override with STAGES_JSON=... if a different profile is needed.
+    export STAGES_JSON="${STAGES_JSON:-[{\"duration\":\"2m\",\"target\":20},{\"duration\":\"2m\",\"target\":40},{\"duration\":\"2m\",\"target\":60},{\"duration\":\"2m\",\"target\":80},{\"duration\":\"2m\",\"target\":100},{\"duration\":\"2m\",\"target\":130},{\"duration\":\"2m\",\"target\":160},{\"duration\":\"2m\",\"target\":200},{\"duration\":\"2m\",\"target\":0}]}"
     ;;
   *)
     echo "Unsupported TEST_TYPE: $TEST_TYPE"
