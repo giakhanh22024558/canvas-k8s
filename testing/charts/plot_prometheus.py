@@ -330,30 +330,68 @@ def restart_delta_series(snapshots, field):
     return xs, ys
 
 
-def _find_sustained_breach(series, threshold, min_sustained_samples):
-    """Return the timestamp where `series` first crosses `threshold` AND
-    stays at-or-above threshold for at least `min_sustained_samples`
-    consecutive samples thereafter.
+def _find_persistent_breach(series, threshold,
+                            min_sustained_samples=8,
+                            tail_window_samples=10,
+                            tail_cooldown_samples=8):
+    """Return the earliest timestamp where `series` enters a sustained
+    AND non-recovering breach of `threshold`. Returns None otherwise.
 
-    A transient spike (one or two samples breaching, then recovering) is
-    explicitly NOT a saturation event — graceful-degradation behaviour
-    under load ramp-up typically produces brief blips that the system
-    absorbs without true failure. Only a sustained breach indicates the
-    workload has actually pushed past capacity.
+    Two tests must BOTH pass for a candidate timestamp to qualify:
 
-    Returns None when no candidate produces a sustained breach.
+      (1) Sustained breach — series stays at-or-above threshold for at
+          least `min_sustained_samples` consecutive samples starting at
+          that timestamp. Filters out 1-2 sample spikes.
+
+      (2) Tail not recovered — the average value over the last
+          `tail_window_samples` samples of the workload phase (excluding
+          `tail_cooldown_samples` trailing samples that belong to the VU
+          ramp-down) must ALSO be at-or-above threshold. Filters out
+          longer blips that the system absorbed: if by the end of the
+          full-load phase the metric has dropped back below threshold,
+          the system clearly survived the workload and the "breach" was
+          a transient ramp-up artefact, not true saturation.
+
+    Concrete example — Stage 2 run01:
+      • Error rate spiked to 5% from min ~9 to min ~13 (≈16 samples ≥ 1%)
+      • Recovered to ~0% by min 14 onward
+      • Final 0.96% overall, 0 OOMKills, system healthy at 100 VUs
+      • Tail average at min 14–16 ≈ 0.3% < 1% threshold → BREACH REJECTED
+      • Correct outcome: no saturation marker drawn.
+
+    Defaults assume a 15-second sample grid and breakpoint test layout:
+        min_sustained = 8 samples (2 min)
+        tail_window   = 10 samples (2.5 min) preceding cooldown
+        tail_cooldown = 8 samples (2 min final ramp-down stage)
     """
     if not series:
         return None
     n = len(series)
-    for i in range(n):
+
+    # Tail-recovery gate: examine the last full-load window, excluding the
+    # cooldown ramp-down. If the metric has already settled below
+    # threshold by then, the system survived the workload.
+    full_load_end = n - tail_cooldown_samples
+    if full_load_end < min_sustained_samples:
+        # Series too short to evaluate — defensive bail-out.
+        return None
+    tail_start = max(0, full_load_end - tail_window_samples)
+    tail_vals = [v for _, v in series[tail_start:full_load_end] if v is not None]
+    if not tail_vals:
+        return None
+    tail_avg = sum(tail_vals) / len(tail_vals)
+    if tail_avg < threshold:
+        return None  # System recovered before the workload phase ended.
+
+    # Tail confirms genuine non-recovering degradation. Now find the
+    # EARLIEST sustained-breach timestamp within the workload window
+    # so the marker points at the onset, not the steady state.
+    for i in range(full_load_end):
         ts, val = series[i]
         if val is None or val < threshold:
             continue
-        # Look ahead: count consecutive at-or-above-threshold samples
-        # starting from i. Reset / stop on the first dip below threshold.
         sustained = 0
-        for j in range(i, n):
+        for j in range(i, full_load_end):
             v = series[j][1]
             if v is None or v < threshold:
                 break
@@ -405,15 +443,15 @@ def detect_saturation_point(snapshots, vus_values,
             candidates.append((row["timestamp"], "OOMKill"))
             break
 
-    # (B) sustained error rate breach.
-    err_ts = _find_sustained_breach(error_rate, error_threshold_pct,
-                                    min_sustained_samples)
+    # (B) sustained AND non-recovering error rate breach.
+    err_ts = _find_persistent_breach(error_rate, error_threshold_pct,
+                                     min_sustained_samples=min_sustained_samples)
     if err_ts is not None:
         candidates.append((err_ts, f"error_rate ≥ {error_threshold_pct:g}%"))
 
-    # (C) sustained p95 latency breach.
-    p95_ts = _find_sustained_breach(latency_p95, latency_threshold_seconds,
-                                    min_sustained_samples)
+    # (C) sustained AND non-recovering p95 latency breach.
+    p95_ts = _find_persistent_breach(latency_p95, latency_threshold_seconds,
+                                     min_sustained_samples=min_sustained_samples)
     if p95_ts is not None:
         candidates.append((p95_ts, f"p95 ≥ {latency_threshold_seconds:g}s"))
 
