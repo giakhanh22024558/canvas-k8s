@@ -113,6 +113,13 @@ else
   echo "kubectl not available — skipping cluster snapshot."
 fi
 
+# Track whether the run reached a "completed" state (k6 produced a usable
+# summary). Cleanup removes the run folder when this is still false at exit,
+# preventing garbage folders from interrupted runs (Ctrl+C, script errors,
+# k6 failing to start, etc.) from polluting testing/results/.
+RUN_COMPLETED=false
+KEEP_INCOMPLETE_RUNS="${KEEP_INCOMPLETE_RUNS:-false}"
+
 cleanup() {
   if [[ -n "$K8S_SNAPSHOT_PID" ]] && kill -0 "$K8S_SNAPSHOT_PID" >/dev/null 2>&1; then
     kill "$K8S_SNAPSHOT_PID" >/dev/null 2>&1 || true
@@ -120,6 +127,25 @@ cleanup() {
   fi
   if [[ -f "$RUN_DIR/metadata.env" ]] && ! grep -q "^ended_at=" "$RUN_DIR/metadata.env"; then
     echo "ended_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$RUN_DIR/metadata.env"
+  fi
+
+  # Garbage-collect the run folder if the test never produced a usable summary
+  # AND the operator has not opted in to keeping incomplete runs for debugging.
+  if [[ "$RUN_COMPLETED" != "true" && "$KEEP_INCOMPLETE_RUNS" != "true" && -d "$RUN_DIR" ]]; then
+    echo ""
+    echo "============================================================"
+    echo "  Run did not complete successfully — removing folder:"
+    echo "    $RUN_DIR"
+    echo "  Override with KEEP_INCOMPLETE_RUNS=true to retain partial"
+    echo "  output for debugging."
+    echo "============================================================"
+    rm -rf "$RUN_DIR"
+  elif [[ "$RUN_COMPLETED" != "true" && "$KEEP_INCOMPLETE_RUNS" == "true" && -d "$RUN_DIR" ]]; then
+    echo ""
+    echo "WARN: run did not complete but KEEP_INCOMPLETE_RUNS=true — folder kept:"
+    echo "  $RUN_DIR"
+    # Mark the folder so post-run analysis tools can ignore it.
+    echo "completed=false" >> "$RUN_DIR/metadata.env"
   fi
 }
 
@@ -240,10 +266,20 @@ K6_PROMETHEUS_RW_SERVER_URL="$PROM_URL" \
 K6_PROMETHEUS_RW_TREND_STATS="p(50),p(95),p(99),avg,min,max" \
 k6 run -o experimental-prometheus-rw --tag testid="$TEST_ID" "$SCRIPT_DIR/load_test/canvas-load.js" 2>&1 | tee "$LOG_FILE" || true
 
-echo "ended_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$RUN_DIR/metadata.env"
-
-echo "Finished load test with testid=$TEST_ID"
-echo "Saved run output to $RUN_DIR"
+# k6 always writes the http_reqs summary line if it actually executed at least
+# one iteration. Use that as the completion signal — distinguishes "k6 ran
+# successfully (possibly with threshold breach)" from "k6 failed to start or
+# was interrupted before producing data".
+if [[ -f "$LOG_FILE" ]] && grep -q "^[[:space:]]*http_reqs" "$LOG_FILE"; then
+  RUN_COMPLETED=true
+  echo "ended_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$RUN_DIR/metadata.env"
+  echo "completed=true" >> "$RUN_DIR/metadata.env"
+  echo "Finished load test with testid=$TEST_ID"
+  echo "Saved run output to $RUN_DIR"
+else
+  echo "WARN: k6 did not produce a usable summary in $LOG_FILE"
+  echo "      The run folder will be removed unless KEEP_INCOMPLETE_RUNS=true is set."
+fi
 
 # Raw data lives on the load gen disk. There are two ways to get charts:
 #   1. Manual:  TEST_ID=<id> bash testing/publish-results.sh on the SUT, which
@@ -255,6 +291,13 @@ echo "Saved run output to $RUN_DIR"
 #               canvas-k8s repo, so it doesn't bloat over time.
 echo "Raw data saved to $RUN_DIR"
 echo "  k6-summary.txt, k8s-snapshots.csv, metadata.env, environment.env"
+
+# Skip downstream publish if the run didn't complete — there's no useful
+# data to upload, and cleanup() will remove the folder shortly anyway.
+if [[ "$RUN_COMPLETED" != "true" ]]; then
+  echo "Skipping finalize-run.sh: run did not complete successfully."
+  exit 0
+fi
 
 if [[ -n "$SUT_SSH_HOST" ]]; then
   echo ""
