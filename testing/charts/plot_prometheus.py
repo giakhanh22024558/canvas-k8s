@@ -1179,13 +1179,26 @@ def plot_memory(output_dir, label, web_memory_values, jobs_memory_values,
         ax.axhline(
             y=web_memory_limit_mb, color="#1f77b4",
             linewidth=1.5, linestyle="--", alpha=0.7,
-            label=f"Web limit ({web_memory_limit_mb/1024:.1f} GiB ≈ {web_memory_limit_mb:.0f} MB)",
+            # web_memory_limit_mb is in DECIMAL MB (matches Prometheus query).
+            # Convert back to bytes (× 1_000_000) before dividing by 1024**3
+            # to display the exact binary GiB value the Kubernetes manifest
+            # uses. Previous "value / 1024" was a unit-mismatched calculation
+            # that displayed 3.0 GiB as "3.1 GiB".
+            label=(
+                f"Web limit ("
+                f"{web_memory_limit_mb * 1_000_000 / 1024**3:.2g} GiB"
+                f" = {web_memory_limit_mb:.0f} MB decimal)"
+            ),
         )
     if jobs_memory_limit_mb is not None:
         ax.axhline(
             y=jobs_memory_limit_mb, color="#ff7f0e",
             linewidth=1.5, linestyle="--", alpha=0.7,
-            label=f"Jobs limit ({jobs_memory_limit_mb/1024:.1f} GiB ≈ {jobs_memory_limit_mb:.0f} MB)",
+            label=(
+                f"Jobs limit ("
+                f"{jobs_memory_limit_mb * 1_000_000 / 1024**3:.2g} GiB"
+                f" = {jobs_memory_limit_mb:.0f} MB decimal)"
+            ),
         )
 
     ax.set_title(f"Memory Working Set ({label})")
