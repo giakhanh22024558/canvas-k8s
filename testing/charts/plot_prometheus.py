@@ -330,59 +330,98 @@ def restart_delta_series(snapshots, field):
     return xs, ys
 
 
+def _find_sustained_breach(series, threshold, min_sustained_samples):
+    """Return the timestamp where `series` first crosses `threshold` AND
+    stays at-or-above threshold for at least `min_sustained_samples`
+    consecutive samples thereafter.
+
+    A transient spike (one or two samples breaching, then recovering) is
+    explicitly NOT a saturation event — graceful-degradation behaviour
+    under load ramp-up typically produces brief blips that the system
+    absorbs without true failure. Only a sustained breach indicates the
+    workload has actually pushed past capacity.
+
+    Returns None when no candidate produces a sustained breach.
+    """
+    if not series:
+        return None
+    n = len(series)
+    for i in range(n):
+        ts, val = series[i]
+        if val is None or val < threshold:
+            continue
+        # Look ahead: count consecutive at-or-above-threshold samples
+        # starting from i. Reset / stop on the first dip below threshold.
+        sustained = 0
+        for j in range(i, n):
+            v = series[j][1]
+            if v is None or v < threshold:
+                break
+            sustained += 1
+            if sustained >= min_sustained_samples:
+                return ts
+    return None
+
+
 def detect_saturation_point(snapshots, vus_values,
                             error_rate=None, latency_p95=None,
                             error_threshold_pct=1.0,
-                            latency_threshold_seconds=5.0):
+                            latency_threshold_seconds=5.0,
+                            min_sustained_samples=8):
     """Return (saturation_datetime, vu_at_saturation, reason_label) for
-    breakpoint tests, or (None, None, None) when no signal is observed.
+    breakpoint tests, or (None, None, None) when no real saturation is
+    observed.
 
     Saturation is the EARLIEST of:
-      (A) First sample where web_restart_total increments from 0 — i.e.
-          the first OOMKill (the original hard-failure definition).
-      (B) First sample where error_rate (% of failed requests in the
-          Prometheus rolling window) crosses `error_threshold_pct`
-          (default 1%).
-      (C) First sample where p95 latency (seconds) crosses
-          `latency_threshold_seconds` (default 5s).
+      (A) First sample where web_restart_total increments — i.e. the
+          first OOMKill. Hard failure, instant signal.
+      (B) Earliest timestamp where error_rate stays ≥ `error_threshold_pct`
+          for at least `min_sustained_samples` consecutive ticks.
+      (C) Earliest timestamp where p95 latency stays ≥
+          `latency_threshold_seconds` for the same window.
 
-    With well-resourced pods on a max-packed node the system can survive
-    100 VUs without an OOMKill, but error rate or tail latency will
-    degrade well before that — so cases (B) and (C) catch threshold-based
-    saturation that case (A) alone misses. VU count is interpolated from
-    the k6 VU time-series at the nearest timestamp to whichever case
-    fires first. The reason label is suitable for direct use in a chart
-    annotation ("error_rate ≥ 1%", "p95 ≥ 5s", "OOMKill").
+    The sustained-breach requirement matters because graceful degradation
+    produces transient blips during ramp-up (e.g. Stage 2 run01 hit 5%
+    error briefly at minute 11 then recovered to 0%). The naive "first
+    crossing" detector flagged that as saturation @ 50 VUs even though
+    the system clearly held up to 100 VUs with overall 0.96% error rate.
+    Requiring the breach to persist for `min_sustained_samples` ticks
+    (default 8 ≈ 2 minutes on a 15-second grid) filters out those
+    transient spikes while still catching real saturation when error
+    rate or latency stays degraded.
+
+    Returns (None, None, None) — meaning "no marker drawn" — for runs
+    where the system absorbed the load gracefully. That's the right
+    answer: drawing a marker at a transient blip is more misleading
+    than drawing none at all.
     """
     candidates = []
 
     # (A) OOMKill — first restart event recorded in the snapshot CSV.
+    # No "sustained" requirement: an OOMKill is by definition a hard
+    # failure event, not a measurement.
     for i, row in enumerate(snapshots[1:], start=1):
         if row["web_restart_total"] > snapshots[i - 1]["web_restart_total"]:
             candidates.append((row["timestamp"], "OOMKill"))
             break
 
-    # (B) error rate threshold — values are already percent.
-    if error_rate:
-        for ts, val in error_rate:
-            if val is not None and val >= error_threshold_pct:
-                candidates.append((ts, f"error_rate ≥ {error_threshold_pct:g}%"))
-                break
+    # (B) sustained error rate breach.
+    err_ts = _find_sustained_breach(error_rate, error_threshold_pct,
+                                    min_sustained_samples)
+    if err_ts is not None:
+        candidates.append((err_ts, f"error_rate ≥ {error_threshold_pct:g}%"))
 
-    # (C) p95 latency threshold — Prometheus emits p95 in seconds.
-    if latency_p95:
-        for ts, val in latency_p95:
-            if val is not None and val >= latency_threshold_seconds:
-                candidates.append((ts, f"p95 ≥ {latency_threshold_seconds:g}s"))
-                break
+    # (C) sustained p95 latency breach.
+    p95_ts = _find_sustained_breach(latency_p95, latency_threshold_seconds,
+                                    min_sustained_samples)
+    if p95_ts is not None:
+        candidates.append((p95_ts, f"p95 ≥ {latency_threshold_seconds:g}s"))
 
     if not candidates:
         return None, None, None
 
-    # Earliest signal wins.
     sat_time, reason = min(candidates, key=lambda c: c[0])
 
-    # Nearest VU sample to the saturation timestamp.
     sat_vu = None
     if vus_values:
         closest = min(vus_values, key=lambda tv: abs((tv[0] - sat_time).total_seconds()))
