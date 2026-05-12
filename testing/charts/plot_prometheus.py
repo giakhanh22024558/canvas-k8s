@@ -1280,12 +1280,17 @@ def plot_memory(output_dir, label,
     for axis in axes_for_vus:
         overlay_vus_per_run(axis, vus_values, test_start)
 
-    # Distinct shades within a colour family so individual pods are
-    # distinguishable but visually grouped by deployment. matplotlib's
-    # tab20 palette gives 10 blue-family and 10 orange-family slots
-    # (more than enough for any realistic replica count).
-    web_palette = ["#1f77b4", "#4a90d9", "#74a9cf", "#0570b0", "#3690c0"]
-    jobs_palette = ["#ff7f0e", "#fdae61", "#f46d43", "#d94801", "#e6550d"]
+    # Distinct hues — not just shades — so adjacent pod lines never bleed
+    # into one another at a glance. Deployment grouping is preserved via
+    # cool tones (web) vs warm tones (jobs); within each group every entry
+    # is a different hue rather than a different brightness. Pod-instance
+    # identity is also reinforced by a per-pod marker shape so the legend
+    # works even when printed in greyscale.
+    web_palette = ["#1f77b4", "#17becf", "#2ca02c", "#9467bd", "#1a55a3",
+                   "#5e35b1", "#00838f", "#558b2f", "#0d47a1", "#4527a0"]
+    jobs_palette = ["#ff7f0e", "#d62728", "#8c564b", "#e377c2", "#bcbd22",
+                    "#c2185b", "#f57f17", "#5d4037", "#bf360c", "#827717"]
+    marker_cycle = ["o", "s", "D", "^", "v", "P", "X", "h", "*", ">"]
 
     def _plot_deployment(ax_target, pods, pod_dict, palette, prefix):
         for i, pod in enumerate(pods):
@@ -1296,7 +1301,15 @@ def plot_memory(output_dir, label,
             ax_target.plot(
                 xs, ys,
                 color=palette[i % len(palette)],
-                linewidth=1.6, alpha=0.95,
+                linewidth=1.8, alpha=0.95,
+                marker=marker_cycle[i % len(marker_cycle)],
+                markersize=4.0,
+                markerfacecolor=palette[i % len(palette)],
+                markeredgecolor="white", markeredgewidth=0.6,
+                # Markers every ~12 ticks keep the line readable at long
+                # durations (18 min × 4 samples/min = 72 ticks → 6 markers)
+                # while still acting as a per-pod glyph for the legend.
+                markevery=max(1, len(xs) // 12),
                 label=_short_pod_label(pod, prefix) + " (MB)",
             )
 
