@@ -150,6 +150,37 @@ def select_first_series(result):
     return series[0][1] if series else []
 
 
+def _parse_per_pod_memory(result):
+    """Build a dict {pod_name: [(timestamp, value_MiB), ...]} from a
+    Prometheus query that returns one series per pod (no aggregation).
+
+    Each cAdvisor sample is in bytes; we divide by 1 048 576 here so the
+    chart can plot directly in MiB (binary, displayed as "MB") without
+    any further scaling. This matches the per-pod-limit reference line
+    which is also derived in MiB by parse_memory_limit_mb.
+
+    During a pod restart the SAME pod name may appear with two different
+    cgroup `id` labels for ~30s. The upstream `unless on(id)` freshness
+    filter usually trims the dead one before it lands here, but as
+    belt-and-braces we keep only the highest sample per (pod, timestamp)
+    so a transient overlap cannot create a phantom doubled line.
+    """
+    series = parse_series(result)
+    pod_to_samples = {}  # pod -> {ts -> max_value_MiB}
+    for label, values in series:
+        pod = label.get("pod") or label.get("container_label_io_kubernetes_pod_name") or "unknown"
+        bucket = pod_to_samples.setdefault(pod, {})
+        for ts, raw_bytes in values:
+            value_mib = raw_bytes / 1048576.0
+            prior = bucket.get(ts)
+            if prior is None or value_mib > prior:
+                bucket[ts] = value_mib
+    return {
+        pod: sorted(samples.items())
+        for pod, samples in pod_to_samples.items()
+    }
+
+
 def try_queries(base_url, queries, start, end, step):
     last_error = None
     for query in queries:
@@ -1167,67 +1198,146 @@ def parse_memory_limit_mb(limit_str):
         return None
 
 
-def plot_memory(output_dir, label, web_memory_values, jobs_memory_values,
+def _short_pod_label(pod_name, deployment_prefix):
+    """Return a compact line label for a per-pod memory series.
+
+    K8s pod names follow ``<deployment>-<rs_hash>-<5char_random>``; the
+    final 5-char suffix is unique within a deployment and stays stable
+    for the lifetime of that pod instance, so it's the right anchor for
+    a chart legend. Falls back to the raw name if the convention is not
+    followed (e.g. statefulset, bare pod).
+    """
+    if not pod_name:
+        return deployment_prefix
+    suffix = pod_name.rsplit("-", 1)[-1]
+    if 3 <= len(suffix) <= 10:
+        return f"{deployment_prefix}-{suffix}"
+    return pod_name
+
+
+def plot_memory(output_dir, label,
+                web_memory_per_pod, jobs_memory_per_pod,
                 web_memory_limit_mb=None, jobs_memory_limit_mb=None,
                 saturation_time=None, saturation_vu=None,
-                vus_values=None, test_start=None):
-    """Memory working-set (decimal MB) for canvas-web and canvas-jobs over time.
+                vus_values=None, test_start=None,
+                split_threshold=4):
+    """One line per pod so OOM risk is directly visible against the
+    per-pod limit reference. Each line is comparable to the limit line
+    because there is no cross-pod aggregation.
 
-    Data source: container_memory_working_set_bytes from cAdvisor, summed
-    across Running pods in the canvas namespace, divided by 1_000_000.
-    parse_memory_limit_mb performs the matching binary→decimal conversion
-    so the reference line uses the same scale as the data.
+    Layout adapts to pod count:
+      - ≤ split_threshold total pods (web + jobs combined): single panel
+        with both deployments on the same axes, so the eye can compare
+        memory pressure side-by-side.
+      - > split_threshold total pods: two stacked panels (web on top,
+        jobs on bottom, sharex) so the legend stays readable when
+        Stage 2/3/4 have 5+ pods.
+
+    The aggregated web_memory / jobs_memory series (sum across pods) are
+    NOT used here — that path remains intact upstream because the
+    summary CSV's avg_*_memory_mb fields still consume them.
 
     Limit reference lines are only drawn when the caller passes explicit
-    values (via metadata.env or CLI flag). No fallback is applied because
-    the deployment manifest at chart-rendering time may differ from the
-    manifest that was active when the run executed (e.g. cluster currently
-    in prescaled mode but historical run was baseline).
+    values (via metadata.env or CLI flag). They are per-pod limits, which
+    now correctly compare against the per-pod data lines.
     """
-    if not web_memory_values and not jobs_memory_values:
+    web_pods = sorted((web_memory_per_pod or {}).keys())
+    jobs_pods = sorted((jobs_memory_per_pod or {}).keys())
+    if not web_pods and not jobs_pods:
         return
 
-    if test_start is None and web_memory_values:
-        test_start = web_memory_values[0][0]
-    if test_start is None and jobs_memory_values:
-        test_start = jobs_memory_values[0][0]
+    if test_start is None:
+        # First sample of any pod establishes the minute-zero anchor.
+        for pod_dict in (web_memory_per_pod, jobs_memory_per_pod):
+            for pod in sorted((pod_dict or {}).keys()):
+                series = pod_dict[pod]
+                if series:
+                    test_start = series[0][0]
+                    break
+            if test_start is not None:
+                break
     if test_start is None:
         return
 
-    fig, ax = plt.subplots(figsize=(12, 5))
+    total_pods = len(web_pods) + len(jobs_pods)
+    split = total_pods > split_threshold
 
-    # VU overlay first so foreground lines stack above
-    overlay_vus_per_run(ax, vus_values, test_start)
+    if split:
+        # Two stacked panels — sharex so VU profile aligns across them.
+        fig, (ax_web, ax_jobs) = plt.subplots(
+            2, 1, figsize=(12, 8), sharex=True,
+        )
+        axes_for_vus = [ax_web, ax_jobs]
+    else:
+        fig, ax = plt.subplots(figsize=(12, 5))
+        ax_web = ax
+        ax_jobs = ax
+        axes_for_vus = [ax]
 
-    if web_memory_values:
-        xs, ys = to_minutes_from_start(web_memory_values, test_start)
-        ax.plot(xs, ys, color="#1f77b4", label="canvas-web (MB)", linewidth=2)
-    if jobs_memory_values:
-        xs, ys = to_minutes_from_start(jobs_memory_values, test_start)
-        ax.plot(xs, ys, color="#ff7f0e", label="canvas-jobs (MB)", linewidth=2)
+    # VU overlay first so foreground lines stack above. On split mode each
+    # panel gets its own overlay so the right-hand VU axis is labelled
+    # consistently on both.
+    for axis in axes_for_vus:
+        overlay_vus_per_run(axis, vus_values, test_start)
 
-    if web_memory_limit_mb is not None:
-        ax.axhline(
+    # Distinct shades within a colour family so individual pods are
+    # distinguishable but visually grouped by deployment. matplotlib's
+    # tab20 palette gives 10 blue-family and 10 orange-family slots
+    # (more than enough for any realistic replica count).
+    web_palette = ["#1f77b4", "#4a90d9", "#74a9cf", "#0570b0", "#3690c0"]
+    jobs_palette = ["#ff7f0e", "#fdae61", "#f46d43", "#d94801", "#e6550d"]
+
+    def _plot_deployment(ax_target, pods, pod_dict, palette, prefix):
+        for i, pod in enumerate(pods):
+            series = pod_dict.get(pod) or []
+            if not series:
+                continue
+            xs, ys = to_minutes_from_start(series, test_start)
+            ax_target.plot(
+                xs, ys,
+                color=palette[i % len(palette)],
+                linewidth=1.6, alpha=0.95,
+                label=_short_pod_label(pod, prefix) + " (MB)",
+            )
+
+    _plot_deployment(ax_web, web_pods, web_memory_per_pod, web_palette, "web")
+    _plot_deployment(ax_jobs, jobs_pods, jobs_memory_per_pod, jobs_palette, "jobs")
+
+    # Limit reference lines drawn on the panel that contains the data.
+    # In single-panel mode that's the shared `ax`; in split mode the web
+    # limit goes on ax_web only, jobs limit on ax_jobs only.
+    if web_memory_limit_mb is not None and web_pods:
+        ax_web.axhline(
             y=web_memory_limit_mb, color="#1f77b4",
             linewidth=1.5, linestyle="--", alpha=0.7,
-            # web_memory_limit_mb is now in MiB (binary, displayed as "MB").
-            # Divide by 1024 → GB (binary), shown alongside MB for clarity.
             label=f"Web limit ({web_memory_limit_mb/1024:.0f} GB = {web_memory_limit_mb:.0f} MB)",
         )
-    if jobs_memory_limit_mb is not None:
-        ax.axhline(
+    if jobs_memory_limit_mb is not None and jobs_pods:
+        ax_jobs.axhline(
             y=jobs_memory_limit_mb, color="#ff7f0e",
             linewidth=1.5, linestyle="--", alpha=0.7,
             label=f"Jobs limit ({jobs_memory_limit_mb/1024:.0f} GB = {jobs_memory_limit_mb:.0f} MB)",
         )
 
-    ax.set_title(f"Memory Working Set ({label})")
-    ax.set_xlabel("Minutes from test start")
-    ax.set_ylabel("Memory (MB)")
-    ax.set_ylim(bottom=0)
-    ax.legend(loc="upper left", fontsize=9)
-    ax.grid(alpha=0.25)
-    apply_minute_axis(ax, test_start)
+    if split:
+        ax_web.set_title(f"Memory Working Set — per pod ({label})", fontsize=12)
+        ax_web.set_ylabel("Web memory (MB)")
+        ax_jobs.set_ylabel("Jobs memory (MB)")
+        ax_jobs.set_xlabel("Minutes from test start")
+        for axis in (ax_web, ax_jobs):
+            axis.set_ylim(bottom=0)
+            axis.legend(loc="upper left", fontsize=9)
+            axis.grid(alpha=0.25)
+            apply_minute_axis(axis, test_start)
+    else:
+        ax.set_title(f"Memory Working Set — per pod ({label})")
+        ax.set_xlabel("Minutes from test start")
+        ax.set_ylabel("Memory (MB)")
+        ax.set_ylim(bottom=0)
+        ax.legend(loc="upper left", fontsize=9)
+        ax.grid(alpha=0.25)
+        apply_minute_axis(ax, test_start)
+
     fig.tight_layout()
     fig.savefig(output_dir / f"memory_{slugify(label)}.png", bbox_inches="tight")
     plt.close(fig)
@@ -1651,6 +1761,41 @@ def collect_run_metrics(base_url, selector, start, end, step):
     )
     jobs_memory = select_first_series(jobs_memory_result)
 
+    # ── Per-pod memory (chart only — summary CSV continues to use sum() above)
+    # The chart draws one line per pod so OOM risk is directly visible: each
+    # line is comparable to the per-pod memory limit reference line. The
+    # underlying metric is the same container_memory_working_set_bytes; we
+    # just skip the aggregation. parse_series preserves the `pod` label
+    # which is then used as the line identifier.
+    # NOTE: this is an additional fetch, NOT a replacement. The aggregated
+    # web_memory / jobs_memory series above remain unchanged and continue
+    # to feed avg_web_memory_mb / avg_jobs_memory_mb in the summary CSV.
+    web_memory_per_pod_result, _ = try_queries(
+        base_url,
+        [
+            'container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-web-.*",container="web"} '
+            'unless on(id) '
+            '(time() - container_last_seen{namespace="canvas",pod=~"canvas-web-.*",container="web"} > 30)',
+            'container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"} * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}',
+            'container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-web-.*",container!="",container!="POD"}',
+        ],
+        start, end, step,
+    )
+    web_memory_per_pod = _parse_per_pod_memory(web_memory_per_pod_result)
+
+    jobs_memory_per_pod_result, _ = try_queries(
+        base_url,
+        [
+            'container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-jobs-.*",container="jobs"} '
+            'unless on(id) '
+            '(time() - container_last_seen{namespace="canvas",pod=~"canvas-jobs-.*",container="jobs"} > 30)',
+            'container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-jobs-.*",container!="",container!="POD"} * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}',
+            'container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-jobs-.*",container!="",container!="POD"}',
+        ],
+        start, end, step,
+    )
+    jobs_memory_per_pod = _parse_per_pod_memory(jobs_memory_per_pod_result)
+
     # HPA CPU utilisation % — calculated directly from cAdvisor.
     # Formula: sum(actualCPU) / sum(cpuRequest) * 100
     # This is mathematically identical to what the HPA controller uses and
@@ -1671,7 +1816,10 @@ def collect_run_metrics(base_url, selector, start, end, step):
     )
     hpa_cpu = select_first_series(hpa_cpu_result)
 
-    return latency, throughput, error_rate, vus, web_cpu, web_memory, jobs_memory, hpa_cpu
+    return (latency, throughput, error_rate, vus, web_cpu,
+            web_memory, jobs_memory,
+            web_memory_per_pod, jobs_memory_per_pod,
+            hpa_cpu)
 
 
 def main():
@@ -1724,7 +1872,10 @@ def main():
         pg_rows = load_postgres_health(run_dir / "postgres-health.csv")
         redis_rows = load_redis_health(run_dir / "redis-health.csv")
 
-        latency, throughput, error_rate, vus, web_cpu, web_memory, jobs_memory, hpa_cpu = collect_run_metrics(
+        (latency, throughput, error_rate, vus, web_cpu,
+         web_memory, jobs_memory,
+         web_memory_per_pod, jobs_memory_per_pod,
+         hpa_cpu) = collect_run_metrics(
             args.prometheus_url, selector, start, end, step
         )
         latency, throughput, error_rate, vus, fallback_used = apply_k6_summary_fallbacks(
@@ -1787,7 +1938,8 @@ def main():
         plot_cpu_replicas(output_dir, label, web_cpu, snapshots,
                           vus_values=vus, test_start=start)
         plot_memory(
-            output_dir, label, web_memory, jobs_memory,
+            output_dir, label,
+            web_memory_per_pod, jobs_memory_per_pod,
             web_memory_limit_mb=web_mem_limit_mb,
             jobs_memory_limit_mb=jobs_mem_limit_mb,
             saturation_time=saturation_time,
@@ -1873,7 +2025,10 @@ def main():
         label = compare_labels[index] if index < len(compare_labels) else metadata.get("test_type", testid)
         snapshots = load_snapshots(run_dir / "k8s-snapshots.csv")
         k6_summary_metrics = parse_k6_summary_metrics(run_dir / "k6-summary.txt")
-        latency, throughput, error_rate, vus, web_cpu, web_memory, jobs_memory, hpa_cpu = collect_run_metrics(
+        (latency, throughput, error_rate, vus, web_cpu,
+         web_memory, jobs_memory,
+         web_memory_per_pod, jobs_memory_per_pod,
+         hpa_cpu) = collect_run_metrics(
             args.prometheus_url, selector, start, end, args.step
         )
         latency, throughput, error_rate, vus, _fallback_used = apply_k6_summary_fallbacks(
