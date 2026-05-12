@@ -346,74 +346,101 @@ def detect_saturation_point(snapshots, vus_values,
 
 def plot_breakpoint_saturation(output_dir, label, throughput, error_rate,
                                vus, snapshots, saturation_time, saturation_vu):
-    """Dedicated composite chart for breakpoint tests.
-
-    Panel 1 (top):  VU ramp — shows the load being applied over time.
-    Panel 2 (bottom): Throughput (req/s) and error rate (%) together.
-
-    A vertical red dashed line marks the saturation point in both panels,
-    with a shaded region highlighting the collapse zone.
+    """Composite chart for breakpoint tests, matching the throughput_error_rate
+    chart style:
+        Panel 1 — RPS stacked area: green = successful, red = failed (on top)
+                  with a thin dark line tracing the total at the top edge.
+        Panel 2 — Error rate %, plotted as a line with a 1 % reference line.
+    VU profile overlaid on each panel as a faint shaded twin axis. X-axis:
+    minutes from test start, major tick per minute. A vertical red dashed
+    line marks the saturation point in both panels, with a shaded collapse
+    region — this is the breakpoint-specific addition.
     """
     if not throughput and not error_rate and not vus:
         return
 
-    fig, (ax_top, ax_bot) = plt.subplots(
-        2, 1, figsize=(12, 8), sharex=True,
-        gridspec_kw={"height_ratios": [1, 2]},
-    )
+    # Anchor x-axis at the first available sample so minute ticks line up.
+    test_start = None
+    if throughput:
+        test_start = throughput[0][0]
+    elif error_rate:
+        test_start = error_rate[0][0]
+    elif vus:
+        test_start = vus[0][0]
+    if test_start is None:
+        return
 
-    # ── Top panel: VU ramp ────────────────────────────────────────────────────
-    if vus:
-        xs = [x for x, _ in vus]
-        ys = [y for _, y in vus]
-        ax_top.fill_between(xs, ys, alpha=0.25, color="#1f77b4")
-        ax_top.plot(xs, ys, color="#1f77b4", linewidth=2, label="Virtual Users")
-    ax_top.set_ylabel("Virtual Users")
-    ax_top.set_title(f"Breakpoint Test — Load Profile & System Response ({label})",
-                     fontsize=12)
-    ax_top.grid(alpha=0.25)
-    ax_top.legend(loc="upper left", fontsize=9)
-    ax_top.set_ylim(bottom=0)
+    fig, axes = plt.subplots(2, 1, figsize=(12, 9), sharex=True)
+    ax_rps, ax_err = axes
 
-    # ── Bottom panel: Throughput + error rate ─────────────────────────────────
-    ax_err = ax_bot.twinx()
+    # ── Panel 1: RPS stacked area (success at bottom, failed on top) ─────────
+    overlay_vus_per_run(ax_rps, vus, test_start)
 
     if throughput:
-        xs = [x for x, _ in throughput]
-        ys = [y for _, y in throughput]
-        ax_bot.plot(xs, ys, color="#1f77b4", linewidth=2, label="Throughput (req/s)")
+        err_map = {ts: pct for ts, pct in (error_rate or [])}
+        xs_min, total_ys, success_ys, failed_ys = [], [], [], []
+        for ts, total in throughput:
+            minutes = (ts - test_start).total_seconds() / 60.0
+            err_pct = err_map.get(ts)
+            if err_pct is None:
+                success = total
+                failed = 0.0
+            else:
+                err_pct = max(0.0, min(100.0, err_pct))
+                failed = total * err_pct / 100.0
+                success = max(0.0, total - failed)
+            xs_min.append(minutes)
+            total_ys.append(total)
+            success_ys.append(success)
+            failed_ys.append(failed)
 
+        ax_rps.fill_between(xs_min, 0, success_ys,
+                            color="#2ca02c", alpha=0.55, linewidth=0,
+                            label="Successful RPS")
+        ax_rps.fill_between(xs_min, success_ys,
+                            [s + f for s, f in zip(success_ys, failed_ys)],
+                            color="#d62728", alpha=0.55, linewidth=0,
+                            label="Failed RPS")
+        ax_rps.plot(xs_min, total_ys,
+                    color="#1f3a5f", linewidth=1.0, zorder=3,
+                    marker="o", markersize=3.0,
+                    markerfacecolor="#1f3a5f",
+                    markeredgecolor="white", markeredgewidth=0.6,
+                    label="Total RPS")
+
+    ax_rps.set_ylabel("Requests / sec")
+    ax_rps.set_ylim(bottom=0)
+    ax_rps.grid(True, alpha=0.3)
+    ax_rps.legend(loc="upper left", fontsize=9)
+
+    # ── Panel 2: Error rate ──────────────────────────────────────────────────
+    overlay_vus_per_run(ax_err, vus, test_start)
     if error_rate:
-        xs = [x for x, _ in error_rate]
-        ys = [y for _, y in error_rate]
-        ax_err.plot(xs, ys, color="#d62728", linewidth=1.5, alpha=0.7,
+        xs_err, ys_err = to_minutes_from_start(error_rate, test_start)
+        ax_err.plot(xs_err, ys_err, color="#d62728", linewidth=1.5,
                     label="Error rate (1-min rolling, %)")
+    ax_err.axhline(1.0, color="#888", linestyle=":", linewidth=1, alpha=0.7)
     ax_err.set_ylim(0, 110)
+    ax_err.set_ylabel("Error rate (%)")
+    ax_err.set_xlabel("Minutes from test start")
+    ax_err.grid(True, alpha=0.3)
+    ax_err.legend(loc="upper left", fontsize=9)
 
-    ax_bot.set_ylabel("Requests/sec", color="#1f77b4")
-    ax_bot.tick_params(axis="y", labelcolor="#1f77b4")
-    ax_err.set_ylabel("Error rate (%)", color="#d62728")
-    ax_err.tick_params(axis="y", labelcolor="#d62728")
-    ax_bot.set_xlabel("Time")
-    ax_bot.grid(alpha=0.25)
+    fig.suptitle(f"Breakpoint Test — Load Profile & System Response ({label})")
+    apply_minute_axis(ax_rps, test_start)
+    apply_minute_axis(ax_err, test_start)
+    fig.tight_layout()
 
-    handles = ax_bot.get_lines() + ax_err.get_lines()
-    if handles:
-        ax_bot.legend(handles, [ln.get_label() for ln in handles],
-                      loc="upper left", fontsize=9)
-
-    # ── Saturation annotations on both panels ─────────────────────────────────
+    # Saturation marker hook — annotate_saturation is currently a no-op (the
+    # inferred saturation point was deemed misleading on graceful-degradation
+    # charts) but the wiring is preserved so it can be re-enabled per stage.
     end_time = None
     if throughput:
         end_time = throughput[-1][0]
     elif vus:
         end_time = vus[-1][0]
-
-    apply_time_axis(ax_bot)
-    fig.tight_layout()
-
-    # Draw annotations AFTER tight_layout so axis limits are finalised
-    annotate_saturation([ax_top, ax_bot], saturation_time, saturation_vu, end_time)
+    annotate_saturation([ax_rps, ax_err], saturation_time, saturation_vu,
+                        end_time)
 
     out = output_dir / f"breakpoint_saturation_{slugify(label)}.png"
     fig.savefig(out, dpi=150, bbox_inches="tight")
