@@ -1117,21 +1117,25 @@ def plot_cpu_replicas(output_dir, label, cpu_values, snapshots,
 
 
 def parse_memory_limit_mb(limit_str):
-    """Convert a Kubernetes memory limit string (e.g. '3Gi', '3500Mi', '2Gi') to decimal MB.
+    """Convert a Kubernetes memory limit string (e.g. '3Gi', '3500Mi') to MiB.
 
-    Uses bytes / 1_000_000 to match the Prometheus query which divides by 1_000_000.
+    Returns binary MiB (1 MiB = 1024² bytes) to match the Prometheus query
+    that divides container_memory_working_set_bytes by 1024² (1_048_576).
+    The legacy field name `_mb` is kept for backward compatibility; the
+    unit is binary MiB throughout the chart pipeline. Users commonly call
+    this "MB" in everyday usage.
     """
     if not limit_str:
         return None
     limit_str = limit_str.strip()
     try:
         if limit_str.endswith("Gi"):
-            return int(limit_str[:-2]) * 1024 ** 3 / 1_000_000
+            return int(limit_str[:-2]) * 1024          # 3Gi → 3072 MiB
         if limit_str.endswith("Mi"):
-            return int(limit_str[:-2]) * 1024 ** 2 / 1_000_000
+            return int(limit_str[:-2])                  # 3072Mi → 3072 MiB
         if limit_str.endswith("Ki"):
-            return int(limit_str[:-2]) * 1024 / 1_000_000
-        return int(limit_str) / 1_000_000
+            return int(limit_str[:-2]) / 1024
+        return int(limit_str) / 1024 ** 2              # bare bytes → MiB
     except ValueError:
         return None
 
@@ -1179,31 +1183,20 @@ def plot_memory(output_dir, label, web_memory_values, jobs_memory_values,
         ax.axhline(
             y=web_memory_limit_mb, color="#1f77b4",
             linewidth=1.5, linestyle="--", alpha=0.7,
-            # web_memory_limit_mb is in DECIMAL MB (matches Prometheus query).
-            # Convert back to bytes (× 1_000_000) before dividing by 1024**3
-            # to display the exact binary GiB value the Kubernetes manifest
-            # uses. Previous "value / 1024" was a unit-mismatched calculation
-            # that displayed 3.0 GiB as "3.1 GiB".
-            label=(
-                f"Web limit ("
-                f"{web_memory_limit_mb * 1_000_000 / 1024**3:.2g} GiB"
-                f" = {web_memory_limit_mb:.0f} MB decimal)"
-            ),
+            # web_memory_limit_mb is now in MiB (binary, displayed as "MB").
+            # Divide by 1024 → GB (binary), shown alongside MB for clarity.
+            label=f"Web limit ({web_memory_limit_mb/1024:.0f} GB = {web_memory_limit_mb:.0f} MB)",
         )
     if jobs_memory_limit_mb is not None:
         ax.axhline(
             y=jobs_memory_limit_mb, color="#ff7f0e",
             linewidth=1.5, linestyle="--", alpha=0.7,
-            label=(
-                f"Jobs limit ("
-                f"{jobs_memory_limit_mb * 1_000_000 / 1024**3:.2g} GiB"
-                f" = {jobs_memory_limit_mb:.0f} MB decimal)"
-            ),
+            label=f"Jobs limit ({jobs_memory_limit_mb/1024:.0f} GB = {jobs_memory_limit_mb:.0f} MB)",
         )
 
     ax.set_title(f"Memory Working Set ({label})")
     ax.set_xlabel("Minutes from test start")
-    ax.set_ylabel("Memory (MB, decimal)")
+    ax.set_ylabel("Memory (MB)")
     ax.set_ylim(bottom=0)
     ax.legend(loc="upper left", fontsize=9)
     ax.grid(alpha=0.25)
@@ -1600,11 +1593,11 @@ def collect_run_metrics(base_url, selector, start, end, step):
             'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-web-.*",container="web"} '
             'unless on(id) '
             '(time() - container_last_seen{namespace="canvas",pod=~"canvas-web-.*",container="web"} > 30)) '
-            '/ 1000000',
+            '/ 1048576',
             # Fallback 1: older namespace-aware schema without freshness filter.
-            'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"} * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}) / 1000000',
+            'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"} * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}) / 1048576',
             # Fallback 2: legacy cAdvisor label scheme (pre-namespace label).
-            'sum(container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-web-.*",container!="",container!="POD"}) / 1000000',
+            'sum(container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-web-.*",container!="",container!="POD"}) / 1048576',
         ],
         start,
         end,
@@ -1619,11 +1612,11 @@ def collect_run_metrics(base_url, selector, start, end, step):
             'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-jobs-.*",container="jobs"} '
             'unless on(id) '
             '(time() - container_last_seen{namespace="canvas",pod=~"canvas-jobs-.*",container="jobs"} > 30)) '
-            '/ 1000000',
+            '/ 1048576',
             # Fallback 1: older namespace-aware schema without freshness filter.
-            'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-jobs-.*",container!="",container!="POD"} * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}) / 1000000',
+            'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-jobs-.*",container!="",container!="POD"} * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}) / 1048576',
             # Fallback 2: legacy cAdvisor label scheme.
-            'sum(container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-jobs-.*",container!="",container!="POD"}) / 1000000',
+            'sum(container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-jobs-.*",container!="",container!="POD"}) / 1048576',
         ],
         start,
         end,
