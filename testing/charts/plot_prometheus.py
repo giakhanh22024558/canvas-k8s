@@ -1241,8 +1241,23 @@ def plot_memory(output_dir, label,
     values (via metadata.env or CLI flag). They are per-pod limits, which
     now correctly compare against the per-pod data lines.
     """
-    web_pods = sorted((web_memory_per_pod or {}).keys())
-    jobs_pods = sorted((jobs_memory_per_pod or {}).keys())
+    # Sort pods by first-sample timestamp so legend ordering matches the
+    # spawn order — pod that existed since t=0 comes first, HPA scale-up
+    # additions follow in the order they appeared. Falls back to pod name
+    # when timestamps tie (defensive — should not happen in practice).
+    # This also makes the colour/marker palette assignment chronological:
+    # pod #1 always gets palette[0], pod #2 always palette[1], etc., which
+    # keeps the visual identity of "the original pod" stable across runs
+    # and stages.
+    def _spawn_order(pod_dict):
+        def _key(pod):
+            series = pod_dict.get(pod) or []
+            first_ts = series[0][0] if series else None
+            return (first_ts is None, first_ts, pod)
+        return sorted((pod_dict or {}).keys(), key=_key)
+
+    web_pods = _spawn_order(web_memory_per_pod)
+    jobs_pods = _spawn_order(jobs_memory_per_pod)
     if not web_pods and not jobs_pods:
         return
 
