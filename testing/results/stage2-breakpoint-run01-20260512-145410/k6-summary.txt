@@ -1,0 +1,3578 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: /home/ubuntu/canvas-k8s/testing/load_test/canvas-load.js
+        output: Prometheus remote write (http://172.31.27.241:30090/api/v1/write)
+
+     scenarios: (100.00%) 1 scenario, 100 max VUs, 18m30s max duration (incl. graceful stop):
+              * default: Up to 100 looping VUs for 18m0s over 9 stages (gracefulRampDown: 30s, gracefulStop: 30s)
+
+
+Run       [ 100% ] setup()
+default   [   0% ]
+
+Run       [ 100% ] setup()
+default   [   0% ]
+
+Run       [ 100% ] setup()
+default   [   0% ]
+
+running (00m04.0s), 001/100 VUs, 0 complete and 0 interrupted iterations
+default   [   0% ] 001/100 VUs  00m00.2s/18m00.0s
+
+running (00m05.0s), 001/100 VUs, 0 complete and 0 interrupted iterations
+default   [   0% ] 001/100 VUs  00m01.2s/18m00.0s
+
+running (00m06.0s), 001/100 VUs, 1 complete and 0 interrupted iterations
+default   [   0% ] 001/100 VUs  00m02.2s/18m00.0s
+
+running (00m07.0s), 001/100 VUs, 2 complete and 0 interrupted iterations
+default   [   0% ] 001/100 VUs  00m03.2s/18m00.0s
+
+running (00m08.0s), 001/100 VUs, 2 complete and 0 interrupted iterations
+default   [   0% ] 001/100 VUs  00m04.2s/18m00.0s
+
+running (00m09.0s), 001/100 VUs, 3 complete and 0 interrupted iterations
+default   [   0% ] 001/100 VUs  00m05.2s/18m00.0s
+
+running (00m10.0s), 001/100 VUs, 4 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m06.2s/18m00.0s
+
+running (00m11.0s), 001/100 VUs, 4 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m07.2s/18m00.0s
+
+running (00m12.0s), 001/100 VUs, 5 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m08.2s/18m00.0s
+
+running (00m13.0s), 001/100 VUs, 6 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m09.2s/18m00.0s
+
+running (00m14.0s), 001/100 VUs, 6 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m10.2s/18m00.0s
+
+running (00m15.0s), 001/100 VUs, 7 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m11.2s/18m00.0s
+
+running (00m16.0s), 001/100 VUs, 8 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m12.2s/18m00.0s
+
+running (00m17.0s), 001/100 VUs, 8 complete and 0 interrupted iterations
+default   [   1% ] 001/100 VUs  00m13.2s/18m00.0s
+
+running (00m18.0s), 002/100 VUs, 10 complete and 0 interrupted iterations
+default   [   1% ] 002/100 VUs  00m14.2s/18m00.0s
+
+running (00m19.0s), 002/100 VUs, 11 complete and 0 interrupted iterations
+default   [   1% ] 002/100 VUs  00m15.2s/18m00.0s
+
+running (00m20.0s), 002/100 VUs, 14 complete and 0 interrupted iterations
+default   [   2% ] 002/100 VUs  00m16.2s/18m00.0s
+
+running (00m21.0s), 002/100 VUs, 15 complete and 0 interrupted iterations
+default   [   2% ] 002/100 VUs  00m17.2s/18m00.0s
+
+running (00m22.0s), 002/100 VUs, 17 complete and 0 interrupted iterations
+default   [   2% ] 002/100 VUs  00m18.2s/18m00.0s
+
+running (00m23.0s), 002/100 VUs, 19 complete and 0 interrupted iterations
+default   [   2% ] 002/100 VUs  00m19.2s/18m00.0s
+
+running (00m24.0s), 002/100 VUs, 20 complete and 0 interrupted iterations
+default   [   2% ] 002/100 VUs  00m20.2s/18m00.0s
+
+running (00m25.0s), 002/100 VUs, 22 complete and 0 interrupted iterations
+default   [   2% ] 002/100 VUs  00m21.2s/18m00.0s
+
+running (00m26.0s), 002/100 VUs, 23 complete and 0 interrupted iterations
+default   [   2% ] 002/100 VUs  00m22.2s/18m00.0s
+
+running (00m27.0s), 002/100 VUs, 24 complete and 0 interrupted iterations
+default   [   2% ] 002/100 VUs  00m23.2s/18m00.0s
+
+running (00m28.0s), 002/100 VUs, 26 complete and 0 interrupted iterations
+default   [   2% ] 002/100 VUs  00m24.2s/18m00.0s
+
+running (00m29.0s), 002/100 VUs, 28 complete and 0 interrupted iterations
+default   [   2% ] 002/100 VUs  00m25.2s/18m00.0s
+
+running (00m30.0s), 002/100 VUs, 30 complete and 0 interrupted iterations
+default   [   2% ] 002/100 VUs  00m26.2s/18m00.0s
+
+running (00m31.0s), 003/100 VUs, 32 complete and 0 interrupted iterations
+default   [   3% ] 003/100 VUs  00m27.2s/18m00.0s
+
+running (00m32.0s), 003/100 VUs, 33 complete and 0 interrupted iterations
+default   [   3% ] 003/100 VUs  00m28.2s/18m00.0s
+
+running (00m33.0s), 003/100 VUs, 35 complete and 0 interrupted iterations
+default   [   3% ] 003/100 VUs  00m29.2s/18m00.0s
+
+running (00m34.0s), 003/100 VUs, 38 complete and 0 interrupted iterations
+default   [   3% ] 003/100 VUs  00m30.2s/18m00.0s
+
+running (00m35.0s), 003/100 VUs, 39 complete and 0 interrupted iterations
+default   [   3% ] 003/100 VUs  00m31.2s/18m00.0s
+
+running (00m36.0s), 003/100 VUs, 41 complete and 0 interrupted iterations
+default   [   3% ] 003/100 VUs  00m32.2s/18m00.0s
+
+running (00m37.0s), 003/100 VUs, 44 complete and 0 interrupted iterations
+default   [   3% ] 003/100 VUs  00m33.2s/18m00.0s
+
+running (00m38.0s), 003/100 VUs, 44 complete and 0 interrupted iterations
+default   [   3% ] 003/100 VUs  00m34.2s/18m00.0s
+
+running (00m39.0s), 003/100 VUs, 47 complete and 0 interrupted iterations
+default   [   3% ] 003/100 VUs  00m35.2s/18m00.0s
+
+running (00m40.0s), 003/100 VUs, 48 complete and 0 interrupted iterations
+default   [   3% ] 003/100 VUs  00m36.2s/18m00.0s
+
+running (00m41.0s), 003/100 VUs, 51 complete and 0 interrupted iterations
+default   [   3% ] 003/100 VUs  00m37.2s/18m00.0s
+
+running (00m42.0s), 003/100 VUs, 53 complete and 0 interrupted iterations
+default   [   4% ] 003/100 VUs  00m38.2s/18m00.0s
+
+running (00m43.0s), 003/100 VUs, 55 complete and 0 interrupted iterations
+default   [   4% ] 003/100 VUs  00m39.2s/18m00.0s
+
+running (00m44.0s), 004/100 VUs, 57 complete and 0 interrupted iterations
+default   [   4% ] 004/100 VUs  00m40.2s/18m00.0s
+
+running (00m45.0s), 004/100 VUs, 61 complete and 0 interrupted iterations
+default   [   4% ] 004/100 VUs  00m41.2s/18m00.0s
+
+running (00m46.0s), 004/100 VUs, 62 complete and 0 interrupted iterations
+default   [   4% ] 004/100 VUs  00m42.2s/18m00.0s
+
+running (00m47.0s), 004/100 VUs, 66 complete and 0 interrupted iterations
+default   [   4% ] 004/100 VUs  00m43.2s/18m00.0s
+
+running (00m48.0s), 004/100 VUs, 69 complete and 0 interrupted iterations
+default   [   4% ] 004/100 VUs  00m44.2s/18m00.0s
+
+running (00m49.0s), 004/100 VUs, 73 complete and 0 interrupted iterations
+default   [   4% ] 004/100 VUs  00m45.2s/18m00.0s
+
+running (00m50.0s), 004/100 VUs, 74 complete and 0 interrupted iterations
+default   [   4% ] 004/100 VUs  00m46.2s/18m00.0s
+
+running (00m51.0s), 004/100 VUs, 76 complete and 0 interrupted iterations
+default   [   4% ] 004/100 VUs  00m47.2s/18m00.0s
+
+running (00m52.0s), 004/100 VUs, 79 complete and 0 interrupted iterations
+default   [   4% ] 004/100 VUs  00m48.2s/18m00.0s
+
+running (00m53.0s), 004/100 VUs, 83 complete and 0 interrupted iterations
+default   [   5% ] 004/100 VUs  00m49.2s/18m00.0s
+
+running (00m54.0s), 004/100 VUs, 84 complete and 0 interrupted iterations
+default   [   5% ] 004/100 VUs  00m50.2s/18m00.0s
+
+running (00m55.0s), 004/100 VUs, 87 complete and 0 interrupted iterations
+default   [   5% ] 004/100 VUs  00m51.2s/18m00.0s
+
+running (00m56.0s), 004/100 VUs, 90 complete and 0 interrupted iterations
+default   [   5% ] 004/100 VUs  00m52.2s/18m00.0s
+
+running (00m57.0s), 004/100 VUs, 94 complete and 0 interrupted iterations
+default   [   5% ] 004/100 VUs  00m53.2s/18m00.0s
+
+running (00m58.0s), 005/100 VUs, 96 complete and 0 interrupted iterations
+default   [   5% ] 005/100 VUs  00m54.2s/18m00.0s
+
+running (00m59.0s), 005/100 VUs, 100 complete and 0 interrupted iterations
+default   [   5% ] 005/100 VUs  00m55.2s/18m00.0s
+
+running (01m00.0s), 005/100 VUs, 104 complete and 0 interrupted iterations
+default   [   5% ] 005/100 VUs  00m56.2s/18m00.0s
+
+running (01m01.0s), 005/100 VUs, 107 complete and 0 interrupted iterations
+default   [   5% ] 005/100 VUs  00m57.2s/18m00.0s
+
+running (01m02.0s), 005/100 VUs, 112 complete and 0 interrupted iterations
+default   [   5% ] 005/100 VUs  00m58.2s/18m00.0s
+
+running (01m03.0s), 005/100 VUs, 115 complete and 0 interrupted iterations
+default   [   5% ] 005/100 VUs  00m59.2s/18m00.0s
+
+running (01m04.0s), 005/100 VUs, 118 complete and 0 interrupted iterations
+default   [   6% ] 005/100 VUs  01m00.2s/18m00.0s
+
+running (01m05.0s), 005/100 VUs, 121 complete and 0 interrupted iterations
+default   [   6% ] 005/100 VUs  01m01.2s/18m00.0s
+
+running (01m06.0s), 005/100 VUs, 125 complete and 0 interrupted iterations
+default   [   6% ] 005/100 VUs  01m02.2s/18m00.0s
+
+running (01m07.0s), 005/100 VUs, 129 complete and 0 interrupted iterations
+default   [   6% ] 005/100 VUs  01m03.2s/18m00.0s
+
+running (01m08.0s), 005/100 VUs, 134 complete and 0 interrupted iterations
+default   [   6% ] 005/100 VUs  01m04.2s/18m00.0s
+
+running (01m09.0s), 005/100 VUs, 137 complete and 0 interrupted iterations
+default   [   6% ] 005/100 VUs  01m05.2s/18m00.0s
+
+running (01m10.0s), 005/100 VUs, 141 complete and 0 interrupted iterations
+default   [   6% ] 005/100 VUs  01m06.2s/18m00.0s
+
+running (01m11.0s), 006/100 VUs, 145 complete and 0 interrupted iterations
+default   [   6% ] 006/100 VUs  01m07.2s/18m00.0s
+
+running (01m12.0s), 006/100 VUs, 149 complete and 0 interrupted iterations
+default   [   6% ] 006/100 VUs  01m08.2s/18m00.0s
+
+running (01m13.0s), 006/100 VUs, 153 complete and 0 interrupted iterations
+default   [   6% ] 006/100 VUs  01m09.2s/18m00.0s
+
+running (01m14.0s), 006/100 VUs, 159 complete and 0 interrupted iterations
+default   [   7% ] 006/100 VUs  01m10.2s/18m00.0s
+
+running (01m15.0s), 006/100 VUs, 163 complete and 0 interrupted iterations
+default   [   7% ] 006/100 VUs  01m11.2s/18m00.0s
+
+running (01m16.0s), 006/100 VUs, 166 complete and 0 interrupted iterations
+default   [   7% ] 006/100 VUs  01m12.2s/18m00.0s
+
+running (01m17.0s), 006/100 VUs, 170 complete and 0 interrupted iterations
+default   [   7% ] 006/100 VUs  01m13.2s/18m00.0s
+
+running (01m18.0s), 006/100 VUs, 176 complete and 0 interrupted iterations
+default   [   7% ] 006/100 VUs  01m14.2s/18m00.0s
+
+running (01m19.0s), 006/100 VUs, 180 complete and 0 interrupted iterations
+default   [   7% ] 006/100 VUs  01m15.2s/18m00.0s
+
+running (01m20.0s), 006/100 VUs, 183 complete and 0 interrupted iterations
+default   [   7% ] 006/100 VUs  01m16.2s/18m00.0s
+
+running (01m21.0s), 006/100 VUs, 188 complete and 0 interrupted iterations
+default   [   7% ] 006/100 VUs  01m17.2s/18m00.0s
+
+running (01m22.0s), 006/100 VUs, 193 complete and 0 interrupted iterations
+default   [   7% ] 006/100 VUs  01m18.2s/18m00.0s
+
+running (01m23.0s), 006/100 VUs, 196 complete and 0 interrupted iterations
+default   [   7% ] 006/100 VUs  01m19.2s/18m00.0s
+
+running (01m24.0s), 007/100 VUs, 200 complete and 0 interrupted iterations
+default   [   7% ] 007/100 VUs  01m20.2s/18m00.0s
+
+running (01m25.0s), 007/100 VUs, 205 complete and 0 interrupted iterations
+default   [   8% ] 007/100 VUs  01m21.2s/18m00.0s
+
+running (01m26.0s), 007/100 VUs, 211 complete and 0 interrupted iterations
+default   [   8% ] 007/100 VUs  01m22.2s/18m00.0s
+
+running (01m27.0s), 007/100 VUs, 217 complete and 0 interrupted iterations
+default   [   8% ] 007/100 VUs  01m23.2s/18m00.0s
+
+running (01m28.0s), 007/100 VUs, 221 complete and 0 interrupted iterations
+default   [   8% ] 007/100 VUs  01m24.2s/18m00.0s
+
+running (01m29.0s), 007/100 VUs, 227 complete and 0 interrupted iterations
+default   [   8% ] 007/100 VUs  01m25.2s/18m00.0s
+
+running (01m30.0s), 007/100 VUs, 232 complete and 0 interrupted iterations
+default   [   8% ] 007/100 VUs  01m26.2s/18m00.0s
+
+running (01m31.0s), 007/100 VUs, 236 complete and 0 interrupted iterations
+default   [   8% ] 007/100 VUs  01m27.2s/18m00.0s
+
+running (01m32.0s), 007/100 VUs, 240 complete and 0 interrupted iterations
+default   [   8% ] 007/100 VUs  01m28.2s/18m00.0s
+
+running (01m33.0s), 007/100 VUs, 248 complete and 0 interrupted iterations
+default   [   8% ] 007/100 VUs  01m29.2s/18m00.0s
+
+running (01m34.0s), 007/100 VUs, 252 complete and 0 interrupted iterations
+default   [   8% ] 007/100 VUs  01m30.2s/18m00.0s
+
+running (01m35.0s), 007/100 VUs, 258 complete and 0 interrupted iterations
+default   [   8% ] 007/100 VUs  01m31.2s/18m00.0s
+
+running (01m36.0s), 007/100 VUs, 263 complete and 0 interrupted iterations
+default   [   9% ] 007/100 VUs  01m32.2s/18m00.0s
+
+running (01m37.0s), 007/100 VUs, 269 complete and 0 interrupted iterations
+default   [   9% ] 007/100 VUs  01m33.2s/18m00.0s
+
+running (01m38.0s), 008/100 VUs, 271 complete and 0 interrupted iterations
+default   [   9% ] 008/100 VUs  01m34.2s/18m00.0s
+
+running (01m39.0s), 008/100 VUs, 277 complete and 0 interrupted iterations
+default   [   9% ] 008/100 VUs  01m35.2s/18m00.0s
+
+running (01m40.0s), 008/100 VUs, 283 complete and 0 interrupted iterations
+default   [   9% ] 008/100 VUs  01m36.2s/18m00.0s
+
+running (01m41.0s), 008/100 VUs, 290 complete and 0 interrupted iterations
+default   [   9% ] 008/100 VUs  01m37.2s/18m00.0s
+
+running (01m42.0s), 008/100 VUs, 296 complete and 0 interrupted iterations
+default   [   9% ] 008/100 VUs  01m38.2s/18m00.0s
+
+running (01m43.0s), 008/100 VUs, 305 complete and 0 interrupted iterations
+default   [   9% ] 008/100 VUs  01m39.2s/18m00.0s
+
+running (01m44.0s), 008/100 VUs, 308 complete and 0 interrupted iterations
+default   [   9% ] 008/100 VUs  01m40.2s/18m00.0s
+
+running (01m45.0s), 008/100 VUs, 316 complete and 0 interrupted iterations
+default   [   9% ] 008/100 VUs  01m41.2s/18m00.0s
+
+running (01m46.0s), 008/100 VUs, 320 complete and 0 interrupted iterations
+default   [   9% ] 008/100 VUs  01m42.2s/18m00.0s
+
+running (01m47.0s), 008/100 VUs, 326 complete and 0 interrupted iterations
+default   [  10% ] 008/100 VUs  01m43.2s/18m00.0s
+
+running (01m48.0s), 008/100 VUs, 332 complete and 0 interrupted iterations
+default   [  10% ] 008/100 VUs  01m44.2s/18m00.0s
+
+running (01m49.0s), 008/100 VUs, 339 complete and 0 interrupted iterations
+default   [  10% ] 008/100 VUs  01m45.2s/18m00.0s
+
+running (01m50.0s), 008/100 VUs, 344 complete and 0 interrupted iterations
+default   [  10% ] 008/100 VUs  01m46.2s/18m00.0s
+
+running (01m51.0s), 009/100 VUs, 351 complete and 0 interrupted iterations
+default   [  10% ] 009/100 VUs  01m47.2s/18m00.0s
+
+running (01m52.0s), 009/100 VUs, 359 complete and 0 interrupted iterations
+default   [  10% ] 009/100 VUs  01m48.2s/18m00.0s
+
+running (01m53.0s), 009/100 VUs, 367 complete and 0 interrupted iterations
+default   [  10% ] 009/100 VUs  01m49.2s/18m00.0s
+
+running (01m54.0s), 009/100 VUs, 371 complete and 0 interrupted iterations
+default   [  10% ] 009/100 VUs  01m50.2s/18m00.0s
+
+running (01m55.0s), 009/100 VUs, 379 complete and 0 interrupted iterations
+default   [  10% ] 009/100 VUs  01m51.2s/18m00.0s
+
+running (01m56.0s), 009/100 VUs, 385 complete and 0 interrupted iterations
+default   [  10% ] 009/100 VUs  01m52.2s/18m00.0s
+
+running (01m57.0s), 009/100 VUs, 392 complete and 0 interrupted iterations
+default   [  10% ] 009/100 VUs  01m53.2s/18m00.0s
+
+running (01m58.0s), 009/100 VUs, 398 complete and 0 interrupted iterations
+default   [  11% ] 009/100 VUs  01m54.2s/18m00.0s
+
+running (01m59.0s), 009/100 VUs, 403 complete and 0 interrupted iterations
+default   [  11% ] 009/100 VUs  01m55.2s/18m00.0s
+
+running (02m00.0s), 009/100 VUs, 407 complete and 0 interrupted iterations
+default   [  11% ] 009/100 VUs  01m56.2s/18m00.0s
+
+running (02m01.0s), 009/100 VUs, 413 complete and 0 interrupted iterations
+default   [  11% ] 009/100 VUs  01m57.2s/18m00.0s
+
+running (02m02.0s), 009/100 VUs, 423 complete and 0 interrupted iterations
+default   [  11% ] 009/100 VUs  01m58.2s/18m00.0s
+
+running (02m03.0s), 009/100 VUs, 430 complete and 0 interrupted iterations
+default   [  11% ] 009/100 VUs  01m59.2s/18m00.0s
+
+running (02m04.0s), 010/100 VUs, 436 complete and 0 interrupted iterations
+default   [  11% ] 010/100 VUs  02m00.2s/18m00.0s
+
+running (02m05.0s), 010/100 VUs, 444 complete and 0 interrupted iterations
+default   [  11% ] 010/100 VUs  02m01.2s/18m00.0s
+
+running (02m06.0s), 010/100 VUs, 451 complete and 0 interrupted iterations
+default   [  11% ] 010/100 VUs  02m02.2s/18m00.0s
+
+running (02m07.0s), 010/100 VUs, 457 complete and 0 interrupted iterations
+default   [  11% ] 010/100 VUs  02m03.2s/18m00.0s
+
+running (02m08.0s), 010/100 VUs, 466 complete and 0 interrupted iterations
+default   [  12% ] 010/100 VUs  02m04.2s/18m00.0s
+
+running (02m09.0s), 010/100 VUs, 472 complete and 0 interrupted iterations
+default   [  12% ] 010/100 VUs  02m05.2s/18m00.0s
+
+running (02m10.0s), 010/100 VUs, 480 complete and 0 interrupted iterations
+default   [  12% ] 010/100 VUs  02m06.2s/18m00.0s
+
+running (02m11.0s), 010/100 VUs, 487 complete and 0 interrupted iterations
+default   [  12% ] 010/100 VUs  02m07.2s/18m00.0s
+
+running (02m12.0s), 010/100 VUs, 496 complete and 0 interrupted iterations
+default   [  12% ] 010/100 VUs  02m08.2s/18m00.0s
+
+running (02m13.0s), 010/100 VUs, 502 complete and 0 interrupted iterations
+default   [  12% ] 010/100 VUs  02m09.2s/18m00.0s
+
+running (02m14.0s), 010/100 VUs, 510 complete and 0 interrupted iterations
+default   [  12% ] 010/100 VUs  02m10.2s/18m00.0s
+
+running (02m15.0s), 010/100 VUs, 515 complete and 0 interrupted iterations
+default   [  12% ] 010/100 VUs  02m11.2s/18m00.0s
+
+running (02m16.0s), 011/100 VUs, 524 complete and 0 interrupted iterations
+default   [  12% ] 011/100 VUs  02m12.2s/18m00.0s
+
+running (02m17.0s), 011/100 VUs, 533 complete and 0 interrupted iterations
+default   [  12% ] 011/100 VUs  02m13.2s/18m00.0s
+
+running (02m18.0s), 011/100 VUs, 540 complete and 0 interrupted iterations
+default   [  12% ] 011/100 VUs  02m14.2s/18m00.0s
+
+running (02m19.0s), 011/100 VUs, 549 complete and 0 interrupted iterations
+default   [  13% ] 011/100 VUs  02m15.2s/18m00.0s
+
+running (02m20.0s), 011/100 VUs, 555 complete and 0 interrupted iterations
+default   [  13% ] 011/100 VUs  02m16.2s/18m00.0s
+
+running (02m21.0s), 011/100 VUs, 566 complete and 0 interrupted iterations
+default   [  13% ] 011/100 VUs  02m17.2s/18m00.0s
+
+running (02m22.0s), 011/100 VUs, 574 complete and 0 interrupted iterations
+default   [  13% ] 011/100 VUs  02m18.2s/18m00.0s
+
+running (02m23.0s), 011/100 VUs, 580 complete and 0 interrupted iterations
+default   [  13% ] 011/100 VUs  02m19.2s/18m00.0s
+
+running (02m24.0s), 011/100 VUs, 590 complete and 0 interrupted iterations
+default   [  13% ] 011/100 VUs  02m20.2s/18m00.0s
+
+running (02m25.0s), 011/100 VUs, 598 complete and 0 interrupted iterations
+default   [  13% ] 011/100 VUs  02m21.2s/18m00.0s
+
+running (02m26.0s), 011/100 VUs, 606 complete and 0 interrupted iterations
+default   [  13% ] 011/100 VUs  02m22.2s/18m00.0s
+
+running (02m27.0s), 011/100 VUs, 616 complete and 0 interrupted iterations
+default   [  13% ] 011/100 VUs  02m23.2s/18m00.0s
+
+running (02m28.0s), 012/100 VUs, 625 complete and 0 interrupted iterations
+default   [  13% ] 012/100 VUs  02m24.2s/18m00.0s
+
+running (02m29.0s), 012/100 VUs, 632 complete and 0 interrupted iterations
+default   [  13% ] 012/100 VUs  02m25.2s/18m00.0s
+
+running (02m30.0s), 012/100 VUs, 642 complete and 0 interrupted iterations
+default   [  14% ] 012/100 VUs  02m26.2s/18m00.0s
+
+running (02m31.0s), 012/100 VUs, 653 complete and 0 interrupted iterations
+default   [  14% ] 012/100 VUs  02m27.2s/18m00.0s
+
+running (02m32.0s), 012/100 VUs, 661 complete and 0 interrupted iterations
+default   [  14% ] 012/100 VUs  02m28.2s/18m00.0s
+
+running (02m33.0s), 012/100 VUs, 674 complete and 0 interrupted iterations
+default   [  14% ] 012/100 VUs  02m29.2s/18m00.0s
+
+running (02m34.0s), 012/100 VUs, 680 complete and 0 interrupted iterations
+default   [  14% ] 012/100 VUs  02m30.2s/18m00.0s
+
+running (02m35.0s), 012/100 VUs, 685 complete and 0 interrupted iterations
+default   [  14% ] 012/100 VUs  02m31.2s/18m00.0s
+
+running (02m36.0s), 012/100 VUs, 696 complete and 0 interrupted iterations
+default   [  14% ] 012/100 VUs  02m32.2s/18m00.0s
+
+running (02m37.0s), 012/100 VUs, 706 complete and 0 interrupted iterations
+default   [  14% ] 012/100 VUs  02m33.2s/18m00.0s
+
+running (02m38.0s), 012/100 VUs, 715 complete and 0 interrupted iterations
+default   [  14% ] 012/100 VUs  02m34.2s/18m00.0s
+
+running (02m39.0s), 012/100 VUs, 722 complete and 0 interrupted iterations
+default   [  14% ] 012/100 VUs  02m35.2s/18m00.0s
+
+running (02m40.0s), 013/100 VUs, 732 complete and 0 interrupted iterations
+default   [  14% ] 013/100 VUs  02m36.2s/18m00.0s
+
+running (02m41.0s), 013/100 VUs, 739 complete and 0 interrupted iterations
+default   [  15% ] 013/100 VUs  02m37.2s/18m00.0s
+
+running (02m42.0s), 013/100 VUs, 751 complete and 0 interrupted iterations
+default   [  15% ] 013/100 VUs  02m38.2s/18m00.0s
+
+running (02m43.0s), 013/100 VUs, 761 complete and 0 interrupted iterations
+default   [  15% ] 013/100 VUs  02m39.2s/18m00.0s
+
+running (02m44.0s), 013/100 VUs, 771 complete and 0 interrupted iterations
+default   [  15% ] 013/100 VUs  02m40.2s/18m00.0s
+
+running (02m45.0s), 013/100 VUs, 780 complete and 0 interrupted iterations
+default   [  15% ] 013/100 VUs  02m41.2s/18m00.0s
+
+running (02m46.0s), 013/100 VUs, 789 complete and 0 interrupted iterations
+default   [  15% ] 013/100 VUs  02m42.2s/18m00.0s
+
+running (02m47.0s), 013/100 VUs, 795 complete and 0 interrupted iterations
+default   [  15% ] 013/100 VUs  02m43.2s/18m00.0s
+
+running (02m48.0s), 013/100 VUs, 806 complete and 0 interrupted iterations
+default   [  15% ] 013/100 VUs  02m44.2s/18m00.0s
+
+running (02m49.0s), 013/100 VUs, 815 complete and 0 interrupted iterations
+default   [  15% ] 013/100 VUs  02m45.2s/18m00.0s
+
+running (02m50.0s), 013/100 VUs, 826 complete and 0 interrupted iterations
+default   [  15% ] 013/100 VUs  02m46.2s/18m00.0s
+
+running (02m51.0s), 013/100 VUs, 832 complete and 0 interrupted iterations
+default   [  15% ] 013/100 VUs  02m47.2s/18m00.0s
+
+running (02m52.0s), 014/100 VUs, 843 complete and 0 interrupted iterations
+default   [  16% ] 014/100 VUs  02m48.2s/18m00.0s
+
+running (02m53.0s), 014/100 VUs, 856 complete and 0 interrupted iterations
+default   [  16% ] 014/100 VUs  02m49.2s/18m00.0s
+
+running (02m54.0s), 014/100 VUs, 863 complete and 0 interrupted iterations
+default   [  16% ] 014/100 VUs  02m50.2s/18m00.0s
+
+running (02m55.0s), 014/100 VUs, 876 complete and 0 interrupted iterations
+default   [  16% ] 014/100 VUs  02m51.2s/18m00.0s
+
+running (02m56.0s), 014/100 VUs, 883 complete and 0 interrupted iterations
+default   [  16% ] 014/100 VUs  02m52.2s/18m00.0s
+
+running (02m57.0s), 014/100 VUs, 894 complete and 0 interrupted iterations
+default   [  16% ] 014/100 VUs  02m53.2s/18m00.0s
+
+running (02m58.0s), 014/100 VUs, 904 complete and 0 interrupted iterations
+default   [  16% ] 014/100 VUs  02m54.2s/18m00.0s
+
+running (02m59.0s), 014/100 VUs, 916 complete and 0 interrupted iterations
+default   [  16% ] 014/100 VUs  02m55.2s/18m00.0s
+
+running (03m00.0s), 014/100 VUs, 924 complete and 0 interrupted iterations
+default   [  16% ] 014/100 VUs  02m56.2s/18m00.0s
+
+running (03m01.0s), 014/100 VUs, 936 complete and 0 interrupted iterations
+default   [  16% ] 014/100 VUs  02m57.2s/18m00.0s
+
+running (03m02.0s), 014/100 VUs, 948 complete and 0 interrupted iterations
+default   [  17% ] 014/100 VUs  02m58.2s/18m00.0s
+
+running (03m03.0s), 014/100 VUs, 954 complete and 0 interrupted iterations
+default   [  17% ] 014/100 VUs  02m59.2s/18m00.0s
+
+running (03m04.0s), 015/100 VUs, 965 complete and 0 interrupted iterations
+default   [  17% ] 015/100 VUs  03m00.2s/18m00.0s
+
+running (03m05.0s), 015/100 VUs, 977 complete and 0 interrupted iterations
+default   [  17% ] 015/100 VUs  03m01.2s/18m00.0s
+
+running (03m06.0s), 015/100 VUs, 987 complete and 0 interrupted iterations
+default   [  17% ] 015/100 VUs  03m02.2s/18m00.0s
+
+running (03m07.0s), 015/100 VUs, 997 complete and 0 interrupted iterations
+default   [  17% ] 015/100 VUs  03m03.2s/18m00.0s
+
+running (03m08.0s), 015/100 VUs, 1010 complete and 0 interrupted iterations
+default   [  17% ] 015/100 VUs  03m04.2s/18m00.0s
+
+running (03m09.0s), 015/100 VUs, 1020 complete and 0 interrupted iterations
+default   [  17% ] 015/100 VUs  03m05.2s/18m00.0s
+
+running (03m10.0s), 015/100 VUs, 1029 complete and 0 interrupted iterations
+default   [  17% ] 015/100 VUs  03m06.2s/18m00.0s
+
+running (03m11.0s), 015/100 VUs, 1042 complete and 0 interrupted iterations
+default   [  17% ] 015/100 VUs  03m07.2s/18m00.0s
+
+running (03m12.0s), 015/100 VUs, 1051 complete and 0 interrupted iterations
+default   [  17% ] 015/100 VUs  03m08.2s/18m00.0s
+
+running (03m13.0s), 015/100 VUs, 1063 complete and 0 interrupted iterations
+default   [  18% ] 015/100 VUs  03m09.2s/18m00.0s
+
+running (03m14.0s), 015/100 VUs, 1075 complete and 0 interrupted iterations
+default   [  18% ] 015/100 VUs  03m10.2s/18m00.0s
+
+running (03m15.0s), 015/100 VUs, 1087 complete and 0 interrupted iterations
+default   [  18% ] 015/100 VUs  03m11.2s/18m00.0s
+
+running (03m16.0s), 016/100 VUs, 1098 complete and 0 interrupted iterations
+default   [  18% ] 016/100 VUs  03m12.2s/18m00.0s
+
+running (03m17.0s), 016/100 VUs, 1112 complete and 0 interrupted iterations
+default   [  18% ] 016/100 VUs  03m13.2s/18m00.0s
+
+running (03m18.0s), 016/100 VUs, 1119 complete and 0 interrupted iterations
+default   [  18% ] 016/100 VUs  03m14.2s/18m00.0s
+
+running (03m19.0s), 016/100 VUs, 1134 complete and 0 interrupted iterations
+default   [  18% ] 016/100 VUs  03m15.2s/18m00.0s
+
+running (03m20.0s), 016/100 VUs, 1144 complete and 0 interrupted iterations
+default   [  18% ] 016/100 VUs  03m16.2s/18m00.0s
+
+running (03m21.0s), 016/100 VUs, 1156 complete and 0 interrupted iterations
+default   [  18% ] 016/100 VUs  03m17.2s/18m00.0s
+
+running (03m22.0s), 016/100 VUs, 1164 complete and 0 interrupted iterations
+default   [  18% ] 016/100 VUs  03m18.2s/18m00.0s
+
+running (03m23.0s), 016/100 VUs, 1178 complete and 0 interrupted iterations
+default   [  18% ] 016/100 VUs  03m19.2s/18m00.0s
+
+running (03m24.0s), 016/100 VUs, 1192 complete and 0 interrupted iterations
+default   [  19% ] 016/100 VUs  03m20.2s/18m00.0s
+
+running (03m25.0s), 016/100 VUs, 1205 complete and 0 interrupted iterations
+default   [  19% ] 016/100 VUs  03m21.2s/18m00.0s
+
+running (03m26.0s), 016/100 VUs, 1212 complete and 0 interrupted iterations
+default   [  19% ] 016/100 VUs  03m22.2s/18m00.0s
+
+running (03m27.0s), 016/100 VUs, 1226 complete and 0 interrupted iterations
+default   [  19% ] 016/100 VUs  03m23.2s/18m00.0s
+
+running (03m28.0s), 017/100 VUs, 1235 complete and 0 interrupted iterations
+default   [  19% ] 017/100 VUs  03m24.2s/18m00.0s
+
+running (03m29.0s), 017/100 VUs, 1247 complete and 0 interrupted iterations
+default   [  19% ] 017/100 VUs  03m25.2s/18m00.0s
+
+running (03m30.0s), 017/100 VUs, 1260 complete and 0 interrupted iterations
+default   [  19% ] 017/100 VUs  03m26.2s/18m00.0s
+
+running (03m31.0s), 017/100 VUs, 1274 complete and 0 interrupted iterations
+default   [  19% ] 017/100 VUs  03m27.2s/18m00.0s
+
+running (03m32.0s), 017/100 VUs, 1289 complete and 0 interrupted iterations
+default   [  19% ] 017/100 VUs  03m28.2s/18m00.0s
+
+running (03m33.0s), 017/100 VUs, 1303 complete and 0 interrupted iterations
+default   [  19% ] 017/100 VUs  03m29.2s/18m00.0s
+
+running (03m34.0s), 017/100 VUs, 1311 complete and 0 interrupted iterations
+default   [  19% ] 017/100 VUs  03m30.2s/18m00.0s
+
+running (03m35.0s), 017/100 VUs, 1326 complete and 0 interrupted iterations
+default   [  20% ] 017/100 VUs  03m31.2s/18m00.0s
+
+running (03m36.0s), 017/100 VUs, 1340 complete and 0 interrupted iterations
+default   [  20% ] 017/100 VUs  03m32.2s/18m00.0s
+
+running (03m37.0s), 017/100 VUs, 1349 complete and 0 interrupted iterations
+default   [  20% ] 017/100 VUs  03m33.2s/18m00.0s
+
+running (03m38.0s), 017/100 VUs, 1363 complete and 0 interrupted iterations
+default   [  20% ] 017/100 VUs  03m34.2s/18m00.0s
+
+running (03m39.0s), 017/100 VUs, 1372 complete and 0 interrupted iterations
+default   [  20% ] 017/100 VUs  03m35.2s/18m00.0s
+
+running (03m40.0s), 018/100 VUs, 1386 complete and 0 interrupted iterations
+default   [  20% ] 018/100 VUs  03m36.2s/18m00.0s
+
+running (03m41.0s), 018/100 VUs, 1397 complete and 0 interrupted iterations
+default   [  20% ] 018/100 VUs  03m37.2s/18m00.0s
+
+running (03m42.0s), 018/100 VUs, 1412 complete and 0 interrupted iterations
+default   [  20% ] 018/100 VUs  03m38.2s/18m00.0s
+
+running (03m43.0s), 018/100 VUs, 1421 complete and 0 interrupted iterations
+default   [  20% ] 018/100 VUs  03m39.2s/18m00.0s
+
+running (03m44.0s), 018/100 VUs, 1437 complete and 0 interrupted iterations
+default   [  20% ] 018/100 VUs  03m40.2s/18m00.0s
+
+running (03m45.0s), 018/100 VUs, 1454 complete and 0 interrupted iterations
+default   [  20% ] 018/100 VUs  03m41.2s/18m00.0s
+
+running (03m46.0s), 018/100 VUs, 1463 complete and 0 interrupted iterations
+default   [  21% ] 018/100 VUs  03m42.2s/18m00.0s
+
+running (03m47.0s), 018/100 VUs, 1476 complete and 0 interrupted iterations
+default   [  21% ] 018/100 VUs  03m43.2s/18m00.0s
+
+running (03m48.0s), 018/100 VUs, 1487 complete and 0 interrupted iterations
+default   [  21% ] 018/100 VUs  03m44.2s/18m00.0s
+
+running (03m49.0s), 018/100 VUs, 1499 complete and 0 interrupted iterations
+default   [  21% ] 018/100 VUs  03m45.2s/18m00.0s
+
+running (03m50.0s), 018/100 VUs, 1513 complete and 0 interrupted iterations
+default   [  21% ] 018/100 VUs  03m46.2s/18m00.0s
+
+running (03m51.0s), 018/100 VUs, 1526 complete and 0 interrupted iterations
+default   [  21% ] 018/100 VUs  03m47.2s/18m00.0s
+
+running (03m52.0s), 019/100 VUs, 1536 complete and 0 interrupted iterations
+default   [  21% ] 019/100 VUs  03m48.2s/18m00.0s
+
+running (03m53.0s), 019/100 VUs, 1550 complete and 0 interrupted iterations
+default   [  21% ] 019/100 VUs  03m49.2s/18m00.0s
+
+running (03m54.0s), 019/100 VUs, 1565 complete and 0 interrupted iterations
+default   [  21% ] 019/100 VUs  03m50.2s/18m00.0s
+
+running (03m55.0s), 019/100 VUs, 1575 complete and 0 interrupted iterations
+default   [  21% ] 019/100 VUs  03m51.2s/18m00.0s
+
+running (03m56.0s), 019/100 VUs, 1593 complete and 0 interrupted iterations
+default   [  22% ] 019/100 VUs  03m52.2s/18m00.0s
+
+running (03m57.0s), 019/100 VUs, 1605 complete and 0 interrupted iterations
+default   [  22% ] 019/100 VUs  03m53.2s/18m00.0s
+
+running (03m58.0s), 019/100 VUs, 1623 complete and 0 interrupted iterations
+default   [  22% ] 019/100 VUs  03m54.2s/18m00.0s
+
+running (03m59.0s), 019/100 VUs, 1635 complete and 0 interrupted iterations
+default   [  22% ] 019/100 VUs  03m55.2s/18m00.0s
+
+running (04m00.0s), 019/100 VUs, 1646 complete and 0 interrupted iterations
+default   [  22% ] 019/100 VUs  03m56.2s/18m00.0s
+
+running (04m01.0s), 019/100 VUs, 1663 complete and 0 interrupted iterations
+default   [  22% ] 019/100 VUs  03m57.2s/18m00.0s
+
+running (04m02.0s), 019/100 VUs, 1676 complete and 0 interrupted iterations
+default   [  22% ] 019/100 VUs  03m58.2s/18m00.0s
+
+running (04m03.0s), 019/100 VUs, 1689 complete and 0 interrupted iterations
+default   [  22% ] 019/100 VUs  03m59.2s/18m00.0s
+
+running (04m04.0s), 020/100 VUs, 1706 complete and 0 interrupted iterations
+default   [  22% ] 020/100 VUs  04m00.2s/18m00.0s
+
+running (04m05.0s), 020/100 VUs, 1723 complete and 0 interrupted iterations
+default   [  22% ] 020/100 VUs  04m01.2s/18m00.0s
+
+running (04m06.0s), 020/100 VUs, 1737 complete and 0 interrupted iterations
+default   [  22% ] 020/100 VUs  04m02.2s/18m00.0s
+
+running (04m07.0s), 020/100 VUs, 1752 complete and 0 interrupted iterations
+default   [  23% ] 020/100 VUs  04m03.2s/18m00.0s
+
+running (04m08.0s), 020/100 VUs, 1771 complete and 0 interrupted iterations
+default   [  23% ] 020/100 VUs  04m04.2s/18m00.0s
+
+running (04m09.0s), 020/100 VUs, 1784 complete and 0 interrupted iterations
+default   [  23% ] 020/100 VUs  04m05.2s/18m00.0s
+
+running (04m10.0s), 020/100 VUs, 1799 complete and 0 interrupted iterations
+default   [  23% ] 020/100 VUs  04m06.2s/18m00.0s
+
+running (04m11.0s), 020/100 VUs, 1813 complete and 0 interrupted iterations
+default   [  23% ] 020/100 VUs  04m07.2s/18m00.0s
+
+running (04m12.0s), 020/100 VUs, 1831 complete and 0 interrupted iterations
+default   [  23% ] 020/100 VUs  04m08.2s/18m00.0s
+
+running (04m13.0s), 020/100 VUs, 1845 complete and 0 interrupted iterations
+default   [  23% ] 020/100 VUs  04m09.2s/18m00.0s
+
+running (04m14.0s), 020/100 VUs, 1859 complete and 0 interrupted iterations
+default   [  23% ] 020/100 VUs  04m10.2s/18m00.0s
+
+running (04m15.0s), 020/100 VUs, 1876 complete and 0 interrupted iterations
+default   [  23% ] 020/100 VUs  04m11.2s/18m00.0s
+
+running (04m16.0s), 021/100 VUs, 1892 complete and 0 interrupted iterations
+default   [  23% ] 021/100 VUs  04m12.2s/18m00.0s
+
+running (04m17.0s), 021/100 VUs, 1908 complete and 0 interrupted iterations
+default   [  23% ] 021/100 VUs  04m13.2s/18m00.0s
+
+running (04m18.0s), 021/100 VUs, 1922 complete and 0 interrupted iterations
+default   [  24% ] 021/100 VUs  04m14.2s/18m00.0s
+
+running (04m19.0s), 021/100 VUs, 1935 complete and 0 interrupted iterations
+default   [  24% ] 021/100 VUs  04m15.2s/18m00.0s
+
+running (04m20.0s), 021/100 VUs, 1953 complete and 0 interrupted iterations
+default   [  24% ] 021/100 VUs  04m16.2s/18m00.0s
+
+running (04m21.0s), 021/100 VUs, 1970 complete and 0 interrupted iterations
+default   [  24% ] 021/100 VUs  04m17.2s/18m00.0s
+
+running (04m22.0s), 021/100 VUs, 1983 complete and 0 interrupted iterations
+default   [  24% ] 021/100 VUs  04m18.2s/18m00.0s
+
+running (04m23.0s), 021/100 VUs, 2002 complete and 0 interrupted iterations
+default   [  24% ] 021/100 VUs  04m19.2s/18m00.0s
+
+running (04m24.0s), 021/100 VUs, 2013 complete and 0 interrupted iterations
+default   [  24% ] 021/100 VUs  04m20.2s/18m00.0s
+
+running (04m25.0s), 021/100 VUs, 2027 complete and 0 interrupted iterations
+default   [  24% ] 021/100 VUs  04m21.2s/18m00.0s
+
+running (04m26.0s), 021/100 VUs, 2042 complete and 0 interrupted iterations
+default   [  24% ] 021/100 VUs  04m22.2s/18m00.0s
+
+running (04m27.0s), 021/100 VUs, 2056 complete and 0 interrupted iterations
+default   [  24% ] 021/100 VUs  04m23.2s/18m00.0s
+
+running (04m28.0s), 022/100 VUs, 2072 complete and 0 interrupted iterations
+default   [  24% ] 022/100 VUs  04m24.2s/18m00.0s
+
+running (04m29.0s), 022/100 VUs, 2087 complete and 0 interrupted iterations
+default   [  25% ] 022/100 VUs  04m25.2s/18m00.0s
+
+running (04m30.0s), 022/100 VUs, 2106 complete and 0 interrupted iterations
+default   [  25% ] 022/100 VUs  04m26.2s/18m00.0s
+
+running (04m31.0s), 022/100 VUs, 2117 complete and 0 interrupted iterations
+default   [  25% ] 022/100 VUs  04m27.2s/18m00.0s
+
+running (04m32.0s), 022/100 VUs, 2138 complete and 0 interrupted iterations
+default   [  25% ] 022/100 VUs  04m28.2s/18m00.0s
+
+running (04m33.0s), 022/100 VUs, 2153 complete and 0 interrupted iterations
+default   [  25% ] 022/100 VUs  04m29.2s/18m00.0s
+
+running (04m34.0s), 022/100 VUs, 2170 complete and 0 interrupted iterations
+default   [  25% ] 022/100 VUs  04m30.2s/18m00.0s
+
+running (04m35.0s), 022/100 VUs, 2185 complete and 0 interrupted iterations
+default   [  25% ] 022/100 VUs  04m31.2s/18m00.0s
+
+running (04m36.0s), 022/100 VUs, 2202 complete and 0 interrupted iterations
+default   [  25% ] 022/100 VUs  04m32.2s/18m00.0s
+
+running (04m37.0s), 022/100 VUs, 2219 complete and 0 interrupted iterations
+default   [  25% ] 022/100 VUs  04m33.2s/18m00.0s
+
+running (04m38.0s), 022/100 VUs, 2235 complete and 0 interrupted iterations
+default   [  25% ] 022/100 VUs  04m34.2s/18m00.0s
+
+running (04m39.0s), 022/100 VUs, 2251 complete and 0 interrupted iterations
+default   [  25% ] 022/100 VUs  04m35.2s/18m00.0s
+
+running (04m40.0s), 023/100 VUs, 2266 complete and 0 interrupted iterations
+default   [  26% ] 023/100 VUs  04m36.2s/18m00.0s
+
+running (04m41.0s), 023/100 VUs, 2284 complete and 0 interrupted iterations
+default   [  26% ] 023/100 VUs  04m37.2s/18m00.0s
+
+running (04m42.0s), 023/100 VUs, 2298 complete and 0 interrupted iterations
+default   [  26% ] 023/100 VUs  04m38.2s/18m00.0s
+
+running (04m43.0s), 023/100 VUs, 2314 complete and 0 interrupted iterations
+default   [  26% ] 023/100 VUs  04m39.2s/18m00.0s
+
+running (04m44.0s), 023/100 VUs, 2329 complete and 0 interrupted iterations
+default   [  26% ] 023/100 VUs  04m40.2s/18m00.0s
+
+running (04m45.0s), 023/100 VUs, 2348 complete and 0 interrupted iterations
+default   [  26% ] 023/100 VUs  04m41.2s/18m00.0s
+
+running (04m46.0s), 023/100 VUs, 2364 complete and 0 interrupted iterations
+default   [  26% ] 023/100 VUs  04m42.2s/18m00.0s
+
+running (04m47.0s), 023/100 VUs, 2383 complete and 0 interrupted iterations
+default   [  26% ] 023/100 VUs  04m43.2s/18m00.0s
+
+running (04m48.0s), 023/100 VUs, 2397 complete and 0 interrupted iterations
+default   [  26% ] 023/100 VUs  04m44.2s/18m00.0s
+
+running (04m49.0s), 023/100 VUs, 2417 complete and 0 interrupted iterations
+default   [  26% ] 023/100 VUs  04m45.2s/18m00.0s
+
+running (04m50.0s), 023/100 VUs, 2429 complete and 0 interrupted iterations
+default   [  27% ] 023/100 VUs  04m46.2s/18m00.0s
+
+running (04m51.0s), 023/100 VUs, 2452 complete and 0 interrupted iterations
+default   [  27% ] 023/100 VUs  04m47.2s/18m00.0s
+
+running (04m52.0s), 024/100 VUs, 2469 complete and 0 interrupted iterations
+default   [  27% ] 024/100 VUs  04m48.2s/18m00.0s
+
+running (04m53.0s), 024/100 VUs, 2486 complete and 0 interrupted iterations
+default   [  27% ] 024/100 VUs  04m49.2s/18m00.0s
+
+running (04m54.0s), 024/100 VUs, 2503 complete and 0 interrupted iterations
+default   [  27% ] 024/100 VUs  04m50.2s/18m00.0s
+
+running (04m55.0s), 024/100 VUs, 2522 complete and 0 interrupted iterations
+default   [  27% ] 024/100 VUs  04m51.2s/18m00.0s
+
+running (04m56.0s), 024/100 VUs, 2534 complete and 0 interrupted iterations
+default   [  27% ] 024/100 VUs  04m52.2s/18m00.0s
+
+running (04m57.0s), 024/100 VUs, 2552 complete and 0 interrupted iterations
+default   [  27% ] 024/100 VUs  04m53.2s/18m00.0s
+
+running (04m58.0s), 024/100 VUs, 2568 complete and 0 interrupted iterations
+default   [  27% ] 024/100 VUs  04m54.2s/18m00.0s
+
+running (04m59.0s), 024/100 VUs, 2589 complete and 0 interrupted iterations
+default   [  27% ] 024/100 VUs  04m55.2s/18m00.0s
+
+running (05m00.0s), 024/100 VUs, 2606 complete and 0 interrupted iterations
+default   [  27% ] 024/100 VUs  04m56.2s/18m00.0s
+
+running (05m01.0s), 024/100 VUs, 2621 complete and 0 interrupted iterations
+default   [  28% ] 024/100 VUs  04m57.2s/18m00.0s
+
+running (05m02.0s), 024/100 VUs, 2636 complete and 0 interrupted iterations
+default   [  28% ] 024/100 VUs  04m58.2s/18m00.0s
+
+running (05m03.0s), 024/100 VUs, 2657 complete and 0 interrupted iterations
+default   [  28% ] 024/100 VUs  04m59.2s/18m00.0s
+
+running (05m04.0s), 025/100 VUs, 2669 complete and 0 interrupted iterations
+default   [  28% ] 025/100 VUs  05m00.2s/18m00.0s
+
+running (05m05.0s), 025/100 VUs, 2688 complete and 0 interrupted iterations
+default   [  28% ] 025/100 VUs  05m01.2s/18m00.0s
+
+running (05m06.0s), 025/100 VUs, 2703 complete and 0 interrupted iterations
+default   [  28% ] 025/100 VUs  05m02.2s/18m00.0s
+
+running (05m07.0s), 025/100 VUs, 2725 complete and 0 interrupted iterations
+default   [  28% ] 025/100 VUs  05m03.2s/18m00.0s
+
+running (05m08.0s), 025/100 VUs, 2742 complete and 0 interrupted iterations
+default   [  28% ] 025/100 VUs  05m04.2s/18m00.0s
+
+running (05m09.0s), 025/100 VUs, 2761 complete and 0 interrupted iterations
+default   [  28% ] 025/100 VUs  05m05.2s/18m00.0s
+
+running (05m10.0s), 025/100 VUs, 2779 complete and 0 interrupted iterations
+default   [  28% ] 025/100 VUs  05m06.2s/18m00.0s
+
+running (05m11.0s), 025/100 VUs, 2794 complete and 0 interrupted iterations
+default   [  28% ] 025/100 VUs  05m07.2s/18m00.0s
+
+running (05m12.0s), 025/100 VUs, 2811 complete and 0 interrupted iterations
+default   [  29% ] 025/100 VUs  05m08.2s/18m00.0s
+
+running (05m13.0s), 025/100 VUs, 2829 complete and 0 interrupted iterations
+default   [  29% ] 025/100 VUs  05m09.2s/18m00.0s
+
+running (05m14.0s), 025/100 VUs, 2845 complete and 0 interrupted iterations
+default   [  29% ] 025/100 VUs  05m10.2s/18m00.0s
+
+running (05m15.0s), 025/100 VUs, 2863 complete and 0 interrupted iterations
+default   [  29% ] 025/100 VUs  05m11.2s/18m00.0s
+
+running (05m16.0s), 026/100 VUs, 2880 complete and 0 interrupted iterations
+default   [  29% ] 026/100 VUs  05m12.2s/18m00.0s
+
+running (05m17.0s), 026/100 VUs, 2896 complete and 0 interrupted iterations
+default   [  29% ] 026/100 VUs  05m13.2s/18m00.0s
+
+running (05m18.0s), 026/100 VUs, 2920 complete and 0 interrupted iterations
+default   [  29% ] 026/100 VUs  05m14.2s/18m00.0s
+
+running (05m19.0s), 026/100 VUs, 2935 complete and 0 interrupted iterations
+default   [  29% ] 026/100 VUs  05m15.2s/18m00.0s
+
+running (05m20.0s), 026/100 VUs, 2955 complete and 0 interrupted iterations
+default   [  29% ] 026/100 VUs  05m16.2s/18m00.0s
+
+running (05m21.0s), 026/100 VUs, 2977 complete and 0 interrupted iterations
+default   [  29% ] 026/100 VUs  05m17.2s/18m00.0s
+
+running (05m22.0s), 026/100 VUs, 2998 complete and 0 interrupted iterations
+default   [  29% ] 026/100 VUs  05m18.2s/18m00.0s
+
+running (05m23.0s), 026/100 VUs, 3018 complete and 0 interrupted iterations
+default   [  30% ] 026/100 VUs  05m19.2s/18m00.0s
+
+running (05m24.0s), 026/100 VUs, 3035 complete and 0 interrupted iterations
+default   [  30% ] 026/100 VUs  05m20.2s/18m00.0s
+
+running (05m25.0s), 026/100 VUs, 3055 complete and 0 interrupted iterations
+default   [  30% ] 026/100 VUs  05m21.2s/18m00.0s
+
+running (05m26.0s), 026/100 VUs, 3077 complete and 0 interrupted iterations
+default   [  30% ] 026/100 VUs  05m22.2s/18m00.0s
+
+running (05m27.0s), 026/100 VUs, 3093 complete and 0 interrupted iterations
+default   [  30% ] 026/100 VUs  05m23.2s/18m00.0s
+
+running (05m28.0s), 027/100 VUs, 3116 complete and 0 interrupted iterations
+default   [  30% ] 027/100 VUs  05m24.2s/18m00.0s
+
+running (05m29.0s), 027/100 VUs, 3138 complete and 0 interrupted iterations
+default   [  30% ] 027/100 VUs  05m25.2s/18m00.0s
+
+running (05m30.0s), 027/100 VUs, 3158 complete and 0 interrupted iterations
+default   [  30% ] 027/100 VUs  05m26.2s/18m00.0s
+
+running (05m31.0s), 027/100 VUs, 3177 complete and 0 interrupted iterations
+default   [  30% ] 027/100 VUs  05m27.2s/18m00.0s
+
+running (05m32.0s), 027/100 VUs, 3196 complete and 0 interrupted iterations
+default   [  30% ] 027/100 VUs  05m28.2s/18m00.0s
+
+running (05m33.0s), 027/100 VUs, 3218 complete and 0 interrupted iterations
+default   [  30% ] 027/100 VUs  05m29.2s/18m00.0s
+
+running (05m34.0s), 027/100 VUs, 3238 complete and 0 interrupted iterations
+default   [  31% ] 027/100 VUs  05m30.2s/18m00.0s
+
+running (05m35.0s), 027/100 VUs, 3262 complete and 0 interrupted iterations
+default   [  31% ] 027/100 VUs  05m31.2s/18m00.0s
+
+running (05m36.0s), 027/100 VUs, 3280 complete and 0 interrupted iterations
+default   [  31% ] 027/100 VUs  05m32.2s/18m00.0s
+
+running (05m37.0s), 027/100 VUs, 3297 complete and 0 interrupted iterations
+default   [  31% ] 027/100 VUs  05m33.2s/18m00.0s
+
+running (05m38.0s), 027/100 VUs, 3318 complete and 0 interrupted iterations
+default   [  31% ] 027/100 VUs  05m34.2s/18m00.0s
+
+running (05m39.0s), 027/100 VUs, 3337 complete and 0 interrupted iterations
+default   [  31% ] 027/100 VUs  05m35.2s/18m00.0s
+
+running (05m40.0s), 028/100 VUs, 3354 complete and 0 interrupted iterations
+default   [  31% ] 028/100 VUs  05m36.2s/18m00.0s
+
+running (05m41.0s), 028/100 VUs, 3377 complete and 0 interrupted iterations
+default   [  31% ] 028/100 VUs  05m37.2s/18m00.0s
+
+running (05m42.0s), 028/100 VUs, 3396 complete and 0 interrupted iterations
+default   [  31% ] 028/100 VUs  05m38.2s/18m00.0s
+
+running (05m43.0s), 028/100 VUs, 3416 complete and 0 interrupted iterations
+default   [  31% ] 028/100 VUs  05m39.2s/18m00.0s
+
+running (05m44.0s), 028/100 VUs, 3434 complete and 0 interrupted iterations
+default   [  32% ] 028/100 VUs  05m40.2s/18m00.0s
+
+running (05m45.0s), 028/100 VUs, 3456 complete and 0 interrupted iterations
+default   [  32% ] 028/100 VUs  05m41.2s/18m00.0s
+
+running (05m46.0s), 028/100 VUs, 3476 complete and 0 interrupted iterations
+default   [  32% ] 028/100 VUs  05m42.2s/18m00.0s
+
+running (05m47.0s), 028/100 VUs, 3494 complete and 0 interrupted iterations
+default   [  32% ] 028/100 VUs  05m43.2s/18m00.0s
+
+running (05m48.0s), 028/100 VUs, 3517 complete and 0 interrupted iterations
+default   [  32% ] 028/100 VUs  05m44.2s/18m00.0s
+
+running (05m49.0s), 028/100 VUs, 3539 complete and 0 interrupted iterations
+default   [  32% ] 028/100 VUs  05m45.2s/18m00.0s
+
+running (05m50.0s), 028/100 VUs, 3560 complete and 0 interrupted iterations
+default   [  32% ] 028/100 VUs  05m46.2s/18m00.0s
+
+running (05m51.0s), 028/100 VUs, 3576 complete and 0 interrupted iterations
+default   [  32% ] 028/100 VUs  05m47.2s/18m00.0s
+
+running (05m52.0s), 029/100 VUs, 3598 complete and 0 interrupted iterations
+default   [  32% ] 029/100 VUs  05m48.2s/18m00.0s
+
+running (05m53.0s), 029/100 VUs, 3617 complete and 0 interrupted iterations
+default   [  32% ] 029/100 VUs  05m49.2s/18m00.0s
+
+running (05m54.0s), 029/100 VUs, 3639 complete and 0 interrupted iterations
+default   [  32% ] 029/100 VUs  05m50.2s/18m00.0s
+
+running (05m55.0s), 029/100 VUs, 3657 complete and 0 interrupted iterations
+default   [  33% ] 029/100 VUs  05m51.2s/18m00.0s
+
+running (05m56.0s), 029/100 VUs, 3681 complete and 0 interrupted iterations
+default   [  33% ] 029/100 VUs  05m52.2s/18m00.0s
+
+running (05m57.0s), 029/100 VUs, 3704 complete and 0 interrupted iterations
+default   [  33% ] 029/100 VUs  05m53.2s/18m00.0s
+
+running (05m58.0s), 029/100 VUs, 3721 complete and 0 interrupted iterations
+default   [  33% ] 029/100 VUs  05m54.2s/18m00.0s
+
+running (05m59.0s), 029/100 VUs, 3745 complete and 0 interrupted iterations
+default   [  33% ] 029/100 VUs  05m55.2s/18m00.0s
+
+running (06m00.0s), 029/100 VUs, 3764 complete and 0 interrupted iterations
+default   [  33% ] 029/100 VUs  05m56.2s/18m00.0s
+
+running (06m01.0s), 029/100 VUs, 3789 complete and 0 interrupted iterations
+default   [  33% ] 029/100 VUs  05m57.2s/18m00.0s
+
+running (06m02.0s), 029/100 VUs, 3813 complete and 0 interrupted iterations
+default   [  33% ] 029/100 VUs  05m58.2s/18m00.0s
+
+running (06m03.0s), 029/100 VUs, 3831 complete and 0 interrupted iterations
+default   [  33% ] 029/100 VUs  05m59.2s/18m00.0s
+
+running (06m04.0s), 030/100 VUs, 3854 complete and 0 interrupted iterations
+default   [  33% ] 030/100 VUs  06m00.2s/18m00.0s
+
+running (06m05.0s), 030/100 VUs, 3876 complete and 0 interrupted iterations
+default   [  33% ] 030/100 VUs  06m01.2s/18m00.0s
+
+running (06m06.0s), 030/100 VUs, 3895 complete and 0 interrupted iterations
+default   [  34% ] 030/100 VUs  06m02.2s/18m00.0s
+
+running (06m07.0s), 030/100 VUs, 3917 complete and 0 interrupted iterations
+default   [  34% ] 030/100 VUs  06m03.2s/18m00.0s
+
+running (06m08.0s), 030/100 VUs, 3937 complete and 0 interrupted iterations
+default   [  34% ] 030/100 VUs  06m04.2s/18m00.0s
+
+running (06m09.0s), 030/100 VUs, 3960 complete and 0 interrupted iterations
+default   [  34% ] 030/100 VUs  06m05.2s/18m00.0s
+
+running (06m10.0s), 030/100 VUs, 3983 complete and 0 interrupted iterations
+default   [  34% ] 030/100 VUs  06m06.2s/18m00.0s
+
+running (06m11.0s), 030/100 VUs, 4003 complete and 0 interrupted iterations
+default   [  34% ] 030/100 VUs  06m07.2s/18m00.0s
+
+running (06m12.0s), 030/100 VUs, 4026 complete and 0 interrupted iterations
+default   [  34% ] 030/100 VUs  06m08.2s/18m00.0s
+
+running (06m13.0s), 030/100 VUs, 4047 complete and 0 interrupted iterations
+default   [  34% ] 030/100 VUs  06m09.2s/18m00.0s
+
+running (06m14.0s), 030/100 VUs, 4072 complete and 0 interrupted iterations
+default   [  34% ] 030/100 VUs  06m10.2s/18m00.0s
+
+running (06m15.0s), 030/100 VUs, 4099 complete and 0 interrupted iterations
+default   [  34% ] 030/100 VUs  06m11.2s/18m00.0s
+
+running (06m16.0s), 031/100 VUs, 4115 complete and 0 interrupted iterations
+default   [  34% ] 031/100 VUs  06m12.2s/18m00.0s
+
+running (06m17.0s), 031/100 VUs, 4135 complete and 0 interrupted iterations
+default   [  35% ] 031/100 VUs  06m13.2s/18m00.0s
+
+running (06m18.0s), 031/100 VUs, 4158 complete and 0 interrupted iterations
+default   [  35% ] 031/100 VUs  06m14.2s/18m00.0s
+
+running (06m19.0s), 031/100 VUs, 4177 complete and 0 interrupted iterations
+default   [  35% ] 031/100 VUs  06m15.2s/18m00.0s
+
+running (06m20.0s), 031/100 VUs, 4203 complete and 0 interrupted iterations
+default   [  35% ] 031/100 VUs  06m16.2s/18m00.0s
+
+running (06m21.0s), 031/100 VUs, 4222 complete and 0 interrupted iterations
+default   [  35% ] 031/100 VUs  06m17.2s/18m00.0s
+
+running (06m22.0s), 031/100 VUs, 4247 complete and 0 interrupted iterations
+default   [  35% ] 031/100 VUs  06m18.2s/18m00.0s
+
+running (06m23.0s), 031/100 VUs, 4272 complete and 0 interrupted iterations
+default   [  35% ] 031/100 VUs  06m19.2s/18m00.0s
+
+running (06m24.0s), 031/100 VUs, 4292 complete and 0 interrupted iterations
+default   [  35% ] 031/100 VUs  06m20.2s/18m00.0s
+
+running (06m25.0s), 031/100 VUs, 4313 complete and 0 interrupted iterations
+default   [  35% ] 031/100 VUs  06m21.2s/18m00.0s
+
+running (06m26.0s), 031/100 VUs, 4343 complete and 0 interrupted iterations
+default   [  35% ] 031/100 VUs  06m22.2s/18m00.0s
+
+running (06m27.0s), 031/100 VUs, 4360 complete and 0 interrupted iterations
+default   [  35% ] 031/100 VUs  06m23.2s/18m00.0s
+
+running (06m28.0s), 032/100 VUs, 4391 complete and 0 interrupted iterations
+default   [  36% ] 032/100 VUs  06m24.2s/18m00.0s
+
+running (06m29.0s), 032/100 VUs, 4408 complete and 0 interrupted iterations
+default   [  36% ] 032/100 VUs  06m25.2s/18m00.0s
+
+running (06m30.0s), 032/100 VUs, 4431 complete and 0 interrupted iterations
+default   [  36% ] 032/100 VUs  06m26.2s/18m00.0s
+
+running (06m31.0s), 032/100 VUs, 4451 complete and 0 interrupted iterations
+default   [  36% ] 032/100 VUs  06m27.2s/18m00.0s
+
+running (06m32.0s), 032/100 VUs, 4475 complete and 0 interrupted iterations
+default   [  36% ] 032/100 VUs  06m28.2s/18m00.0s
+
+running (06m33.0s), 032/100 VUs, 4500 complete and 0 interrupted iterations
+default   [  36% ] 032/100 VUs  06m29.2s/18m00.0s
+
+running (06m34.0s), 032/100 VUs, 4527 complete and 0 interrupted iterations
+default   [  36% ] 032/100 VUs  06m30.2s/18m00.0s
+
+running (06m35.0s), 032/100 VUs, 4549 complete and 0 interrupted iterations
+default   [  36% ] 032/100 VUs  06m31.2s/18m00.0s
+
+running (06m36.0s), 032/100 VUs, 4569 complete and 0 interrupted iterations
+default   [  36% ] 032/100 VUs  06m32.2s/18m00.0s
+
+running (06m37.0s), 032/100 VUs, 4595 complete and 0 interrupted iterations
+default   [  36% ] 032/100 VUs  06m33.2s/18m00.0s
+
+running (06m38.0s), 032/100 VUs, 4617 complete and 0 interrupted iterations
+default   [  37% ] 032/100 VUs  06m34.2s/18m00.0s
+
+running (06m39.0s), 032/100 VUs, 4641 complete and 0 interrupted iterations
+default   [  37% ] 032/100 VUs  06m35.2s/18m00.0s
+
+running (06m40.0s), 033/100 VUs, 4666 complete and 0 interrupted iterations
+default   [  37% ] 033/100 VUs  06m36.2s/18m00.0s
+
+running (06m41.0s), 033/100 VUs, 4691 complete and 0 interrupted iterations
+default   [  37% ] 033/100 VUs  06m37.2s/18m00.0s
+
+running (06m42.0s), 033/100 VUs, 4719 complete and 0 interrupted iterations
+default   [  37% ] 033/100 VUs  06m38.2s/18m00.0s
+
+running (06m43.0s), 033/100 VUs, 4740 complete and 0 interrupted iterations
+default   [  37% ] 033/100 VUs  06m39.2s/18m00.0s
+
+running (06m44.0s), 033/100 VUs, 4764 complete and 0 interrupted iterations
+default   [  37% ] 033/100 VUs  06m40.2s/18m00.0s
+
+running (06m45.0s), 033/100 VUs, 4785 complete and 0 interrupted iterations
+default   [  37% ] 033/100 VUs  06m41.2s/18m00.0s
+
+running (06m46.0s), 033/100 VUs, 4809 complete and 0 interrupted iterations
+default   [  37% ] 033/100 VUs  06m42.2s/18m00.0s
+
+running (06m47.0s), 033/100 VUs, 4837 complete and 0 interrupted iterations
+default   [  37% ] 033/100 VUs  06m43.2s/18m00.0s
+
+running (06m48.0s), 033/100 VUs, 4857 complete and 0 interrupted iterations
+default   [  37% ] 033/100 VUs  06m44.2s/18m00.0s
+
+running (06m49.0s), 033/100 VUs, 4878 complete and 0 interrupted iterations
+default   [  38% ] 033/100 VUs  06m45.2s/18m00.0s
+
+running (06m50.0s), 033/100 VUs, 4901 complete and 0 interrupted iterations
+default   [  38% ] 033/100 VUs  06m46.2s/18m00.0s
+
+running (06m51.0s), 033/100 VUs, 4929 complete and 0 interrupted iterations
+default   [  38% ] 033/100 VUs  06m47.2s/18m00.0s
+
+running (06m52.0s), 034/100 VUs, 4952 complete and 0 interrupted iterations
+default   [  38% ] 034/100 VUs  06m48.2s/18m00.0s
+
+running (06m53.0s), 034/100 VUs, 4974 complete and 0 interrupted iterations
+default   [  38% ] 034/100 VUs  06m49.2s/18m00.0s
+
+running (06m54.0s), 034/100 VUs, 4996 complete and 0 interrupted iterations
+default   [  38% ] 034/100 VUs  06m50.2s/18m00.0s
+
+running (06m55.0s), 034/100 VUs, 5023 complete and 0 interrupted iterations
+default   [  38% ] 034/100 VUs  06m51.2s/18m00.0s
+
+running (06m56.0s), 034/100 VUs, 5044 complete and 0 interrupted iterations
+default   [  38% ] 034/100 VUs  06m52.2s/18m00.0s
+
+running (06m57.0s), 034/100 VUs, 5067 complete and 0 interrupted iterations
+default   [  38% ] 034/100 VUs  06m53.2s/18m00.0s
+
+running (06m58.0s), 034/100 VUs, 5093 complete and 0 interrupted iterations
+default   [  38% ] 034/100 VUs  06m54.2s/18m00.0s
+
+running (06m59.0s), 034/100 VUs, 5118 complete and 0 interrupted iterations
+default   [  38% ] 034/100 VUs  06m55.2s/18m00.0s
+
+running (07m00.0s), 034/100 VUs, 5143 complete and 0 interrupted iterations
+default   [  39% ] 034/100 VUs  06m56.2s/18m00.0s
+
+running (07m01.0s), 034/100 VUs, 5165 complete and 0 interrupted iterations
+default   [  39% ] 034/100 VUs  06m57.2s/18m00.0s
+
+running (07m02.0s), 034/100 VUs, 5190 complete and 0 interrupted iterations
+default   [  39% ] 034/100 VUs  06m58.2s/18m00.0s
+
+running (07m03.0s), 034/100 VUs, 5213 complete and 0 interrupted iterations
+default   [  39% ] 034/100 VUs  06m59.2s/18m00.0s
+
+running (07m04.0s), 035/100 VUs, 5237 complete and 0 interrupted iterations
+default   [  39% ] 035/100 VUs  07m00.2s/18m00.0s
+
+running (07m05.0s), 035/100 VUs, 5264 complete and 0 interrupted iterations
+default   [  39% ] 035/100 VUs  07m01.2s/18m00.0s
+
+running (07m06.0s), 035/100 VUs, 5290 complete and 0 interrupted iterations
+default   [  39% ] 035/100 VUs  07m02.2s/18m00.0s
+
+running (07m07.0s), 035/100 VUs, 5314 complete and 0 interrupted iterations
+default   [  39% ] 035/100 VUs  07m03.2s/18m00.0s
+
+running (07m08.0s), 035/100 VUs, 5342 complete and 0 interrupted iterations
+default   [  39% ] 035/100 VUs  07m04.2s/18m00.0s
+
+running (07m09.0s), 035/100 VUs, 5362 complete and 0 interrupted iterations
+default   [  39% ] 035/100 VUs  07m05.2s/18m00.0s
+
+running (07m10.0s), 035/100 VUs, 5387 complete and 0 interrupted iterations
+default   [  39% ] 035/100 VUs  07m06.2s/18m00.0s
+
+running (07m11.0s), 035/100 VUs, 5411 complete and 0 interrupted iterations
+default   [  40% ] 035/100 VUs  07m07.2s/18m00.0s
+
+running (07m12.0s), 035/100 VUs, 5435 complete and 0 interrupted iterations
+default   [  40% ] 035/100 VUs  07m08.2s/18m00.0s
+
+running (07m13.0s), 035/100 VUs, 5464 complete and 0 interrupted iterations
+default   [  40% ] 035/100 VUs  07m09.2s/18m00.0s
+
+running (07m14.0s), 035/100 VUs, 5482 complete and 0 interrupted iterations
+default   [  40% ] 035/100 VUs  07m10.2s/18m00.0s
+
+running (07m15.0s), 035/100 VUs, 5508 complete and 0 interrupted iterations
+default   [  40% ] 035/100 VUs  07m11.2s/18m00.0s
+
+running (07m16.0s), 036/100 VUs, 5537 complete and 0 interrupted iterations
+default   [  40% ] 036/100 VUs  07m12.2s/18m00.0s
+
+running (07m17.0s), 036/100 VUs, 5565 complete and 0 interrupted iterations
+default   [  40% ] 036/100 VUs  07m13.2s/18m00.0s
+
+running (07m18.0s), 036/100 VUs, 5598 complete and 0 interrupted iterations
+default   [  40% ] 036/100 VUs  07m14.2s/18m00.0s
+
+running (07m19.0s), 036/100 VUs, 5620 complete and 0 interrupted iterations
+default   [  40% ] 036/100 VUs  07m15.2s/18m00.0s
+
+running (07m20.0s), 036/100 VUs, 5648 complete and 0 interrupted iterations
+default   [  40% ] 036/100 VUs  07m16.2s/18m00.0s
+
+running (07m21.0s), 036/100 VUs, 5670 complete and 0 interrupted iterations
+default   [  40% ] 036/100 VUs  07m17.2s/18m00.0s
+
+running (07m22.0s), 036/100 VUs, 5695 complete and 0 interrupted iterations
+default   [  41% ] 036/100 VUs  07m18.2s/18m00.0s
+
+running (07m23.0s), 036/100 VUs, 5725 complete and 0 interrupted iterations
+default   [  41% ] 036/100 VUs  07m19.2s/18m00.0s
+
+running (07m24.0s), 036/100 VUs, 5748 complete and 0 interrupted iterations
+default   [  41% ] 036/100 VUs  07m20.2s/18m00.0s
+
+running (07m25.0s), 036/100 VUs, 5781 complete and 0 interrupted iterations
+default   [  41% ] 036/100 VUs  07m21.2s/18m00.0s
+
+running (07m26.0s), 036/100 VUs, 5807 complete and 0 interrupted iterations
+default   [  41% ] 036/100 VUs  07m22.2s/18m00.0s
+
+running (07m27.0s), 036/100 VUs, 5836 complete and 0 interrupted iterations
+default   [  41% ] 036/100 VUs  07m23.2s/18m00.0s
+
+running (07m28.0s), 037/100 VUs, 5861 complete and 0 interrupted iterations
+default   [  41% ] 037/100 VUs  07m24.2s/18m00.0s
+
+running (07m29.0s), 037/100 VUs, 5886 complete and 0 interrupted iterations
+default   [  41% ] 037/100 VUs  07m25.2s/18m00.0s
+
+running (07m30.0s), 037/100 VUs, 5913 complete and 0 interrupted iterations
+default   [  41% ] 037/100 VUs  07m26.2s/18m00.0s
+
+running (07m31.0s), 037/100 VUs, 5938 complete and 0 interrupted iterations
+default   [  41% ] 037/100 VUs  07m27.2s/18m00.0s
+
+running (07m32.0s), 037/100 VUs, 5965 complete and 0 interrupted iterations
+default   [  42% ] 037/100 VUs  07m28.2s/18m00.0s
+
+running (07m33.0s), 037/100 VUs, 5987 complete and 0 interrupted iterations
+default   [  42% ] 037/100 VUs  07m29.2s/18m00.0s
+
+running (07m34.0s), 037/100 VUs, 6012 complete and 0 interrupted iterations
+default   [  42% ] 037/100 VUs  07m30.2s/18m00.0s
+
+running (07m35.0s), 037/100 VUs, 6036 complete and 0 interrupted iterations
+default   [  42% ] 037/100 VUs  07m31.2s/18m00.0s
+
+running (07m36.0s), 037/100 VUs, 6068 complete and 0 interrupted iterations
+default   [  42% ] 037/100 VUs  07m32.2s/18m00.0s
+
+running (07m37.0s), 037/100 VUs, 6089 complete and 0 interrupted iterations
+default   [  42% ] 037/100 VUs  07m33.2s/18m00.0s
+
+running (07m38.0s), 037/100 VUs, 6118 complete and 0 interrupted iterations
+default   [  42% ] 037/100 VUs  07m34.2s/18m00.0s
+
+running (07m39.0s), 037/100 VUs, 6146 complete and 0 interrupted iterations
+default   [  42% ] 037/100 VUs  07m35.2s/18m00.0s
+
+running (07m40.0s), 038/100 VUs, 6174 complete and 0 interrupted iterations
+default   [  42% ] 038/100 VUs  07m36.2s/18m00.0s
+
+running (07m41.0s), 038/100 VUs, 6202 complete and 0 interrupted iterations
+default   [  42% ] 038/100 VUs  07m37.2s/18m00.0s
+
+running (07m42.0s), 038/100 VUs, 6231 complete and 0 interrupted iterations
+default   [  42% ] 038/100 VUs  07m38.2s/18m00.0s
+
+running (07m43.0s), 038/100 VUs, 6253 complete and 0 interrupted iterations
+default   [  43% ] 038/100 VUs  07m39.2s/18m00.0s
+
+running (07m44.0s), 038/100 VUs, 6282 complete and 0 interrupted iterations
+default   [  43% ] 038/100 VUs  07m40.2s/18m00.0s
+
+running (07m45.0s), 038/100 VUs, 6311 complete and 0 interrupted iterations
+default   [  43% ] 038/100 VUs  07m41.2s/18m00.0s
+
+running (07m46.0s), 038/100 VUs, 6332 complete and 0 interrupted iterations
+default   [  43% ] 038/100 VUs  07m42.2s/18m00.0s
+
+running (07m47.0s), 038/100 VUs, 6360 complete and 0 interrupted iterations
+default   [  43% ] 038/100 VUs  07m43.2s/18m00.0s
+
+running (07m48.0s), 038/100 VUs, 6382 complete and 0 interrupted iterations
+default   [  43% ] 038/100 VUs  07m44.2s/18m00.0s
+
+running (07m49.0s), 038/100 VUs, 6411 complete and 0 interrupted iterations
+default   [  43% ] 038/100 VUs  07m45.2s/18m00.0s
+
+running (07m50.0s), 038/100 VUs, 6443 complete and 0 interrupted iterations
+default   [  43% ] 038/100 VUs  07m46.2s/18m00.0s
+
+running (07m51.0s), 038/100 VUs, 6464 complete and 0 interrupted iterations
+default   [  43% ] 038/100 VUs  07m47.2s/18m00.0s
+
+running (07m52.0s), 039/100 VUs, 6494 complete and 0 interrupted iterations
+default   [  43% ] 039/100 VUs  07m48.2s/18m00.0s
+
+running (07m53.0s), 039/100 VUs, 6519 complete and 0 interrupted iterations
+default   [  43% ] 039/100 VUs  07m49.2s/18m00.0s
+
+running (07m54.0s), 039/100 VUs, 6552 complete and 0 interrupted iterations
+default   [  44% ] 039/100 VUs  07m50.2s/18m00.0s
+
+running (07m55.0s), 039/100 VUs, 6576 complete and 0 interrupted iterations
+default   [  44% ] 039/100 VUs  07m51.2s/18m00.0s
+
+running (07m56.0s), 039/100 VUs, 6606 complete and 0 interrupted iterations
+default   [  44% ] 039/100 VUs  07m52.2s/18m00.0s
+
+running (07m57.0s), 039/100 VUs, 6631 complete and 0 interrupted iterations
+default   [  44% ] 039/100 VUs  07m53.2s/18m00.0s
+
+running (07m58.0s), 039/100 VUs, 6658 complete and 0 interrupted iterations
+default   [  44% ] 039/100 VUs  07m54.2s/18m00.0s
+
+running (07m59.0s), 039/100 VUs, 6687 complete and 0 interrupted iterations
+default   [  44% ] 039/100 VUs  07m55.2s/18m00.0s
+
+running (08m00.0s), 039/100 VUs, 6717 complete and 0 interrupted iterations
+default   [  44% ] 039/100 VUs  07m56.2s/18m00.0s
+
+running (08m01.0s), 039/100 VUs, 6745 complete and 0 interrupted iterations
+default   [  44% ] 039/100 VUs  07m57.2s/18m00.0s
+
+running (08m02.0s), 039/100 VUs, 6764 complete and 0 interrupted iterations
+default   [  44% ] 039/100 VUs  07m58.2s/18m00.0s
+
+running (08m03.0s), 039/100 VUs, 6799 complete and 0 interrupted iterations
+default   [  44% ] 039/100 VUs  07m59.2s/18m00.0s
+
+running (08m04.0s), 040/100 VUs, 6825 complete and 0 interrupted iterations
+default   [  44% ] 040/100 VUs  08m00.2s/18m00.0s
+
+running (08m05.0s), 040/100 VUs, 6859 complete and 0 interrupted iterations
+default   [  45% ] 040/100 VUs  08m01.2s/18m00.0s
+
+running (08m06.0s), 040/100 VUs, 6878 complete and 0 interrupted iterations
+default   [  45% ] 040/100 VUs  08m02.2s/18m00.0s
+
+running (08m07.0s), 040/100 VUs, 6906 complete and 0 interrupted iterations
+default   [  45% ] 040/100 VUs  08m03.2s/18m00.0s
+
+running (08m08.0s), 040/100 VUs, 6934 complete and 0 interrupted iterations
+default   [  45% ] 040/100 VUs  08m04.2s/18m00.0s
+
+running (08m09.0s), 040/100 VUs, 6961 complete and 0 interrupted iterations
+default   [  45% ] 040/100 VUs  08m05.2s/18m00.0s
+
+running (08m10.0s), 040/100 VUs, 6985 complete and 0 interrupted iterations
+default   [  45% ] 040/100 VUs  08m06.2s/18m00.0s
+
+running (08m11.0s), 040/100 VUs, 7019 complete and 0 interrupted iterations
+default   [  45% ] 040/100 VUs  08m07.2s/18m00.0s
+
+running (08m12.0s), 040/100 VUs, 7042 complete and 0 interrupted iterations
+default   [  45% ] 040/100 VUs  08m08.2s/18m00.0s
+
+running (08m13.0s), 040/100 VUs, 7068 complete and 0 interrupted iterations
+default   [  45% ] 040/100 VUs  08m09.2s/18m00.0s
+
+running (08m14.0s), 040/100 VUs, 7096 complete and 0 interrupted iterations
+default   [  45% ] 040/100 VUs  08m10.2s/18m00.0s
+
+running (08m15.0s), 040/100 VUs, 7124 complete and 0 interrupted iterations
+default   [  45% ] 040/100 VUs  08m11.2s/18m00.0s
+
+running (08m16.0s), 041/100 VUs, 7156 complete and 0 interrupted iterations
+default   [  46% ] 041/100 VUs  08m12.2s/18m00.0s
+
+running (08m17.0s), 041/100 VUs, 7180 complete and 0 interrupted iterations
+default   [  46% ] 041/100 VUs  08m13.2s/18m00.0s
+
+running (08m18.0s), 041/100 VUs, 7205 complete and 0 interrupted iterations
+default   [  46% ] 041/100 VUs  08m14.2s/18m00.0s
+
+running (08m19.0s), 041/100 VUs, 7233 complete and 0 interrupted iterations
+default   [  46% ] 041/100 VUs  08m15.2s/18m00.0s
+
+running (08m20.0s), 041/100 VUs, 7266 complete and 0 interrupted iterations
+default   [  46% ] 041/100 VUs  08m16.2s/18m00.0s
+
+running (08m21.0s), 041/100 VUs, 7294 complete and 0 interrupted iterations
+default   [  46% ] 041/100 VUs  08m17.2s/18m00.0s
+
+running (08m22.0s), 041/100 VUs, 7321 complete and 0 interrupted iterations
+default   [  46% ] 041/100 VUs  08m18.2s/18m00.0s
+
+running (08m23.0s), 041/100 VUs, 7350 complete and 0 interrupted iterations
+default   [  46% ] 041/100 VUs  08m19.2s/18m00.0s
+
+running (08m24.0s), 041/100 VUs, 7381 complete and 0 interrupted iterations
+default   [  46% ] 041/100 VUs  08m20.2s/18m00.0s
+
+running (08m25.0s), 041/100 VUs, 7409 complete and 0 interrupted iterations
+default   [  46% ] 041/100 VUs  08m21.2s/18m00.0s
+
+running (08m26.0s), 041/100 VUs, 7431 complete and 0 interrupted iterations
+default   [  47% ] 041/100 VUs  08m22.2s/18m00.0s
+
+running (08m27.0s), 041/100 VUs, 7467 complete and 0 interrupted iterations
+default   [  47% ] 041/100 VUs  08m23.2s/18m00.0s
+
+running (08m28.0s), 042/100 VUs, 7494 complete and 0 interrupted iterations
+default   [  47% ] 042/100 VUs  08m24.2s/18m00.0s
+
+running (08m29.0s), 042/100 VUs, 7517 complete and 0 interrupted iterations
+default   [  47% ] 042/100 VUs  08m25.2s/18m00.0s
+
+running (08m30.0s), 042/100 VUs, 7553 complete and 0 interrupted iterations
+default   [  47% ] 042/100 VUs  08m26.2s/18m00.0s
+
+running (08m31.0s), 042/100 VUs, 7591 complete and 0 interrupted iterations
+default   [  47% ] 042/100 VUs  08m27.2s/18m00.0s
+
+running (08m32.0s), 042/100 VUs, 7615 complete and 0 interrupted iterations
+default   [  47% ] 042/100 VUs  08m28.2s/18m00.0s
+
+running (08m33.0s), 042/100 VUs, 7644 complete and 0 interrupted iterations
+default   [  47% ] 042/100 VUs  08m29.2s/18m00.0s
+
+running (08m34.0s), 042/100 VUs, 7674 complete and 0 interrupted iterations
+default   [  47% ] 042/100 VUs  08m30.2s/18m00.0s
+
+running (08m35.0s), 042/100 VUs, 7701 complete and 0 interrupted iterations
+default   [  47% ] 042/100 VUs  08m31.2s/18m00.0s
+
+running (08m36.0s), 042/100 VUs, 7729 complete and 0 interrupted iterations
+default   [  47% ] 042/100 VUs  08m32.2s/18m00.0s
+time="2026-05-12T15:04:35Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/22/assignments?per_page=10 returned 500. Body preview: " source=console
+
+running (08m37.0s), 042/100 VUs, 7753 complete and 0 interrupted iterations
+default   [  48% ] 042/100 VUs  08m33.2s/18m00.0s
+
+running (08m38.0s), 042/100 VUs, 7785 complete and 0 interrupted iterations
+default   [  48% ] 042/100 VUs  08m34.2s/18m00.0s
+
+running (08m39.0s), 042/100 VUs, 7813 complete and 0 interrupted iterations
+default   [  48% ] 042/100 VUs  08m35.2s/18m00.0s
+
+running (08m40.0s), 043/100 VUs, 7841 complete and 0 interrupted iterations
+default   [  48% ] 043/100 VUs  08m36.2s/18m00.0s
+
+running (08m41.0s), 043/100 VUs, 7871 complete and 0 interrupted iterations
+default   [  48% ] 043/100 VUs  08m37.2s/18m00.0s
+
+running (08m42.0s), 043/100 VUs, 7908 complete and 0 interrupted iterations
+default   [  48% ] 043/100 VUs  08m38.2s/18m00.0s
+
+running (08m43.0s), 043/100 VUs, 7937 complete and 0 interrupted iterations
+default   [  48% ] 043/100 VUs  08m39.2s/18m00.0s
+time="2026-05-12T15:04:42Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/19/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (08m44.0s), 043/100 VUs, 7957 complete and 0 interrupted iterations
+default   [  48% ] 043/100 VUs  08m40.2s/18m00.0s
+time="2026-05-12T15:04:43Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 500. Body preview: {\"errors\":[{\"message\":\"An error occurred.\",\"error_code\":\"internal_server_error\"}],\"error_report_id\":469}" source=console
+time="2026-05-12T15:04:43Z" level=error msg="[submission] POST http://canvas.io.vn:30080/api/v1/courses/20/assignments/199/submissions returned 500. Body preview: {\"errors\":[{\"message\":\"An error occurred.\",\"error_code\":\"internal_server_error\"}],\"error_report_id\":470}" source=console
+
+running (08m45.0s), 043/100 VUs, 7983 complete and 0 interrupted iterations
+default   [  48% ] 043/100 VUs  08m41.2s/18m00.0s
+
+running (08m46.0s), 043/100 VUs, 8015 complete and 0 interrupted iterations
+default   [  48% ] 043/100 VUs  08m42.2s/18m00.0s
+
+running (08m47.0s), 043/100 VUs, 8047 complete and 0 interrupted iterations
+default   [  48% ] 043/100 VUs  08m43.2s/18m00.0s
+
+running (08m48.0s), 043/100 VUs, 8078 complete and 0 interrupted iterations
+default   [  49% ] 043/100 VUs  08m44.2s/18m00.0s
+time="2026-05-12T15:04:47Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/19/assignments?per_page=10 returned 500. Body preview: {\"errors\":[{\"message\":\"An error occurred.\",\"error_code\":\"internal_server_error\"}],\"error_report_id\":471}" source=console
+time="2026-05-12T15:04:48Z" level=error msg="[submission] POST http://canvas.io.vn:30080/api/v1/courses/16/assignments/144/submissions returned 500. Body preview: {\"errors\":[{\"message\":\"An error occurred.\",\"error_code\":\"internal_server_error\"}],\"error_report_id\":472}" source=console
+
+running (08m49.0s), 043/100 VUs, 8103 complete and 0 interrupted iterations
+default   [  49% ] 043/100 VUs  08m45.2s/18m00.0s
+
+running (08m50.0s), 043/100 VUs, 8131 complete and 0 interrupted iterations
+default   [  49% ] 043/100 VUs  08m46.2s/18m00.0s
+
+running (08m51.0s), 043/100 VUs, 8156 complete and 0 interrupted iterations
+default   [  49% ] 043/100 VUs  08m47.2s/18m00.0s
+time="2026-05-12T15:04:50Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:04:50Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/17/assignments?per_page=10 returned 500. Body preview: {\"errors\":[{\"message\":\"An error occurred.\",\"error_code\":\"internal_server_error\"}],\"error_report_id\":473}" source=console
+
+running (08m52.0s), 044/100 VUs, 8187 complete and 0 interrupted iterations
+default   [  49% ] 044/100 VUs  08m48.2s/18m00.0s
+
+running (08m53.0s), 044/100 VUs, 8210 complete and 0 interrupted iterations
+default   [  49% ] 044/100 VUs  08m49.2s/18m00.0s
+
+running (08m54.0s), 044/100 VUs, 8244 complete and 0 interrupted iterations
+default   [  49% ] 044/100 VUs  08m50.2s/18m00.0s
+
+running (08m55.0s), 044/100 VUs, 8274 complete and 0 interrupted iterations
+default   [  49% ] 044/100 VUs  08m51.2s/18m00.0s
+
+running (08m56.0s), 044/100 VUs, 8302 complete and 0 interrupted iterations
+default   [  49% ] 044/100 VUs  08m52.2s/18m00.0s
+
+running (08m57.0s), 044/100 VUs, 8327 complete and 0 interrupted iterations
+default   [  49% ] 044/100 VUs  08m53.2s/18m00.0s
+
+running (08m58.0s), 044/100 VUs, 8357 complete and 0 interrupted iterations
+default   [  49% ] 044/100 VUs  08m54.2s/18m00.0s
+
+running (08m59.0s), 044/100 VUs, 8389 complete and 0 interrupted iterations
+default   [  50% ] 044/100 VUs  08m55.2s/18m00.0s
+time="2026-05-12T15:04:58Z" level=error msg="[submission] POST http://canvas.io.vn:30080/api/v1/courses/16/assignments/146/submissions returned 500. Body preview: {\"errors\":[{\"message\":\"An error occurred.\",\"error_code\":\"internal_server_error\"}],\"error_report_id\":474}" source=console
+time="2026-05-12T15:04:58Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/22/quizzes?per_page=10 returned 500. Body preview: {\"errors\":[{\"message\":\"An error occurred.\",\"error_code\":\"internal_server_error\"}],\"error_report_id\":475}" source=console
+
+running (09m00.0s), 044/100 VUs, 8411 complete and 0 interrupted iterations
+default   [  50% ] 044/100 VUs  08m56.2s/18m00.0s
+
+running (09m01.0s), 044/100 VUs, 8445 complete and 0 interrupted iterations
+default   [  50% ] 044/100 VUs  08m57.2s/18m00.0s
+
+running (09m02.0s), 044/100 VUs, 8478 complete and 0 interrupted iterations
+default   [  50% ] 044/100 VUs  08m58.2s/18m00.0s
+
+running (09m03.0s), 044/100 VUs, 8510 complete and 0 interrupted iterations
+default   [  50% ] 044/100 VUs  08m59.2s/18m00.0s
+
+running (09m04.0s), 045/100 VUs, 8538 complete and 0 interrupted iterations
+default   [  50% ] 045/100 VUs  09m00.2s/18m00.0s
+
+running (09m05.0s), 045/100 VUs, 8574 complete and 0 interrupted iterations
+default   [  50% ] 045/100 VUs  09m01.2s/18m00.0s
+
+running (09m06.0s), 045/100 VUs, 8602 complete and 0 interrupted iterations
+default   [  50% ] 045/100 VUs  09m02.2s/18m00.0s
+
+running (09m07.0s), 045/100 VUs, 8635 complete and 0 interrupted iterations
+default   [  50% ] 045/100 VUs  09m03.2s/18m00.0s
+time="2026-05-12T15:05:06Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/19/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:05:06Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/15/assignments?per_page=10 returned 500. Body preview: {\"errors\":[{\"message\":\"An error occurred.\",\"error_code\":\"internal_server_error\"}],\"error_report_id\":476}" source=console
+
+running (09m08.0s), 045/100 VUs, 8662 complete and 0 interrupted iterations
+default   [  50% ] 045/100 VUs  09m04.2s/18m00.0s
+time="2026-05-12T15:05:07Z" level=error msg="[submission] POST http://canvas.io.vn:30080/api/v1/courses/15/assignments/132/submissions returned 500. Body preview: {\"errors\":[{\"message\":\"An error occurred.\",\"error_code\":\"internal_server_error\"}],\"error_report_id\":477}" source=console
+
+running (09m09.0s), 045/100 VUs, 8682 complete and 0 interrupted iterations
+default   [  50% ] 045/100 VUs  09m05.2s/18m00.0s
+
+running (09m10.0s), 045/100 VUs, 8719 complete and 0 interrupted iterations
+default   [  51% ] 045/100 VUs  09m06.2s/18m00.0s
+
+running (09m11.0s), 045/100 VUs, 8750 complete and 0 interrupted iterations
+default   [  51% ] 045/100 VUs  09m07.2s/18m00.0s
+
+running (09m12.0s), 045/100 VUs, 8781 complete and 0 interrupted iterations
+default   [  51% ] 045/100 VUs  09m08.2s/18m00.0s
+
+running (09m13.0s), 045/100 VUs, 8811 complete and 0 interrupted iterations
+default   [  51% ] 045/100 VUs  09m09.2s/18m00.0s
+
+running (09m14.0s), 045/100 VUs, 8848 complete and 0 interrupted iterations
+default   [  51% ] 045/100 VUs  09m10.2s/18m00.0s
+time="2026-05-12T15:05:13Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/17/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (09m15.0s), 045/100 VUs, 8871 complete and 0 interrupted iterations
+default   [  51% ] 045/100 VUs  09m11.2s/18m00.0s
+
+running (09m16.0s), 046/100 VUs, 8896 complete and 0 interrupted iterations
+default   [  51% ] 046/100 VUs  09m12.2s/18m00.0s
+
+running (09m17.0s), 046/100 VUs, 8934 complete and 0 interrupted iterations
+default   [  51% ] 046/100 VUs  09m13.2s/18m00.0s
+
+running (09m18.0s), 046/100 VUs, 8962 complete and 0 interrupted iterations
+default   [  51% ] 046/100 VUs  09m14.2s/18m00.0s
+time="2026-05-12T15:05:18Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/15/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:05:18Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/20/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (09m19.0s), 046/100 VUs, 8999 complete and 0 interrupted iterations
+default   [  51% ] 046/100 VUs  09m15.2s/18m00.0s
+time="2026-05-12T15:05:18Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:05:18Z" level=error msg="[submission] POST http://canvas.io.vn:30080/api/v1/courses/18/assignments/170/submissions returned 500. Body preview: {\"errors\":[{\"message\":\"An error occurred.\",\"error_code\":\"internal_server_error\"}],\"error_report_id\":478}" source=console
+
+running (09m20.0s), 046/100 VUs, 9020 complete and 0 interrupted iterations
+default   [  52% ] 046/100 VUs  09m16.2s/18m00.0s
+
+running (09m21.0s), 046/100 VUs, 9058 complete and 0 interrupted iterations
+default   [  52% ] 046/100 VUs  09m17.2s/18m00.0s
+time="2026-05-12T15:05:20Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/16/modules?per_page=10 returned 500. Body preview: {\"errors\":[{\"message\":\"An error occurred.\",\"error_code\":\"internal_server_error\"}],\"error_report_id\":479}" source=console
+time="2026-05-12T15:05:20Z" level=error msg="[submission] POST http://canvas.io.vn:30080/api/v1/courses/21/assignments/211/submissions returned 500. Body preview: {\"errors\":[{\"message\":\"An error occurred.\",\"error_code\":\"internal_server_error\"}],\"error_report_id\":480}" source=console
+
+running (09m22.0s), 046/100 VUs, 9079 complete and 0 interrupted iterations
+default   [  52% ] 046/100 VUs  09m18.2s/18m00.0s
+
+running (09m23.0s), 046/100 VUs, 9117 complete and 0 interrupted iterations
+default   [  52% ] 046/100 VUs  09m19.2s/18m00.0s
+
+running (09m24.0s), 046/100 VUs, 9148 complete and 0 interrupted iterations
+default   [  52% ] 046/100 VUs  09m20.2s/18m00.0s
+
+running (09m25.0s), 046/100 VUs, 9182 complete and 0 interrupted iterations
+default   [  52% ] 046/100 VUs  09m21.2s/18m00.0s
+
+running (09m26.0s), 046/100 VUs, 9213 complete and 0 interrupted iterations
+default   [  52% ] 046/100 VUs  09m22.2s/18m00.0s
+time="2026-05-12T15:05:25Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/19/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (09m27.0s), 046/100 VUs, 9234 complete and 0 interrupted iterations
+default   [  52% ] 046/100 VUs  09m23.2s/18m00.0s
+
+running (09m28.0s), 047/100 VUs, 9262 complete and 0 interrupted iterations
+default   [  52% ] 047/100 VUs  09m24.2s/18m00.0s
+
+running (09m29.0s), 047/100 VUs, 9295 complete and 0 interrupted iterations
+default   [  52% ] 047/100 VUs  09m25.2s/18m00.0s
+
+running (09m30.0s), 047/100 VUs, 9330 complete and 0 interrupted iterations
+default   [  52% ] 047/100 VUs  09m26.2s/18m00.0s
+
+running (09m31.0s), 047/100 VUs, 9364 complete and 0 interrupted iterations
+default   [  53% ] 047/100 VUs  09m27.2s/18m00.0s
+time="2026-05-12T15:05:30Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/22/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:05:30Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/19/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:05:30Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:05:30Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:05:30Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/17/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:05:30Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (09m32.0s), 047/100 VUs, 9384 complete and 0 interrupted iterations
+default   [  53% ] 047/100 VUs  09m28.2s/18m00.0s
+
+running (09m33.0s), 047/100 VUs, 9409 complete and 0 interrupted iterations
+default   [  53% ] 047/100 VUs  09m29.2s/18m00.0s
+
+running (09m34.0s), 047/100 VUs, 9436 complete and 0 interrupted iterations
+default   [  53% ] 047/100 VUs  09m30.2s/18m00.0s
+
+running (09m35.0s), 047/100 VUs, 9466 complete and 0 interrupted iterations
+default   [  53% ] 047/100 VUs  09m31.2s/18m00.0s
+
+running (09m36.0s), 047/100 VUs, 9496 complete and 0 interrupted iterations
+default   [  53% ] 047/100 VUs  09m32.2s/18m00.0s
+
+running (09m37.0s), 047/100 VUs, 9532 complete and 0 interrupted iterations
+default   [  53% ] 047/100 VUs  09m33.2s/18m00.0s
+
+running (09m38.0s), 047/100 VUs, 9560 complete and 0 interrupted iterations
+default   [  53% ] 047/100 VUs  09m34.2s/18m00.0s
+
+running (09m39.0s), 047/100 VUs, 9593 complete and 0 interrupted iterations
+default   [  53% ] 047/100 VUs  09m35.2s/18m00.0s
+time="2026-05-12T15:05:38Z" level=error msg="[submission] POST http://canvas.io.vn:30080/api/v1/courses/21/assignments/208/submissions returned 500. Body preview: {\"errors\":[{\"message\":\"An error occurred.\",\"error_code\":\"internal_server_error\"}],\"error_report_id\":481}" source=console
+time="2026-05-12T15:05:38Z" level=error msg="[submission] POST http://canvas.io.vn:30080/api/v1/courses/19/assignments/177/submissions returned 500. Body preview: {\"errors\":[{\"message\":\"An error occurred.\",\"error_code\":\"internal_server_error\"}],\"error_report_id\":482}" source=console
+
+running (09m40.0s), 048/100 VUs, 9623 complete and 0 interrupted iterations
+default   [  53% ] 048/100 VUs  09m36.2s/18m00.0s
+
+running (09m41.0s), 048/100 VUs, 9655 complete and 0 interrupted iterations
+default   [  53% ] 048/100 VUs  09m37.2s/18m00.0s
+
+running (09m42.0s), 048/100 VUs, 9687 complete and 0 interrupted iterations
+default   [  54% ] 048/100 VUs  09m38.2s/18m00.0s
+
+running (09m43.0s), 048/100 VUs, 9724 complete and 0 interrupted iterations
+default   [  54% ] 048/100 VUs  09m39.2s/18m00.0s
+
+running (09m44.0s), 048/100 VUs, 9753 complete and 0 interrupted iterations
+default   [  54% ] 048/100 VUs  09m40.2s/18m00.0s
+
+running (09m45.0s), 048/100 VUs, 9785 complete and 0 interrupted iterations
+default   [  54% ] 048/100 VUs  09m41.2s/18m00.0s
+
+running (09m46.0s), 048/100 VUs, 9812 complete and 0 interrupted iterations
+default   [  54% ] 048/100 VUs  09m42.2s/18m00.0s
+
+running (09m47.0s), 048/100 VUs, 9850 complete and 0 interrupted iterations
+default   [  54% ] 048/100 VUs  09m43.2s/18m00.0s
+
+running (09m48.0s), 048/100 VUs, 9874 complete and 0 interrupted iterations
+default   [  54% ] 048/100 VUs  09m44.2s/18m00.0s
+
+running (09m49.0s), 048/100 VUs, 9907 complete and 0 interrupted iterations
+default   [  54% ] 048/100 VUs  09m45.2s/18m00.0s
+time="2026-05-12T15:05:48Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/17/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (09m50.0s), 048/100 VUs, 9933 complete and 0 interrupted iterations
+default   [  54% ] 048/100 VUs  09m46.2s/18m00.0s
+
+running (09m51.0s), 048/100 VUs, 9971 complete and 0 interrupted iterations
+default   [  54% ] 048/100 VUs  09m47.2s/18m00.0s
+
+running (09m52.0s), 049/100 VUs, 9999 complete and 0 interrupted iterations
+default   [  54% ] 049/100 VUs  09m48.2s/18m00.0s
+time="2026-05-12T15:05:51Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/21/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (09m53.0s), 049/100 VUs, 10028 complete and 0 interrupted iterations
+default   [  55% ] 049/100 VUs  09m49.2s/18m00.0s
+
+running (09m54.0s), 049/100 VUs, 10056 complete and 0 interrupted iterations
+default   [  55% ] 049/100 VUs  09m50.2s/18m00.0s
+
+running (09m55.0s), 049/100 VUs, 10090 complete and 0 interrupted iterations
+default   [  55% ] 049/100 VUs  09m51.2s/18m00.0s
+
+running (09m56.0s), 049/100 VUs, 10124 complete and 0 interrupted iterations
+default   [  55% ] 049/100 VUs  09m52.2s/18m00.0s
+
+running (09m57.0s), 049/100 VUs, 10158 complete and 0 interrupted iterations
+default   [  55% ] 049/100 VUs  09m53.2s/18m00.0s
+time="2026-05-12T15:05:56Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/15/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (09m58.0s), 049/100 VUs, 10186 complete and 0 interrupted iterations
+default   [  55% ] 049/100 VUs  09m54.2s/18m00.0s
+time="2026-05-12T15:05:57Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (09m59.0s), 049/100 VUs, 10216 complete and 0 interrupted iterations
+default   [  55% ] 049/100 VUs  09m55.2s/18m00.0s
+
+running (10m00.0s), 049/100 VUs, 10249 complete and 0 interrupted iterations
+default   [  55% ] 049/100 VUs  09m56.2s/18m00.0s
+time="2026-05-12T15:05:59Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/20/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (10m01.0s), 049/100 VUs, 10279 complete and 0 interrupted iterations
+default   [  55% ] 049/100 VUs  09m57.2s/18m00.0s
+
+running (10m02.0s), 049/100 VUs, 10312 complete and 0 interrupted iterations
+default   [  55% ] 049/100 VUs  09m58.2s/18m00.0s
+
+running (10m03.0s), 049/100 VUs, 10346 complete and 0 interrupted iterations
+default   [  55% ] 049/100 VUs  09m59.2s/18m00.0s
+
+running (10m04.0s), 050/100 VUs, 10377 complete and 0 interrupted iterations
+default   [  56% ] 050/100 VUs  10m00.2s/18m00.0s
+time="2026-05-12T15:06:03Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/21/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:03Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/18/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:03Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:03Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/17/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:03Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:03Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/19/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:03Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (10m05.0s), 050/100 VUs, 10404 complete and 0 interrupted iterations
+default   [  56% ] 050/100 VUs  10m01.2s/18m00.0s
+
+running (10m06.0s), 050/100 VUs, 10442 complete and 0 interrupted iterations
+default   [  56% ] 050/100 VUs  10m02.2s/18m00.0s
+time="2026-05-12T15:06:05Z" level=error msg="[submission] POST http://canvas.io.vn:30080/api/v1/courses/15/assignments/132/submissions returned 500. Body preview: {\"errors\":[{\"message\":\"An error occurred.\",\"error_code\":\"internal_server_error\"}],\"error_report_id\":483}" source=console
+
+running (10m07.0s), 050/100 VUs, 10470 complete and 0 interrupted iterations
+default   [  56% ] 050/100 VUs  10m03.2s/18m00.0s
+
+running (10m08.0s), 050/100 VUs, 10507 complete and 0 interrupted iterations
+default   [  56% ] 050/100 VUs  10m04.2s/18m00.0s
+
+running (10m09.0s), 050/100 VUs, 10534 complete and 0 interrupted iterations
+default   [  56% ] 050/100 VUs  10m05.2s/18m00.0s
+
+running (10m10.0s), 050/100 VUs, 10558 complete and 0 interrupted iterations
+default   [  56% ] 050/100 VUs  10m06.2s/18m00.0s
+
+running (10m11.0s), 050/100 VUs, 10583 complete and 0 interrupted iterations
+default   [  56% ] 050/100 VUs  10m07.2s/18m00.0s
+time="2026-05-12T15:06:10Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:10Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/18/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (10m12.0s), 050/100 VUs, 10610 complete and 0 interrupted iterations
+default   [  56% ] 050/100 VUs  10m08.2s/18m00.0s
+
+running (10m13.0s), 050/100 VUs, 10640 complete and 0 interrupted iterations
+default   [  56% ] 050/100 VUs  10m09.2s/18m00.0s
+
+running (10m14.0s), 050/100 VUs, 10671 complete and 0 interrupted iterations
+default   [  57% ] 050/100 VUs  10m10.2s/18m00.0s
+time="2026-05-12T15:06:13Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/22/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:13Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (10m15.0s), 050/100 VUs, 10694 complete and 0 interrupted iterations
+default   [  57% ] 050/100 VUs  10m11.2s/18m00.0s
+
+running (10m16.0s), 051/100 VUs, 10732 complete and 0 interrupted iterations
+default   [  57% ] 051/100 VUs  10m12.2s/18m00.0s
+time="2026-05-12T15:06:15Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/18/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:15Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/21/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:15Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (10m17.0s), 051/100 VUs, 10767 complete and 0 interrupted iterations
+default   [  57% ] 051/100 VUs  10m13.2s/18m00.0s
+
+running (10m18.0s), 051/100 VUs, 10803 complete and 0 interrupted iterations
+default   [  57% ] 051/100 VUs  10m14.2s/18m00.0s
+time="2026-05-12T15:06:17Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:17Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:17Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/16/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (10m19.0s), 051/100 VUs, 10837 complete and 0 interrupted iterations
+default   [  57% ] 051/100 VUs  10m15.2s/18m00.0s
+
+running (10m20.0s), 051/100 VUs, 10867 complete and 0 interrupted iterations
+default   [  57% ] 051/100 VUs  10m16.2s/18m00.0s
+
+running (10m21.0s), 051/100 VUs, 10902 complete and 0 interrupted iterations
+default   [  57% ] 051/100 VUs  10m17.2s/18m00.0s
+
+running (10m22.0s), 051/100 VUs, 10936 complete and 0 interrupted iterations
+default   [  57% ] 051/100 VUs  10m18.2s/18m00.0s
+time="2026-05-12T15:06:21Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/18/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:21Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:21Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/20/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (10m23.0s), 051/100 VUs, 10967 complete and 0 interrupted iterations
+default   [  57% ] 051/100 VUs  10m19.2s/18m00.0s
+
+running (10m24.0s), 051/100 VUs, 11004 complete and 0 interrupted iterations
+default   [  57% ] 051/100 VUs  10m20.2s/18m00.0s
+time="2026-05-12T15:06:23Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/15/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:23Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:23Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/16/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:23Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/19/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (10m25.0s), 051/100 VUs, 11033 complete and 0 interrupted iterations
+default   [  58% ] 051/100 VUs  10m21.2s/18m00.0s
+
+running (10m26.0s), 051/100 VUs, 11065 complete and 0 interrupted iterations
+default   [  58% ] 051/100 VUs  10m22.2s/18m00.0s
+
+running (10m27.0s), 051/100 VUs, 11108 complete and 0 interrupted iterations
+default   [  58% ] 051/100 VUs  10m23.2s/18m00.0s
+time="2026-05-12T15:06:26Z" level=error msg="[submission] POST http://canvas.io.vn:30080/api/v1/courses/21/assignments/208/submissions returned 500. Body preview: {\"errors\":[{\"message\":\"An error occurred.\",\"error_code\":\"internal_server_error\"}],\"error_report_id\":484}" source=console
+
+running (10m28.0s), 052/100 VUs, 11131 complete and 0 interrupted iterations
+default   [  58% ] 052/100 VUs  10m24.2s/18m00.0s
+
+running (10m29.0s), 052/100 VUs, 11165 complete and 0 interrupted iterations
+default   [  58% ] 052/100 VUs  10m25.2s/18m00.0s
+
+running (10m30.0s), 052/100 VUs, 11183 complete and 0 interrupted iterations
+default   [  58% ] 052/100 VUs  10m26.2s/18m00.0s
+
+running (10m31.0s), 052/100 VUs, 11216 complete and 0 interrupted iterations
+default   [  58% ] 052/100 VUs  10m27.2s/18m00.0s
+time="2026-05-12T15:06:30Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/20/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:30Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/19/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:30Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/18/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:30Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/16/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (10m32.0s), 052/100 VUs, 11244 complete and 0 interrupted iterations
+default   [  58% ] 052/100 VUs  10m28.2s/18m00.0s
+time="2026-05-12T15:06:32Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/21/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (10m33.0s), 052/100 VUs, 11278 complete and 0 interrupted iterations
+default   [  58% ] 052/100 VUs  10m29.2s/18m00.0s
+
+running (10m34.0s), 052/100 VUs, 11308 complete and 0 interrupted iterations
+default   [  58% ] 052/100 VUs  10m30.2s/18m00.0s
+
+running (10m35.0s), 052/100 VUs, 11335 complete and 0 interrupted iterations
+default   [  58% ] 052/100 VUs  10m31.2s/18m00.0s
+
+running (10m36.0s), 052/100 VUs, 11366 complete and 0 interrupted iterations
+default   [  59% ] 052/100 VUs  10m32.2s/18m00.0s
+time="2026-05-12T15:06:35Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (10m37.0s), 052/100 VUs, 11401 complete and 0 interrupted iterations
+default   [  59% ] 052/100 VUs  10m33.2s/18m00.0s
+time="2026-05-12T15:06:36Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/17/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:36Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:36Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/20/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:36Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:36Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/15/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:36Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:36Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/18/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (10m38.0s), 052/100 VUs, 11431 complete and 0 interrupted iterations
+default   [  59% ] 052/100 VUs  10m34.2s/18m00.0s
+
+running (10m39.0s), 052/100 VUs, 11461 complete and 0 interrupted iterations
+default   [  59% ] 052/100 VUs  10m35.2s/18m00.0s
+
+running (10m40.0s), 053/100 VUs, 11499 complete and 0 interrupted iterations
+default   [  59% ] 053/100 VUs  10m36.2s/18m00.0s
+
+running (10m41.0s), 053/100 VUs, 11529 complete and 0 interrupted iterations
+default   [  59% ] 053/100 VUs  10m37.2s/18m00.0s
+
+running (10m42.0s), 053/100 VUs, 11565 complete and 0 interrupted iterations
+default   [  59% ] 053/100 VUs  10m38.2s/18m00.0s
+
+running (10m43.0s), 053/100 VUs, 11607 complete and 0 interrupted iterations
+default   [  59% ] 053/100 VUs  10m39.2s/18m00.0s
+time="2026-05-12T15:06:43Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/15/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:43Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/18/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (10m44.0s), 053/100 VUs, 11638 complete and 0 interrupted iterations
+default   [  59% ] 053/100 VUs  10m40.2s/18m00.0s
+time="2026-05-12T15:06:43Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/19/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:43Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/16/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:43Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/16/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:43Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/18/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (10m45.0s), 053/100 VUs, 11669 complete and 0 interrupted iterations
+default   [  59% ] 053/100 VUs  10m41.2s/18m00.0s
+time="2026-05-12T15:06:44Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:44Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/19/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:44Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/17/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (10m46.0s), 053/100 VUs, 11698 complete and 0 interrupted iterations
+default   [  59% ] 053/100 VUs  10m42.2s/18m00.0s
+
+running (10m47.0s), 053/100 VUs, 11736 complete and 0 interrupted iterations
+default   [  60% ] 053/100 VUs  10m43.2s/18m00.0s
+
+running (10m48.0s), 053/100 VUs, 11769 complete and 0 interrupted iterations
+default   [  60% ] 053/100 VUs  10m44.2s/18m00.0s
+
+running (10m49.0s), 053/100 VUs, 11806 complete and 0 interrupted iterations
+default   [  60% ] 053/100 VUs  10m45.2s/18m00.0s
+
+running (10m50.0s), 053/100 VUs, 11838 complete and 0 interrupted iterations
+default   [  60% ] 053/100 VUs  10m46.2s/18m00.0s
+time="2026-05-12T15:06:49Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/17/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:49Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (10m51.0s), 053/100 VUs, 11874 complete and 0 interrupted iterations
+default   [  60% ] 053/100 VUs  10m47.2s/18m00.0s
+
+running (10m52.0s), 054/100 VUs, 11905 complete and 0 interrupted iterations
+default   [  60% ] 054/100 VUs  10m48.2s/18m00.0s
+
+running (10m53.0s), 054/100 VUs, 11930 complete and 0 interrupted iterations
+default   [  60% ] 054/100 VUs  10m49.2s/18m00.0s
+time="2026-05-12T15:06:52Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/16/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:52Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/18/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:52Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/19/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (10m54.0s), 054/100 VUs, 11973 complete and 0 interrupted iterations
+default   [  60% ] 054/100 VUs  10m50.2s/18m00.0s
+time="2026-05-12T15:06:53Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/20/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (10m55.0s), 054/100 VUs, 12005 complete and 0 interrupted iterations
+default   [  60% ] 054/100 VUs  10m51.2s/18m00.0s
+
+running (10m56.0s), 054/100 VUs, 12034 complete and 0 interrupted iterations
+default   [  60% ] 054/100 VUs  10m52.2s/18m00.0s
+
+running (10m57.0s), 054/100 VUs, 12069 complete and 0 interrupted iterations
+default   [  60% ] 054/100 VUs  10m53.2s/18m00.0s
+time="2026-05-12T15:06:56Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/22/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:56Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/15/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (10m58.0s), 054/100 VUs, 12097 complete and 0 interrupted iterations
+default   [  61% ] 054/100 VUs  10m54.2s/18m00.0s
+
+running (10m59.0s), 054/100 VUs, 12130 complete and 0 interrupted iterations
+default   [  61% ] 054/100 VUs  10m55.2s/18m00.0s
+time="2026-05-12T15:06:58Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/15/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:06:58Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/22/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m00.0s), 054/100 VUs, 12161 complete and 0 interrupted iterations
+default   [  61% ] 054/100 VUs  10m56.2s/18m00.0s
+
+running (11m01.0s), 054/100 VUs, 12190 complete and 0 interrupted iterations
+default   [  61% ] 054/100 VUs  10m57.2s/18m00.0s
+
+running (11m02.0s), 054/100 VUs, 12228 complete and 0 interrupted iterations
+default   [  61% ] 054/100 VUs  10m58.2s/18m00.0s
+
+running (11m03.0s), 054/100 VUs, 12262 complete and 0 interrupted iterations
+default   [  61% ] 054/100 VUs  10m59.2s/18m00.0s
+
+running (11m04.0s), 055/100 VUs, 12295 complete and 0 interrupted iterations
+default   [  61% ] 055/100 VUs  11m00.2s/18m00.0s
+time="2026-05-12T15:07:03Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/17/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:03Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/20/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:03Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/22/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:03Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/20/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:03Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:03Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/22/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m05.0s), 055/100 VUs, 12328 complete and 0 interrupted iterations
+default   [  61% ] 055/100 VUs  11m01.2s/18m00.0s
+
+running (11m06.0s), 055/100 VUs, 12358 complete and 0 interrupted iterations
+default   [  61% ] 055/100 VUs  11m02.2s/18m00.0s
+time="2026-05-12T15:07:05Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/18/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:05Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:05Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/17/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:05Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/22/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:05Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/18/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:05Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/18/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:05Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/22/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:05Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/18/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:05Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/15/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:05Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/20/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:05Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:05Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/18/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:05Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/16/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m07.0s), 055/100 VUs, 12394 complete and 0 interrupted iterations
+default   [  61% ] 055/100 VUs  11m03.2s/18m00.0s
+time="2026-05-12T15:07:06Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/15/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:06Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/19/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:06Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:06Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/19/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:06Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/21/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m08.0s), 055/100 VUs, 12423 complete and 0 interrupted iterations
+default   [  62% ] 055/100 VUs  11m04.2s/18m00.0s
+
+running (11m09.0s), 055/100 VUs, 12465 complete and 0 interrupted iterations
+default   [  62% ] 055/100 VUs  11m05.2s/18m00.0s
+
+running (11m10.0s), 055/100 VUs, 12498 complete and 0 interrupted iterations
+default   [  62% ] 055/100 VUs  11m06.2s/18m00.0s
+time="2026-05-12T15:07:09Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/17/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:09Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/15/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m11.0s), 055/100 VUs, 12536 complete and 0 interrupted iterations
+default   [  62% ] 055/100 VUs  11m07.2s/18m00.0s
+time="2026-05-12T15:07:10Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/17/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m12.0s), 055/100 VUs, 12560 complete and 0 interrupted iterations
+default   [  62% ] 055/100 VUs  11m08.2s/18m00.0s
+time="2026-05-12T15:07:11Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m13.0s), 055/100 VUs, 12591 complete and 0 interrupted iterations
+default   [  62% ] 055/100 VUs  11m09.2s/18m00.0s
+time="2026-05-12T15:07:13Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/20/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:13Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m14.0s), 055/100 VUs, 12624 complete and 0 interrupted iterations
+default   [  62% ] 055/100 VUs  11m10.2s/18m00.0s
+
+running (11m15.0s), 055/100 VUs, 12655 complete and 0 interrupted iterations
+default   [  62% ] 055/100 VUs  11m11.2s/18m00.0s
+
+running (11m16.0s), 056/100 VUs, 12687 complete and 0 interrupted iterations
+default   [  62% ] 056/100 VUs  11m12.2s/18m00.0s
+
+running (11m17.0s), 056/100 VUs, 12725 complete and 0 interrupted iterations
+default   [  62% ] 056/100 VUs  11m13.2s/18m00.0s
+time="2026-05-12T15:07:16Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/17/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m18.0s), 056/100 VUs, 12760 complete and 0 interrupted iterations
+default   [  62% ] 056/100 VUs  11m14.2s/18m00.0s
+time="2026-05-12T15:07:17Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/18/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m19.0s), 056/100 VUs, 12799 complete and 0 interrupted iterations
+default   [  63% ] 056/100 VUs  11m15.2s/18m00.0s
+time="2026-05-12T15:07:18Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/20/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:19Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/18/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m20.0s), 056/100 VUs, 12824 complete and 0 interrupted iterations
+default   [  63% ] 056/100 VUs  11m16.2s/18m00.0s
+time="2026-05-12T15:07:19Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/18/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:19Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:19Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/15/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m21.0s), 056/100 VUs, 12857 complete and 0 interrupted iterations
+default   [  63% ] 056/100 VUs  11m17.2s/18m00.0s
+time="2026-05-12T15:07:20Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/15/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:20Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/22/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:20Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/21/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:20Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:21Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/16/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:21Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/20/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m22.0s), 056/100 VUs, 12887 complete and 0 interrupted iterations
+default   [  63% ] 056/100 VUs  11m18.2s/18m00.0s
+
+running (11m23.0s), 056/100 VUs, 12911 complete and 0 interrupted iterations
+default   [  63% ] 056/100 VUs  11m19.2s/18m00.0s
+time="2026-05-12T15:07:22Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:22Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m24.0s), 056/100 VUs, 12948 complete and 0 interrupted iterations
+default   [  63% ] 056/100 VUs  11m20.2s/18m00.0s
+
+running (11m25.0s), 056/100 VUs, 12984 complete and 0 interrupted iterations
+default   [  63% ] 056/100 VUs  11m21.2s/18m00.0s
+time="2026-05-12T15:07:24Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/22/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:24Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/15/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m26.0s), 056/100 VUs, 13014 complete and 0 interrupted iterations
+default   [  63% ] 056/100 VUs  11m22.2s/18m00.0s
+time="2026-05-12T15:07:25Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/20/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m27.0s), 056/100 VUs, 13044 complete and 0 interrupted iterations
+default   [  63% ] 056/100 VUs  11m23.2s/18m00.0s
+
+running (11m28.0s), 057/100 VUs, 13077 complete and 0 interrupted iterations
+default   [  63% ] 057/100 VUs  11m24.2s/18m00.0s
+time="2026-05-12T15:07:27Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/16/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:27Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/16/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:27Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/22/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:27Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/20/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:27Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:27Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/22/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:27Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/21/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:27Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/17/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m29.0s), 057/100 VUs, 13115 complete and 0 interrupted iterations
+default   [  63% ] 057/100 VUs  11m25.2s/18m00.0s
+
+running (11m30.0s), 057/100 VUs, 13152 complete and 0 interrupted iterations
+default   [  64% ] 057/100 VUs  11m26.2s/18m00.0s
+
+running (11m31.0s), 057/100 VUs, 13184 complete and 0 interrupted iterations
+default   [  64% ] 057/100 VUs  11m27.2s/18m00.0s
+
+running (11m32.0s), 057/100 VUs, 13222 complete and 0 interrupted iterations
+default   [  64% ] 057/100 VUs  11m28.2s/18m00.0s
+time="2026-05-12T15:07:32Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:32Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/16/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m33.0s), 057/100 VUs, 13243 complete and 0 interrupted iterations
+default   [  64% ] 057/100 VUs  11m29.2s/18m00.0s
+time="2026-05-12T15:07:33Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/15/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:33Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/18/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:33Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/19/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:33Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:33Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/17/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:33Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/16/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:33Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/16/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m34.0s), 057/100 VUs, 13273 complete and 0 interrupted iterations
+default   [  64% ] 057/100 VUs  11m30.2s/18m00.0s
+time="2026-05-12T15:07:33Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/20/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:33Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/20/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:33Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/16/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m35.0s), 057/100 VUs, 13302 complete and 0 interrupted iterations
+default   [  64% ] 057/100 VUs  11m31.2s/18m00.0s
+time="2026-05-12T15:07:34Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/22/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:34Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:34Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/17/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m36.0s), 057/100 VUs, 13334 complete and 0 interrupted iterations
+default   [  64% ] 057/100 VUs  11m32.2s/18m00.0s
+time="2026-05-12T15:07:35Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/15/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:35Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/21/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:35Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/17/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m37.0s), 057/100 VUs, 13371 complete and 0 interrupted iterations
+default   [  64% ] 057/100 VUs  11m33.2s/18m00.0s
+
+running (11m38.0s), 057/100 VUs, 13401 complete and 0 interrupted iterations
+default   [  64% ] 057/100 VUs  11m34.2s/18m00.0s
+
+running (11m39.0s), 057/100 VUs, 13438 complete and 0 interrupted iterations
+default   [  64% ] 057/100 VUs  11m35.2s/18m00.0s
+
+running (11m40.0s), 058/100 VUs, 13466 complete and 0 interrupted iterations
+default   [  64% ] 058/100 VUs  11m36.2s/18m00.0s
+
+running (11m41.0s), 058/100 VUs, 13488 complete and 0 interrupted iterations
+default   [  65% ] 058/100 VUs  11m37.2s/18m00.0s
+time="2026-05-12T15:07:40Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/17/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m42.0s), 058/100 VUs, 13517 complete and 0 interrupted iterations
+default   [  65% ] 058/100 VUs  11m38.2s/18m00.0s
+
+running (11m43.0s), 058/100 VUs, 13556 complete and 0 interrupted iterations
+default   [  65% ] 058/100 VUs  11m39.2s/18m00.0s
+
+running (11m44.0s), 058/100 VUs, 13597 complete and 0 interrupted iterations
+default   [  65% ] 058/100 VUs  11m40.2s/18m00.0s
+
+running (11m45.0s), 058/100 VUs, 13627 complete and 0 interrupted iterations
+default   [  65% ] 058/100 VUs  11m41.2s/18m00.0s
+time="2026-05-12T15:07:44Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/16/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:44Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/21/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:44Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/15/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:44Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/16/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m46.0s), 058/100 VUs, 13660 complete and 0 interrupted iterations
+default   [  65% ] 058/100 VUs  11m42.2s/18m00.0s
+
+running (11m47.0s), 058/100 VUs, 13685 complete and 0 interrupted iterations
+default   [  65% ] 058/100 VUs  11m43.2s/18m00.0s
+
+running (11m48.0s), 058/100 VUs, 13714 complete and 0 interrupted iterations
+default   [  65% ] 058/100 VUs  11m44.2s/18m00.0s
+
+running (11m49.0s), 058/100 VUs, 13746 complete and 0 interrupted iterations
+default   [  65% ] 058/100 VUs  11m45.2s/18m00.0s
+time="2026-05-12T15:07:49Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/20/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:49Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/20/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m50.0s), 058/100 VUs, 13778 complete and 0 interrupted iterations
+default   [  65% ] 058/100 VUs  11m46.2s/18m00.0s
+
+running (11m51.0s), 058/100 VUs, 13802 complete and 0 interrupted iterations
+default   [  65% ] 058/100 VUs  11m47.2s/18m00.0s
+
+running (11m52.0s), 059/100 VUs, 13839 complete and 0 interrupted iterations
+default   [  66% ] 059/100 VUs  11m48.2s/18m00.0s
+
+running (11m53.0s), 059/100 VUs, 13865 complete and 0 interrupted iterations
+default   [  66% ] 059/100 VUs  11m49.2s/18m00.0s
+
+running (11m54.0s), 059/100 VUs, 13900 complete and 0 interrupted iterations
+default   [  66% ] 059/100 VUs  11m50.2s/18m00.0s
+
+running (11m55.0s), 059/100 VUs, 13926 complete and 0 interrupted iterations
+default   [  66% ] 059/100 VUs  11m51.2s/18m00.0s
+
+running (11m56.0s), 059/100 VUs, 13960 complete and 0 interrupted iterations
+default   [  66% ] 059/100 VUs  11m52.2s/18m00.0s
+time="2026-05-12T15:07:55Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/20/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:55Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/22/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:55Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:55Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/21/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:55Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/19/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:55Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/20/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:55Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/22/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:56Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:56Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/21/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m57.0s), 059/100 VUs, 13987 complete and 0 interrupted iterations
+default   [  66% ] 059/100 VUs  11m53.2s/18m00.0s
+time="2026-05-12T15:07:56Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m58.0s), 059/100 VUs, 14019 complete and 0 interrupted iterations
+default   [  66% ] 059/100 VUs  11m54.2s/18m00.0s
+time="2026-05-12T15:07:57Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/21/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:07:57Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/20/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (11m59.0s), 059/100 VUs, 14057 complete and 0 interrupted iterations
+default   [  66% ] 059/100 VUs  11m55.2s/18m00.0s
+
+running (12m00.0s), 059/100 VUs, 14089 complete and 0 interrupted iterations
+default   [  66% ] 059/100 VUs  11m56.2s/18m00.0s
+time="2026-05-12T15:07:59Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/19/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:00Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/15/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:00Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:00Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/18/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:00Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (12m01.0s), 059/100 VUs, 14126 complete and 0 interrupted iterations
+default   [  66% ] 059/100 VUs  11m57.2s/18m00.0s
+time="2026-05-12T15:08:00Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/20/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:00Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/21/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:00Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/21/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:00Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/22/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:00Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/22/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (12m02.0s), 059/100 VUs, 14157 complete and 0 interrupted iterations
+default   [  67% ] 059/100 VUs  11m58.2s/18m00.0s
+time="2026-05-12T15:08:02Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (12m03.0s), 059/100 VUs, 14191 complete and 0 interrupted iterations
+default   [  67% ] 059/100 VUs  11m59.2s/18m00.0s
+
+running (12m04.0s), 060/100 VUs, 14221 complete and 0 interrupted iterations
+default   [  67% ] 060/100 VUs  12m00.2s/18m00.0s
+
+running (12m05.0s), 060/100 VUs, 14243 complete and 0 interrupted iterations
+default   [  67% ] 060/100 VUs  12m01.2s/18m00.0s
+time="2026-05-12T15:08:05Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/22/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (12m06.0s), 060/100 VUs, 14279 complete and 0 interrupted iterations
+default   [  67% ] 060/100 VUs  12m02.2s/18m00.0s
+
+running (12m07.0s), 060/100 VUs, 14299 complete and 0 interrupted iterations
+default   [  67% ] 060/100 VUs  12m03.2s/18m00.0s
+
+running (12m08.0s), 060/100 VUs, 14337 complete and 0 interrupted iterations
+default   [  67% ] 060/100 VUs  12m04.2s/18m00.0s
+
+running (12m09.0s), 060/100 VUs, 14369 complete and 0 interrupted iterations
+default   [  67% ] 060/100 VUs  12m05.2s/18m00.0s
+
+running (12m10.0s), 061/100 VUs, 14410 complete and 0 interrupted iterations
+default   [  67% ] 061/100 VUs  12m06.2s/18m00.0s
+
+running (12m11.0s), 061/100 VUs, 14442 complete and 0 interrupted iterations
+default   [  67% ] 061/100 VUs  12m07.2s/18m00.0s
+
+running (12m12.0s), 061/100 VUs, 14471 complete and 0 interrupted iterations
+default   [  67% ] 061/100 VUs  12m08.2s/18m00.0s
+
+running (12m13.0s), 061/100 VUs, 14502 complete and 0 interrupted iterations
+default   [  68% ] 061/100 VUs  12m09.2s/18m00.0s
+
+running (12m14.0s), 061/100 VUs, 14524 complete and 0 interrupted iterations
+default   [  68% ] 061/100 VUs  12m10.2s/18m00.0s
+
+running (12m15.0s), 061/100 VUs, 14559 complete and 0 interrupted iterations
+default   [  68% ] 061/100 VUs  12m11.2s/18m00.0s
+
+running (12m16.0s), 062/100 VUs, 14583 complete and 0 interrupted iterations
+default   [  68% ] 062/100 VUs  12m12.2s/18m00.0s
+
+running (12m17.0s), 062/100 VUs, 14614 complete and 0 interrupted iterations
+default   [  68% ] 062/100 VUs  12m13.2s/18m00.0s
+
+running (12m18.0s), 062/100 VUs, 14645 complete and 0 interrupted iterations
+default   [  68% ] 062/100 VUs  12m14.2s/18m00.0s
+
+running (12m19.0s), 062/100 VUs, 14676 complete and 0 interrupted iterations
+default   [  68% ] 062/100 VUs  12m15.2s/18m00.0s
+
+running (12m20.0s), 062/100 VUs, 14707 complete and 0 interrupted iterations
+default   [  68% ] 062/100 VUs  12m16.2s/18m00.0s
+
+running (12m21.0s), 062/100 VUs, 14747 complete and 0 interrupted iterations
+default   [  68% ] 062/100 VUs  12m17.2s/18m00.0s
+
+running (12m22.0s), 063/100 VUs, 14772 complete and 0 interrupted iterations
+default   [  68% ] 063/100 VUs  12m18.2s/18m00.0s
+
+running (12m23.0s), 063/100 VUs, 14811 complete and 0 interrupted iterations
+default   [  68% ] 063/100 VUs  12m19.2s/18m00.0s
+
+running (12m24.0s), 063/100 VUs, 14844 complete and 0 interrupted iterations
+default   [  69% ] 063/100 VUs  12m20.2s/18m00.0s
+
+running (12m25.0s), 063/100 VUs, 14880 complete and 0 interrupted iterations
+default   [  69% ] 063/100 VUs  12m21.2s/18m00.0s
+
+running (12m26.0s), 063/100 VUs, 14906 complete and 0 interrupted iterations
+default   [  69% ] 063/100 VUs  12m22.2s/18m00.0s
+
+running (12m27.0s), 063/100 VUs, 14942 complete and 0 interrupted iterations
+default   [  69% ] 063/100 VUs  12m23.2s/18m00.0s
+
+running (12m28.0s), 064/100 VUs, 14975 complete and 0 interrupted iterations
+default   [  69% ] 064/100 VUs  12m24.2s/18m00.0s
+
+running (12m29.0s), 064/100 VUs, 15018 complete and 0 interrupted iterations
+default   [  69% ] 064/100 VUs  12m25.2s/18m00.0s
+
+running (12m30.0s), 064/100 VUs, 15049 complete and 0 interrupted iterations
+default   [  69% ] 064/100 VUs  12m26.2s/18m00.0s
+
+running (12m31.0s), 064/100 VUs, 15079 complete and 0 interrupted iterations
+default   [  69% ] 064/100 VUs  12m27.2s/18m00.0s
+
+running (12m32.0s), 064/100 VUs, 15107 complete and 0 interrupted iterations
+default   [  69% ] 064/100 VUs  12m28.2s/18m00.0s
+
+running (12m33.0s), 064/100 VUs, 15139 complete and 0 interrupted iterations
+default   [  69% ] 064/100 VUs  12m29.2s/18m00.0s
+time="2026-05-12T15:08:32Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:32Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (12m34.0s), 065/100 VUs, 15177 complete and 0 interrupted iterations
+default   [  69% ] 065/100 VUs  12m30.2s/18m00.0s
+
+running (12m35.0s), 065/100 VUs, 15216 complete and 0 interrupted iterations
+default   [  70% ] 065/100 VUs  12m31.2s/18m00.0s
+time="2026-05-12T15:08:34Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/18/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:34Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/18/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:34Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/17/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (12m36.0s), 065/100 VUs, 15251 complete and 0 interrupted iterations
+default   [  70% ] 065/100 VUs  12m32.2s/18m00.0s
+
+running (12m37.0s), 065/100 VUs, 15284 complete and 0 interrupted iterations
+default   [  70% ] 065/100 VUs  12m33.2s/18m00.0s
+
+running (12m38.0s), 065/100 VUs, 15315 complete and 0 interrupted iterations
+default   [  70% ] 065/100 VUs  12m34.2s/18m00.0s
+
+running (12m39.0s), 065/100 VUs, 15340 complete and 0 interrupted iterations
+default   [  70% ] 065/100 VUs  12m35.2s/18m00.0s
+
+running (12m40.0s), 066/100 VUs, 15367 complete and 0 interrupted iterations
+default   [  70% ] 066/100 VUs  12m36.2s/18m00.0s
+
+running (12m41.0s), 066/100 VUs, 15397 complete and 0 interrupted iterations
+default   [  70% ] 066/100 VUs  12m37.2s/18m00.0s
+
+running (12m42.0s), 066/100 VUs, 15428 complete and 0 interrupted iterations
+default   [  70% ] 066/100 VUs  12m38.2s/18m00.0s
+time="2026-05-12T15:08:41Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/16/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (12m43.0s), 066/100 VUs, 15460 complete and 0 interrupted iterations
+default   [  70% ] 066/100 VUs  12m39.2s/18m00.0s
+time="2026-05-12T15:08:42Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/22/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:42Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/16/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:42Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/17/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:42Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (12m44.0s), 066/100 VUs, 15485 complete and 0 interrupted iterations
+default   [  70% ] 066/100 VUs  12m40.2s/18m00.0s
+
+running (12m45.0s), 066/100 VUs, 15524 complete and 0 interrupted iterations
+default   [  70% ] 066/100 VUs  12m41.2s/18m00.0s
+
+running (12m46.0s), 067/100 VUs, 15553 complete and 0 interrupted iterations
+default   [  71% ] 067/100 VUs  12m42.2s/18m00.0s
+
+running (12m47.0s), 067/100 VUs, 15587 complete and 0 interrupted iterations
+default   [  71% ] 067/100 VUs  12m43.2s/18m00.0s
+
+running (12m48.0s), 067/100 VUs, 15619 complete and 0 interrupted iterations
+default   [  71% ] 067/100 VUs  12m44.2s/18m00.0s
+
+running (12m49.0s), 067/100 VUs, 15650 complete and 0 interrupted iterations
+default   [  71% ] 067/100 VUs  12m45.2s/18m00.0s
+
+running (12m50.0s), 067/100 VUs, 15679 complete and 0 interrupted iterations
+default   [  71% ] 067/100 VUs  12m46.2s/18m00.0s
+
+running (12m51.0s), 067/100 VUs, 15717 complete and 0 interrupted iterations
+default   [  71% ] 067/100 VUs  12m47.2s/18m00.0s
+
+running (12m52.0s), 068/100 VUs, 15740 complete and 0 interrupted iterations
+default   [  71% ] 068/100 VUs  12m48.2s/18m00.0s
+time="2026-05-12T15:08:51Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/20/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:51Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:51Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/22/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:51Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/18/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:51Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (12m53.0s), 068/100 VUs, 15773 complete and 0 interrupted iterations
+default   [  71% ] 068/100 VUs  12m49.2s/18m00.0s
+
+running (12m54.0s), 068/100 VUs, 15806 complete and 0 interrupted iterations
+default   [  71% ] 068/100 VUs  12m50.2s/18m00.0s
+time="2026-05-12T15:08:53Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/15/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (12m55.0s), 068/100 VUs, 15832 complete and 0 interrupted iterations
+default   [  71% ] 068/100 VUs  12m51.2s/18m00.0s
+
+running (12m56.0s), 068/100 VUs, 15871 complete and 0 interrupted iterations
+default   [  72% ] 068/100 VUs  12m52.2s/18m00.0s
+
+running (12m57.0s), 068/100 VUs, 15907 complete and 0 interrupted iterations
+default   [  72% ] 068/100 VUs  12m53.2s/18m00.0s
+time="2026-05-12T15:08:56Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/19/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:56Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/22/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:56Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/18/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:56Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/16/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:56Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/20/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:56Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/22/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:56Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/16/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:56Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/16/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (12m58.0s), 069/100 VUs, 15936 complete and 0 interrupted iterations
+default   [  72% ] 069/100 VUs  12m54.2s/18m00.0s
+
+running (12m59.0s), 069/100 VUs, 15975 complete and 0 interrupted iterations
+default   [  72% ] 069/100 VUs  12m55.2s/18m00.0s
+time="2026-05-12T15:08:58Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/21/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:58Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/22/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:58Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/17/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:58Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/16/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:58Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/15/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:08:58Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (13m00.0s), 069/100 VUs, 16004 complete and 0 interrupted iterations
+default   [  72% ] 069/100 VUs  12m56.2s/18m00.0s
+
+running (13m01.0s), 069/100 VUs, 16042 complete and 0 interrupted iterations
+default   [  72% ] 069/100 VUs  12m57.2s/18m00.0s
+
+running (13m02.0s), 069/100 VUs, 16084 complete and 0 interrupted iterations
+default   [  72% ] 069/100 VUs  12m58.2s/18m00.0s
+
+running (13m03.0s), 069/100 VUs, 16116 complete and 0 interrupted iterations
+default   [  72% ] 069/100 VUs  12m59.2s/18m00.0s
+
+running (13m04.0s), 070/100 VUs, 16145 complete and 0 interrupted iterations
+default   [  72% ] 070/100 VUs  13m00.2s/18m00.0s
+time="2026-05-12T15:09:03Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/19/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:09:03Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (13m05.0s), 070/100 VUs, 16178 complete and 0 interrupted iterations
+default   [  72% ] 070/100 VUs  13m01.2s/18m00.0s
+
+running (13m06.0s), 070/100 VUs, 16211 complete and 0 interrupted iterations
+default   [  72% ] 070/100 VUs  13m02.2s/18m00.0s
+time="2026-05-12T15:09:05Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/16/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:09:05Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:09:06Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/20/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:09:06Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (13m07.0s), 070/100 VUs, 16241 complete and 0 interrupted iterations
+default   [  73% ] 070/100 VUs  13m03.2s/18m00.0s
+
+running (13m08.0s), 070/100 VUs, 16280 complete and 0 interrupted iterations
+default   [  73% ] 070/100 VUs  13m04.2s/18m00.0s
+
+running (13m09.0s), 070/100 VUs, 16307 complete and 0 interrupted iterations
+default   [  73% ] 070/100 VUs  13m05.2s/18m00.0s
+
+running (13m10.0s), 071/100 VUs, 16341 complete and 0 interrupted iterations
+default   [  73% ] 071/100 VUs  13m06.2s/18m00.0s
+time="2026-05-12T15:09:09Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/19/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:09:09Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/17/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (13m11.0s), 071/100 VUs, 16386 complete and 0 interrupted iterations
+default   [  73% ] 071/100 VUs  13m07.2s/18m00.0s
+
+running (13m12.0s), 071/100 VUs, 16422 complete and 0 interrupted iterations
+default   [  73% ] 071/100 VUs  13m08.2s/18m00.0s
+
+running (13m13.0s), 071/100 VUs, 16468 complete and 0 interrupted iterations
+default   [  73% ] 071/100 VUs  13m09.2s/18m00.0s
+
+running (13m14.0s), 071/100 VUs, 16513 complete and 0 interrupted iterations
+default   [  73% ] 071/100 VUs  13m10.2s/18m00.0s
+
+running (13m15.0s), 071/100 VUs, 16546 complete and 0 interrupted iterations
+default   [  73% ] 071/100 VUs  13m11.2s/18m00.0s
+
+running (13m16.0s), 072/100 VUs, 16573 complete and 0 interrupted iterations
+default   [  73% ] 072/100 VUs  13m12.2s/18m00.0s
+time="2026-05-12T15:09:15Z" level=error msg="[modules] GET http://canvas.io.vn:30080/api/v1/courses/19/modules?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (13m17.0s), 072/100 VUs, 16599 complete and 0 interrupted iterations
+default   [  73% ] 072/100 VUs  13m13.2s/18m00.0s
+
+running (13m18.0s), 072/100 VUs, 16635 complete and 0 interrupted iterations
+default   [  74% ] 072/100 VUs  13m14.2s/18m00.0s
+
+running (13m19.0s), 072/100 VUs, 16667 complete and 0 interrupted iterations
+default   [  74% ] 072/100 VUs  13m15.2s/18m00.0s
+
+running (13m20.0s), 072/100 VUs, 16700 complete and 0 interrupted iterations
+default   [  74% ] 072/100 VUs  13m16.2s/18m00.0s
+
+running (13m21.0s), 072/100 VUs, 16731 complete and 0 interrupted iterations
+default   [  74% ] 072/100 VUs  13m17.2s/18m00.0s
+
+running (13m22.0s), 073/100 VUs, 16767 complete and 0 interrupted iterations
+default   [  74% ] 073/100 VUs  13m18.2s/18m00.0s
+
+running (13m23.0s), 073/100 VUs, 16802 complete and 0 interrupted iterations
+default   [  74% ] 073/100 VUs  13m19.2s/18m00.0s
+
+running (13m24.0s), 073/100 VUs, 16833 complete and 0 interrupted iterations
+default   [  74% ] 073/100 VUs  13m20.2s/18m00.0s
+
+running (13m25.0s), 073/100 VUs, 16862 complete and 0 interrupted iterations
+default   [  74% ] 073/100 VUs  13m21.2s/18m00.0s
+
+running (13m26.0s), 073/100 VUs, 16896 complete and 0 interrupted iterations
+default   [  74% ] 073/100 VUs  13m22.2s/18m00.0s
+
+running (13m27.0s), 073/100 VUs, 16924 complete and 0 interrupted iterations
+default   [  74% ] 073/100 VUs  13m23.2s/18m00.0s
+
+running (13m28.0s), 074/100 VUs, 16951 complete and 0 interrupted iterations
+default   [  74% ] 074/100 VUs  13m24.2s/18m00.0s
+
+running (13m29.0s), 074/100 VUs, 16977 complete and 0 interrupted iterations
+default   [  75% ] 074/100 VUs  13m25.2s/18m00.0s
+
+running (13m30.0s), 074/100 VUs, 17005 complete and 0 interrupted iterations
+default   [  75% ] 074/100 VUs  13m26.2s/18m00.0s
+
+running (13m31.0s), 074/100 VUs, 17034 complete and 0 interrupted iterations
+default   [  75% ] 074/100 VUs  13m27.2s/18m00.0s
+
+running (13m32.0s), 074/100 VUs, 17058 complete and 0 interrupted iterations
+default   [  75% ] 074/100 VUs  13m28.2s/18m00.0s
+
+running (13m33.0s), 074/100 VUs, 17089 complete and 0 interrupted iterations
+default   [  75% ] 074/100 VUs  13m29.2s/18m00.0s
+
+running (13m34.0s), 075/100 VUs, 17123 complete and 0 interrupted iterations
+default   [  75% ] 075/100 VUs  13m30.2s/18m00.0s
+
+running (13m35.0s), 075/100 VUs, 17158 complete and 0 interrupted iterations
+default   [  75% ] 075/100 VUs  13m31.2s/18m00.0s
+
+running (13m36.0s), 075/100 VUs, 17187 complete and 0 interrupted iterations
+default   [  75% ] 075/100 VUs  13m32.2s/18m00.0s
+
+running (13m37.0s), 075/100 VUs, 17210 complete and 0 interrupted iterations
+default   [  75% ] 075/100 VUs  13m33.2s/18m00.0s
+
+running (13m38.0s), 075/100 VUs, 17237 complete and 0 interrupted iterations
+default   [  75% ] 075/100 VUs  13m34.2s/18m00.0s
+
+running (13m39.0s), 075/100 VUs, 17275 complete and 0 interrupted iterations
+default   [  75% ] 075/100 VUs  13m35.2s/18m00.0s
+
+running (13m40.0s), 076/100 VUs, 17318 complete and 0 interrupted iterations
+default   [  76% ] 076/100 VUs  13m36.2s/18m00.0s
+
+running (13m41.0s), 076/100 VUs, 17347 complete and 0 interrupted iterations
+default   [  76% ] 076/100 VUs  13m37.2s/18m00.0s
+
+running (13m42.0s), 076/100 VUs, 17380 complete and 0 interrupted iterations
+default   [  76% ] 076/100 VUs  13m38.2s/18m00.0s
+
+running (13m43.0s), 076/100 VUs, 17407 complete and 0 interrupted iterations
+default   [  76% ] 076/100 VUs  13m39.2s/18m00.0s
+
+running (13m44.0s), 076/100 VUs, 17431 complete and 0 interrupted iterations
+default   [  76% ] 076/100 VUs  13m40.2s/18m00.0s
+
+running (13m45.0s), 076/100 VUs, 17458 complete and 0 interrupted iterations
+default   [  76% ] 076/100 VUs  13m41.2s/18m00.0s
+
+running (13m46.0s), 077/100 VUs, 17491 complete and 0 interrupted iterations
+default   [  76% ] 077/100 VUs  13m42.2s/18m00.0s
+
+running (13m47.0s), 077/100 VUs, 17519 complete and 0 interrupted iterations
+default   [  76% ] 077/100 VUs  13m43.2s/18m00.0s
+
+running (13m48.0s), 077/100 VUs, 17552 complete and 0 interrupted iterations
+default   [  76% ] 077/100 VUs  13m44.2s/18m00.0s
+
+running (13m49.0s), 077/100 VUs, 17589 complete and 0 interrupted iterations
+default   [  76% ] 077/100 VUs  13m45.2s/18m00.0s
+
+running (13m50.0s), 077/100 VUs, 17622 complete and 0 interrupted iterations
+default   [  77% ] 077/100 VUs  13m46.2s/18m00.0s
+
+running (13m51.0s), 077/100 VUs, 17647 complete and 0 interrupted iterations
+default   [  77% ] 077/100 VUs  13m47.2s/18m00.0s
+
+running (13m52.0s), 078/100 VUs, 17670 complete and 0 interrupted iterations
+default   [  77% ] 078/100 VUs  13m48.2s/18m00.0s
+
+running (13m53.0s), 078/100 VUs, 17700 complete and 0 interrupted iterations
+default   [  77% ] 078/100 VUs  13m49.2s/18m00.0s
+
+running (13m54.0s), 078/100 VUs, 17726 complete and 0 interrupted iterations
+default   [  77% ] 078/100 VUs  13m50.2s/18m00.0s
+
+running (13m55.0s), 078/100 VUs, 17768 complete and 0 interrupted iterations
+default   [  77% ] 078/100 VUs  13m51.2s/18m00.0s
+
+running (13m56.0s), 078/100 VUs, 17798 complete and 0 interrupted iterations
+default   [  77% ] 078/100 VUs  13m52.2s/18m00.0s
+
+running (13m57.0s), 078/100 VUs, 17830 complete and 0 interrupted iterations
+default   [  77% ] 078/100 VUs  13m53.2s/18m00.0s
+
+running (13m58.0s), 079/100 VUs, 17863 complete and 0 interrupted iterations
+default   [  77% ] 079/100 VUs  13m54.2s/18m00.0s
+
+running (13m59.0s), 079/100 VUs, 17897 complete and 0 interrupted iterations
+default   [  77% ] 079/100 VUs  13m55.2s/18m00.0s
+
+running (14m00.0s), 079/100 VUs, 17936 complete and 0 interrupted iterations
+default   [  77% ] 079/100 VUs  13m56.2s/18m00.0s
+
+running (14m01.0s), 079/100 VUs, 17963 complete and 0 interrupted iterations
+default   [  78% ] 079/100 VUs  13m57.2s/18m00.0s
+
+running (14m02.0s), 079/100 VUs, 17989 complete and 0 interrupted iterations
+default   [  78% ] 079/100 VUs  13m58.2s/18m00.0s
+
+running (14m03.0s), 079/100 VUs, 18022 complete and 0 interrupted iterations
+default   [  78% ] 079/100 VUs  13m59.2s/18m00.0s
+
+running (14m04.0s), 080/100 VUs, 18057 complete and 0 interrupted iterations
+default   [  78% ] 080/100 VUs  14m00.2s/18m00.0s
+
+running (14m05.0s), 080/100 VUs, 18090 complete and 0 interrupted iterations
+default   [  78% ] 080/100 VUs  14m01.2s/18m00.0s
+
+running (14m06.0s), 080/100 VUs, 18121 complete and 0 interrupted iterations
+default   [  78% ] 080/100 VUs  14m02.2s/18m00.0s
+
+running (14m07.0s), 080/100 VUs, 18162 complete and 0 interrupted iterations
+default   [  78% ] 080/100 VUs  14m03.2s/18m00.0s
+
+running (14m08.0s), 080/100 VUs, 18190 complete and 0 interrupted iterations
+default   [  78% ] 080/100 VUs  14m04.2s/18m00.0s
+
+running (14m09.0s), 080/100 VUs, 18220 complete and 0 interrupted iterations
+default   [  78% ] 080/100 VUs  14m05.2s/18m00.0s
+
+running (14m10.0s), 081/100 VUs, 18257 complete and 0 interrupted iterations
+default   [  78% ] 081/100 VUs  14m06.2s/18m00.0s
+
+running (14m11.0s), 081/100 VUs, 18294 complete and 0 interrupted iterations
+default   [  78% ] 081/100 VUs  14m07.2s/18m00.0s
+
+running (14m12.0s), 081/100 VUs, 18333 complete and 0 interrupted iterations
+default   [  79% ] 081/100 VUs  14m08.2s/18m00.0s
+
+running (14m13.0s), 081/100 VUs, 18372 complete and 0 interrupted iterations
+default   [  79% ] 081/100 VUs  14m09.2s/18m00.0s
+
+running (14m14.0s), 081/100 VUs, 18392 complete and 0 interrupted iterations
+default   [  79% ] 081/100 VUs  14m10.2s/18m00.0s
+
+running (14m15.0s), 081/100 VUs, 18423 complete and 0 interrupted iterations
+default   [  79% ] 081/100 VUs  14m11.2s/18m00.0s
+
+running (14m16.0s), 082/100 VUs, 18443 complete and 0 interrupted iterations
+default   [  79% ] 082/100 VUs  14m12.2s/18m00.0s
+
+running (14m17.0s), 082/100 VUs, 18474 complete and 0 interrupted iterations
+default   [  79% ] 082/100 VUs  14m13.2s/18m00.0s
+
+running (14m18.0s), 082/100 VUs, 18503 complete and 0 interrupted iterations
+default   [  79% ] 082/100 VUs  14m14.2s/18m00.0s
+
+running (14m19.0s), 082/100 VUs, 18542 complete and 0 interrupted iterations
+default   [  79% ] 082/100 VUs  14m15.2s/18m00.0s
+
+running (14m20.0s), 082/100 VUs, 18574 complete and 0 interrupted iterations
+default   [  79% ] 082/100 VUs  14m16.2s/18m00.0s
+
+running (14m21.0s), 082/100 VUs, 18604 complete and 0 interrupted iterations
+default   [  79% ] 082/100 VUs  14m17.2s/18m00.0s
+
+running (14m22.0s), 083/100 VUs, 18627 complete and 0 interrupted iterations
+default   [  79% ] 083/100 VUs  14m18.2s/18m00.0s
+
+running (14m23.0s), 083/100 VUs, 18675 complete and 0 interrupted iterations
+default   [  80% ] 083/100 VUs  14m19.2s/18m00.0s
+
+running (14m24.0s), 083/100 VUs, 18711 complete and 0 interrupted iterations
+default   [  80% ] 083/100 VUs  14m20.2s/18m00.0s
+
+running (14m25.0s), 083/100 VUs, 18733 complete and 0 interrupted iterations
+default   [  80% ] 083/100 VUs  14m21.2s/18m00.0s
+
+running (14m26.0s), 083/100 VUs, 18776 complete and 0 interrupted iterations
+default   [  80% ] 083/100 VUs  14m22.2s/18m00.0s
+
+running (14m27.0s), 083/100 VUs, 18811 complete and 0 interrupted iterations
+default   [  80% ] 083/100 VUs  14m23.2s/18m00.0s
+
+running (14m28.0s), 084/100 VUs, 18848 complete and 0 interrupted iterations
+default   [  80% ] 084/100 VUs  14m24.2s/18m00.0s
+
+running (14m29.0s), 084/100 VUs, 18879 complete and 0 interrupted iterations
+default   [  80% ] 084/100 VUs  14m25.2s/18m00.0s
+
+running (14m30.0s), 084/100 VUs, 18916 complete and 0 interrupted iterations
+default   [  80% ] 084/100 VUs  14m26.2s/18m00.0s
+
+running (14m31.0s), 084/100 VUs, 18947 complete and 0 interrupted iterations
+default   [  80% ] 084/100 VUs  14m27.2s/18m00.0s
+
+running (14m32.0s), 084/100 VUs, 18978 complete and 0 interrupted iterations
+default   [  80% ] 084/100 VUs  14m28.2s/18m00.0s
+
+running (14m33.0s), 084/100 VUs, 19005 complete and 0 interrupted iterations
+default   [  80% ] 084/100 VUs  14m29.2s/18m00.0s
+
+running (14m34.0s), 085/100 VUs, 19038 complete and 0 interrupted iterations
+default   [  81% ] 085/100 VUs  14m30.2s/18m00.0s
+time="2026-05-12T15:10:34Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:10:34Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/15/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:10:34Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/20/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (14m35.0s), 085/100 VUs, 19067 complete and 0 interrupted iterations
+default   [  81% ] 085/100 VUs  14m31.2s/18m00.0s
+
+running (14m36.0s), 085/100 VUs, 19104 complete and 0 interrupted iterations
+default   [  81% ] 085/100 VUs  14m32.2s/18m00.0s
+
+running (14m37.0s), 085/100 VUs, 19136 complete and 0 interrupted iterations
+default   [  81% ] 085/100 VUs  14m33.2s/18m00.0s
+
+running (14m38.0s), 085/100 VUs, 19166 complete and 0 interrupted iterations
+default   [  81% ] 085/100 VUs  14m34.2s/18m00.0s
+
+running (14m39.0s), 085/100 VUs, 19199 complete and 0 interrupted iterations
+default   [  81% ] 085/100 VUs  14m35.2s/18m00.0s
+
+running (14m40.0s), 086/100 VUs, 19234 complete and 0 interrupted iterations
+default   [  81% ] 086/100 VUs  14m36.2s/18m00.0s
+
+running (14m41.0s), 086/100 VUs, 19271 complete and 0 interrupted iterations
+default   [  81% ] 086/100 VUs  14m37.2s/18m00.0s
+
+running (14m42.0s), 086/100 VUs, 19297 complete and 0 interrupted iterations
+default   [  81% ] 086/100 VUs  14m38.2s/18m00.0s
+
+running (14m43.0s), 086/100 VUs, 19322 complete and 0 interrupted iterations
+default   [  81% ] 086/100 VUs  14m39.2s/18m00.0s
+
+running (14m44.0s), 086/100 VUs, 19353 complete and 0 interrupted iterations
+default   [  82% ] 086/100 VUs  14m40.2s/18m00.0s
+
+running (14m45.0s), 086/100 VUs, 19392 complete and 0 interrupted iterations
+default   [  82% ] 086/100 VUs  14m41.2s/18m00.0s
+
+running (14m46.0s), 087/100 VUs, 19419 complete and 0 interrupted iterations
+default   [  82% ] 087/100 VUs  14m42.2s/18m00.0s
+
+running (14m47.0s), 087/100 VUs, 19445 complete and 0 interrupted iterations
+default   [  82% ] 087/100 VUs  14m43.2s/18m00.0s
+
+running (14m48.0s), 087/100 VUs, 19475 complete and 0 interrupted iterations
+default   [  82% ] 087/100 VUs  14m44.2s/18m00.0s
+
+running (14m49.0s), 087/100 VUs, 19502 complete and 0 interrupted iterations
+default   [  82% ] 087/100 VUs  14m45.2s/18m00.0s
+
+running (14m50.0s), 087/100 VUs, 19534 complete and 0 interrupted iterations
+default   [  82% ] 087/100 VUs  14m46.2s/18m00.0s
+
+running (14m51.0s), 087/100 VUs, 19565 complete and 0 interrupted iterations
+default   [  82% ] 087/100 VUs  14m47.2s/18m00.0s
+time="2026-05-12T15:10:51Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+time="2026-05-12T15:10:51Z" level=error msg="[assignments] GET http://canvas.io.vn:30080/api/v1/courses/17/assignments?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (14m52.0s), 088/100 VUs, 19602 complete and 0 interrupted iterations
+default   [  82% ] 088/100 VUs  14m48.2s/18m00.0s
+
+running (14m53.0s), 088/100 VUs, 19640 complete and 0 interrupted iterations
+default   [  82% ] 088/100 VUs  14m49.2s/18m00.0s
+
+running (14m54.0s), 088/100 VUs, 19676 complete and 0 interrupted iterations
+default   [  82% ] 088/100 VUs  14m50.2s/18m00.0s
+
+running (14m55.0s), 088/100 VUs, 19707 complete and 0 interrupted iterations
+default   [  83% ] 088/100 VUs  14m51.2s/18m00.0s
+
+running (14m56.0s), 088/100 VUs, 19739 complete and 0 interrupted iterations
+default   [  83% ] 088/100 VUs  14m52.2s/18m00.0s
+
+running (14m57.0s), 088/100 VUs, 19768 complete and 0 interrupted iterations
+default   [  83% ] 088/100 VUs  14m53.2s/18m00.0s
+
+running (14m58.0s), 089/100 VUs, 19805 complete and 0 interrupted iterations
+default   [  83% ] 089/100 VUs  14m54.2s/18m00.0s
+
+running (14m59.0s), 089/100 VUs, 19837 complete and 0 interrupted iterations
+default   [  83% ] 089/100 VUs  14m55.2s/18m00.0s
+
+running (15m00.0s), 089/100 VUs, 19874 complete and 0 interrupted iterations
+default   [  83% ] 089/100 VUs  14m56.2s/18m00.0s
+
+running (15m01.0s), 089/100 VUs, 19908 complete and 0 interrupted iterations
+default   [  83% ] 089/100 VUs  14m57.2s/18m00.0s
+
+running (15m02.0s), 089/100 VUs, 19944 complete and 0 interrupted iterations
+default   [  83% ] 089/100 VUs  14m58.2s/18m00.0s
+
+running (15m03.0s), 089/100 VUs, 19972 complete and 0 interrupted iterations
+default   [  83% ] 089/100 VUs  14m59.2s/18m00.0s
+
+running (15m04.0s), 090/100 VUs, 20007 complete and 0 interrupted iterations
+default   [  83% ] 090/100 VUs  15m00.2s/18m00.0s
+
+running (15m05.0s), 090/100 VUs, 20036 complete and 0 interrupted iterations
+default   [  83% ] 090/100 VUs  15m01.2s/18m00.0s
+
+running (15m06.0s), 090/100 VUs, 20067 complete and 0 interrupted iterations
+default   [  84% ] 090/100 VUs  15m02.2s/18m00.0s
+time="2026-05-12T15:11:06Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (15m07.0s), 090/100 VUs, 20089 complete and 0 interrupted iterations
+default   [  84% ] 090/100 VUs  15m03.2s/18m00.0s
+time="2026-05-12T15:11:06Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/17/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (15m08.0s), 090/100 VUs, 20124 complete and 0 interrupted iterations
+default   [  84% ] 090/100 VUs  15m04.2s/18m00.0s
+
+running (15m09.0s), 090/100 VUs, 20162 complete and 0 interrupted iterations
+default   [  84% ] 090/100 VUs  15m05.2s/18m00.0s
+
+running (15m10.0s), 091/100 VUs, 20184 complete and 0 interrupted iterations
+default   [  84% ] 091/100 VUs  15m06.2s/18m00.0s
+
+running (15m11.0s), 091/100 VUs, 20211 complete and 0 interrupted iterations
+default   [  84% ] 091/100 VUs  15m07.2s/18m00.0s
+
+running (15m12.0s), 091/100 VUs, 20250 complete and 0 interrupted iterations
+default   [  84% ] 091/100 VUs  15m08.2s/18m00.0s
+
+running (15m13.0s), 091/100 VUs, 20280 complete and 0 interrupted iterations
+default   [  84% ] 091/100 VUs  15m09.2s/18m00.0s
+
+running (15m14.0s), 091/100 VUs, 20305 complete and 0 interrupted iterations
+default   [  84% ] 091/100 VUs  15m10.2s/18m00.0s
+
+running (15m15.0s), 091/100 VUs, 20343 complete and 0 interrupted iterations
+default   [  84% ] 091/100 VUs  15m11.2s/18m00.0s
+
+running (15m16.0s), 092/100 VUs, 20377 complete and 0 interrupted iterations
+default   [  84% ] 092/100 VUs  15m12.2s/18m00.0s
+
+running (15m17.0s), 092/100 VUs, 20428 complete and 0 interrupted iterations
+default   [  85% ] 092/100 VUs  15m13.2s/18m00.0s
+time="2026-05-12T15:11:16Z" level=error msg="[quizzes] GET http://canvas.io.vn:30080/api/v1/courses/16/quizzes?per_page=10 returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (15m18.0s), 092/100 VUs, 20456 complete and 0 interrupted iterations
+default   [  85% ] 092/100 VUs  15m14.2s/18m00.0s
+
+running (15m19.0s), 092/100 VUs, 20491 complete and 0 interrupted iterations
+default   [  85% ] 092/100 VUs  15m15.2s/18m00.0s
+
+running (15m20.0s), 092/100 VUs, 20522 complete and 0 interrupted iterations
+default   [  85% ] 092/100 VUs  15m16.2s/18m00.0s
+
+running (15m21.0s), 092/100 VUs, 20550 complete and 0 interrupted iterations
+default   [  85% ] 092/100 VUs  15m17.2s/18m00.0s
+
+running (15m22.0s), 093/100 VUs, 20579 complete and 0 interrupted iterations
+default   [  85% ] 093/100 VUs  15m18.2s/18m00.0s
+
+running (15m23.0s), 093/100 VUs, 20614 complete and 0 interrupted iterations
+default   [  85% ] 093/100 VUs  15m19.2s/18m00.0s
+
+running (15m24.0s), 093/100 VUs, 20647 complete and 0 interrupted iterations
+default   [  85% ] 093/100 VUs  15m20.2s/18m00.0s
+
+running (15m25.0s), 093/100 VUs, 20682 complete and 0 interrupted iterations
+default   [  85% ] 093/100 VUs  15m21.2s/18m00.0s
+
+running (15m26.0s), 093/100 VUs, 20707 complete and 0 interrupted iterations
+default   [  85% ] 093/100 VUs  15m22.2s/18m00.0s
+
+running (15m27.0s), 093/100 VUs, 20741 complete and 0 interrupted iterations
+default   [  85% ] 093/100 VUs  15m23.2s/18m00.0s
+
+running (15m28.0s), 094/100 VUs, 20778 complete and 0 interrupted iterations
+default   [  86% ] 094/100 VUs  15m24.2s/18m00.0s
+
+running (15m29.0s), 094/100 VUs, 20807 complete and 0 interrupted iterations
+default   [  86% ] 094/100 VUs  15m25.2s/18m00.0s
+
+running (15m30.0s), 094/100 VUs, 20836 complete and 0 interrupted iterations
+default   [  86% ] 094/100 VUs  15m26.2s/18m00.0s
+
+running (15m31.0s), 094/100 VUs, 20867 complete and 0 interrupted iterations
+default   [  86% ] 094/100 VUs  15m27.2s/18m00.0s
+
+running (15m32.0s), 094/100 VUs, 20904 complete and 0 interrupted iterations
+default   [  86% ] 094/100 VUs  15m28.2s/18m00.0s
+
+running (15m33.0s), 094/100 VUs, 20923 complete and 0 interrupted iterations
+default   [  86% ] 094/100 VUs  15m29.2s/18m00.0s
+
+running (15m34.0s), 095/100 VUs, 20950 complete and 0 interrupted iterations
+default   [  86% ] 095/100 VUs  15m30.2s/18m00.0s
+
+running (15m35.0s), 095/100 VUs, 20992 complete and 0 interrupted iterations
+default   [  86% ] 095/100 VUs  15m31.2s/18m00.0s
+
+running (15m36.0s), 095/100 VUs, 21026 complete and 0 interrupted iterations
+default   [  86% ] 095/100 VUs  15m32.2s/18m00.0s
+
+running (15m37.0s), 095/100 VUs, 21061 complete and 0 interrupted iterations
+default   [  86% ] 095/100 VUs  15m33.2s/18m00.0s
+
+running (15m38.0s), 095/100 VUs, 21097 complete and 0 interrupted iterations
+default   [  87% ] 095/100 VUs  15m34.2s/18m00.0s
+
+running (15m39.0s), 095/100 VUs, 21128 complete and 0 interrupted iterations
+default   [  87% ] 095/100 VUs  15m35.2s/18m00.0s
+
+running (15m40.0s), 096/100 VUs, 21158 complete and 0 interrupted iterations
+default   [  87% ] 096/100 VUs  15m36.2s/18m00.0s
+
+running (15m41.0s), 096/100 VUs, 21192 complete and 0 interrupted iterations
+default   [  87% ] 096/100 VUs  15m37.2s/18m00.0s
+
+running (15m42.0s), 096/100 VUs, 21216 complete and 0 interrupted iterations
+default   [  87% ] 096/100 VUs  15m38.2s/18m00.0s
+
+running (15m43.0s), 096/100 VUs, 21254 complete and 0 interrupted iterations
+default   [  87% ] 096/100 VUs  15m39.2s/18m00.0s
+
+running (15m44.0s), 096/100 VUs, 21287 complete and 0 interrupted iterations
+default   [  87% ] 096/100 VUs  15m40.2s/18m00.0s
+
+running (15m45.0s), 096/100 VUs, 21318 complete and 0 interrupted iterations
+default   [  87% ] 096/100 VUs  15m41.2s/18m00.0s
+
+running (15m46.0s), 097/100 VUs, 21358 complete and 0 interrupted iterations
+default   [  87% ] 097/100 VUs  15m42.2s/18m00.0s
+
+running (15m47.0s), 097/100 VUs, 21397 complete and 0 interrupted iterations
+default   [  87% ] 097/100 VUs  15m43.2s/18m00.0s
+
+running (15m48.0s), 097/100 VUs, 21429 complete and 0 interrupted iterations
+default   [  87% ] 097/100 VUs  15m44.2s/18m00.0s
+
+running (15m49.0s), 097/100 VUs, 21462 complete and 0 interrupted iterations
+default   [  88% ] 097/100 VUs  15m45.2s/18m00.0s
+
+running (15m50.0s), 097/100 VUs, 21498 complete and 0 interrupted iterations
+default   [  88% ] 097/100 VUs  15m46.2s/18m00.0s
+
+running (15m51.0s), 097/100 VUs, 21529 complete and 0 interrupted iterations
+default   [  88% ] 097/100 VUs  15m47.2s/18m00.0s
+
+running (15m52.0s), 098/100 VUs, 21558 complete and 0 interrupted iterations
+default   [  88% ] 098/100 VUs  15m48.2s/18m00.0s
+
+running (15m53.0s), 098/100 VUs, 21593 complete and 0 interrupted iterations
+default   [  88% ] 098/100 VUs  15m49.2s/18m00.0s
+
+running (15m54.0s), 098/100 VUs, 21627 complete and 0 interrupted iterations
+default   [  88% ] 098/100 VUs  15m50.2s/18m00.0s
+
+running (15m55.0s), 098/100 VUs, 21659 complete and 0 interrupted iterations
+default   [  88% ] 098/100 VUs  15m51.2s/18m00.0s
+
+running (15m56.0s), 098/100 VUs, 21690 complete and 0 interrupted iterations
+default   [  88% ] 098/100 VUs  15m52.2s/18m00.0s
+
+running (15m57.0s), 098/100 VUs, 21727 complete and 0 interrupted iterations
+default   [  88% ] 098/100 VUs  15m53.2s/18m00.0s
+
+running (15m58.0s), 099/100 VUs, 21750 complete and 0 interrupted iterations
+default   [  88% ] 099/100 VUs  15m54.2s/18m00.0s
+
+running (15m59.0s), 099/100 VUs, 21776 complete and 0 interrupted iterations
+default   [  88% ] 099/100 VUs  15m55.2s/18m00.0s
+
+running (16m00.0s), 099/100 VUs, 21810 complete and 0 interrupted iterations
+default   [  89% ] 099/100 VUs  15m56.2s/18m00.0s
+
+running (16m01.0s), 099/100 VUs, 21838 complete and 0 interrupted iterations
+default   [  89% ] 099/100 VUs  15m57.2s/18m00.0s
+
+running (16m02.0s), 099/100 VUs, 21876 complete and 0 interrupted iterations
+default   [  89% ] 099/100 VUs  15m58.2s/18m00.0s
+
+running (16m03.0s), 099/100 VUs, 21909 complete and 0 interrupted iterations
+default   [  89% ] 099/100 VUs  15m59.2s/18m00.0s
+
+running (16m04.0s), 100/100 VUs, 21943 complete and 0 interrupted iterations
+default   [  89% ] 100/100 VUs  16m00.2s/18m00.0s
+
+running (16m05.0s), 100/100 VUs, 21976 complete and 0 interrupted iterations
+default   [  89% ] 100/100 VUs  16m01.2s/18m00.0s
+
+running (16m06.0s), 100/100 VUs, 22005 complete and 0 interrupted iterations
+default   [  89% ] 100/100 VUs  16m02.2s/18m00.0s
+
+running (16m07.0s), 099/100 VUs, 22047 complete and 0 interrupted iterations
+default   [  89% ] 099/100 VUs  16m03.2s/18m00.0s
+
+running (16m08.0s), 099/100 VUs, 22081 complete and 0 interrupted iterations
+default   [  89% ] 099/100 VUs  16m04.2s/18m00.0s
+
+running (16m09.0s), 098/100 VUs, 22119 complete and 0 interrupted iterations
+default   [  89% ] 098/100 VUs  16m05.2s/18m00.0s
+
+running (16m10.0s), 097/100 VUs, 22141 complete and 0 interrupted iterations
+default   [  89% ] 097/100 VUs  16m06.2s/18m00.0s
+
+running (16m11.0s), 096/100 VUs, 22183 complete and 0 interrupted iterations
+default   [  90% ] 096/100 VUs  16m07.2s/18m00.0s
+
+running (16m12.0s), 095/100 VUs, 22206 complete and 0 interrupted iterations
+default   [  90% ] 095/100 VUs  16m08.2s/18m00.0s
+
+running (16m13.0s), 093/100 VUs, 22238 complete and 0 interrupted iterations
+default   [  90% ] 093/100 VUs  16m09.2s/18m00.0s
+
+running (16m14.0s), 093/100 VUs, 22271 complete and 0 interrupted iterations
+default   [  90% ] 093/100 VUs  16m10.2s/18m00.0s
+
+running (16m15.0s), 093/100 VUs, 22294 complete and 0 interrupted iterations
+default   [  90% ] 093/100 VUs  16m11.2s/18m00.0s
+
+running (16m16.0s), 093/100 VUs, 22327 complete and 0 interrupted iterations
+default   [  90% ] 093/100 VUs  16m12.2s/18m00.0s
+
+running (16m17.0s), 092/100 VUs, 22351 complete and 0 interrupted iterations
+default   [  90% ] 092/100 VUs  16m13.2s/18m00.0s
+
+running (16m18.0s), 089/100 VUs, 22383 complete and 0 interrupted iterations
+default   [  90% ] 089/100 VUs  16m14.2s/18m00.0s
+time="2026-05-12T15:12:17Z" level=error msg="[courses] GET http://canvas.io.vn:30080/api/v1/accounts/self/courses?per_page=20&enrollment_state=active returned 403. Body preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+running (16m19.0s), 089/100 VUs, 22407 complete and 0 interrupted iterations
+default   [  90% ] 089/100 VUs  16m15.2s/18m00.0s
+
+running (16m20.0s), 088/100 VUs, 22441 complete and 0 interrupted iterations
+default   [  90% ] 088/100 VUs  16m16.2s/18m00.0s
+
+running (16m21.0s), 088/100 VUs, 22484 complete and 0 interrupted iterations
+default   [  90% ] 088/100 VUs  16m17.2s/18m00.0s
+
+running (16m22.0s), 087/100 VUs, 22504 complete and 0 interrupted iterations
+default   [  91% ] 087/100 VUs  16m18.2s/18m00.0s
+
+running (16m23.0s), 086/100 VUs, 22538 complete and 0 interrupted iterations
+default   [  91% ] 086/100 VUs  16m19.2s/18m00.0s
+
+running (16m24.0s), 085/100 VUs, 22568 complete and 0 interrupted iterations
+default   [  91% ] 085/100 VUs  16m20.2s/18m00.0s
+
+running (16m25.0s), 084/100 VUs, 22595 complete and 0 interrupted iterations
+default   [  91% ] 084/100 VUs  16m21.2s/18m00.0s
+
+running (16m26.0s), 084/100 VUs, 22625 complete and 0 interrupted iterations
+default   [  91% ] 084/100 VUs  16m22.2s/18m00.0s
+
+running (16m27.0s), 082/100 VUs, 22670 complete and 0 interrupted iterations
+default   [  91% ] 082/100 VUs  16m23.2s/18m00.0s
+
+running (16m28.0s), 081/100 VUs, 22712 complete and 0 interrupted iterations
+default   [  91% ] 081/100 VUs  16m24.2s/18m00.0s
+
+running (16m29.0s), 081/100 VUs, 22742 complete and 0 interrupted iterations
+default   [  91% ] 081/100 VUs  16m25.2s/18m00.0s
+
+running (16m30.0s), 079/100 VUs, 22779 complete and 0 interrupted iterations
+default   [  91% ] 079/100 VUs  16m26.2s/18m00.0s
+
+running (16m31.0s), 079/100 VUs, 22803 complete and 0 interrupted iterations
+default   [  91% ] 079/100 VUs  16m27.2s/18m00.0s
+
+running (16m32.0s), 079/100 VUs, 22833 complete and 0 interrupted iterations
+default   [  92% ] 079/100 VUs  16m28.2s/18m00.0s
+
+running (16m33.0s), 077/100 VUs, 22863 complete and 0 interrupted iterations
+default   [  92% ] 077/100 VUs  16m29.2s/18m00.0s
+
+running (16m34.0s), 076/100 VUs, 22899 complete and 0 interrupted iterations
+default   [  92% ] 076/100 VUs  16m30.2s/18m00.0s
+
+running (16m35.0s), 075/100 VUs, 22933 complete and 0 interrupted iterations
+default   [  92% ] 075/100 VUs  16m31.2s/18m00.0s
+
+running (16m36.0s), 074/100 VUs, 22967 complete and 0 interrupted iterations
+default   [  92% ] 074/100 VUs  16m32.2s/18m00.0s
+
+running (16m37.0s), 074/100 VUs, 22997 complete and 0 interrupted iterations
+default   [  92% ] 074/100 VUs  16m33.2s/18m00.0s
+
+running (16m38.0s), 073/100 VUs, 23030 complete and 0 interrupted iterations
+default   [  92% ] 073/100 VUs  16m34.2s/18m00.0s
+
+running (16m39.0s), 072/100 VUs, 23069 complete and 0 interrupted iterations
+default   [  92% ] 072/100 VUs  16m35.2s/18m00.0s
+
+running (16m40.0s), 071/100 VUs, 23107 complete and 0 interrupted iterations
+default   [  92% ] 071/100 VUs  16m36.2s/18m00.0s
+
+running (16m41.0s), 070/100 VUs, 23137 complete and 0 interrupted iterations
+default   [  92% ] 070/100 VUs  16m37.2s/18m00.0s
+
+running (16m42.0s), 070/100 VUs, 23166 complete and 0 interrupted iterations
+default   [  92% ] 070/100 VUs  16m38.2s/18m00.0s
+
+running (16m43.0s), 068/100 VUs, 23196 complete and 0 interrupted iterations
+default   [  93% ] 068/100 VUs  16m39.2s/18m00.0s
+
+running (16m44.0s), 068/100 VUs, 23224 complete and 0 interrupted iterations
+default   [  93% ] 068/100 VUs  16m40.2s/18m00.0s
+
+running (16m45.0s), 066/100 VUs, 23260 complete and 0 interrupted iterations
+default   [  93% ] 066/100 VUs  16m41.2s/18m00.0s
+
+running (16m46.0s), 066/100 VUs, 23295 complete and 0 interrupted iterations
+default   [  93% ] 066/100 VUs  16m42.2s/18m00.0s
+
+running (16m47.0s), 066/100 VUs, 23320 complete and 0 interrupted iterations
+default   [  93% ] 066/100 VUs  16m43.2s/18m00.0s
+
+running (16m48.0s), 065/100 VUs, 23346 complete and 0 interrupted iterations
+default   [  93% ] 065/100 VUs  16m44.2s/18m00.0s
+
+running (16m49.0s), 063/100 VUs, 23376 complete and 0 interrupted iterations
+default   [  93% ] 063/100 VUs  16m45.2s/18m00.0s
+
+running (16m50.0s), 063/100 VUs, 23401 complete and 0 interrupted iterations
+default   [  93% ] 063/100 VUs  16m46.2s/18m00.0s
+
+running (16m51.0s), 062/100 VUs, 23422 complete and 0 interrupted iterations
+default   [  93% ] 062/100 VUs  16m47.2s/18m00.0s
+
+running (16m52.0s), 061/100 VUs, 23461 complete and 0 interrupted iterations
+default   [  93% ] 061/100 VUs  16m48.2s/18m00.0s
+
+running (16m53.0s), 061/100 VUs, 23488 complete and 0 interrupted iterations
+default   [  93% ] 061/100 VUs  16m49.2s/18m00.0s
+
+running (16m54.0s), 061/100 VUs, 23520 complete and 0 interrupted iterations
+default   [  94% ] 061/100 VUs  16m50.2s/18m00.0s
+
+running (16m55.0s), 059/100 VUs, 23556 complete and 0 interrupted iterations
+default   [  94% ] 059/100 VUs  16m51.2s/18m00.0s
+
+running (16m56.0s), 059/100 VUs, 23581 complete and 0 interrupted iterations
+default   [  94% ] 059/100 VUs  16m52.2s/18m00.0s
+
+running (16m57.0s), 058/100 VUs, 23619 complete and 0 interrupted iterations
+default   [  94% ] 058/100 VUs  16m53.2s/18m00.0s
+
+running (16m58.0s), 057/100 VUs, 23648 complete and 0 interrupted iterations
+default   [  94% ] 057/100 VUs  16m54.2s/18m00.0s
+
+running (16m59.0s), 055/100 VUs, 23669 complete and 0 interrupted iterations
+default   [  94% ] 055/100 VUs  16m55.2s/18m00.0s
+
+running (17m00.0s), 054/100 VUs, 23704 complete and 0 interrupted iterations
+default   [  94% ] 054/100 VUs  16m56.2s/18m00.0s
+
+running (17m01.0s), 054/100 VUs, 23735 complete and 0 interrupted iterations
+default   [  94% ] 054/100 VUs  16m57.2s/18m00.0s
+
+running (17m02.0s), 053/100 VUs, 23766 complete and 0 interrupted iterations
+default   [  94% ] 053/100 VUs  16m58.2s/18m00.0s
+
+running (17m03.0s), 053/100 VUs, 23792 complete and 0 interrupted iterations
+default   [  94% ] 053/100 VUs  16m59.2s/18m00.0s
+
+running (17m04.0s), 052/100 VUs, 23825 complete and 0 interrupted iterations
+default   [  94% ] 052/100 VUs  17m00.2s/18m00.0s
+
+running (17m05.0s), 050/100 VUs, 23869 complete and 0 interrupted iterations
+default   [  95% ] 050/100 VUs  17m01.2s/18m00.0s
+
+running (17m06.0s), 049/100 VUs, 23896 complete and 0 interrupted iterations
+default   [  95% ] 049/100 VUs  17m02.2s/18m00.0s
+
+running (17m07.0s), 049/100 VUs, 23923 complete and 0 interrupted iterations
+default   [  95% ] 049/100 VUs  17m03.2s/18m00.0s
+
+running (17m08.0s), 048/100 VUs, 23957 complete and 0 interrupted iterations
+default   [  95% ] 048/100 VUs  17m04.2s/18m00.0s
+
+running (17m09.0s), 048/100 VUs, 23985 complete and 0 interrupted iterations
+default   [  95% ] 048/100 VUs  17m05.2s/18m00.0s
+
+running (17m10.0s), 046/100 VUs, 24009 complete and 0 interrupted iterations
+default   [  95% ] 046/100 VUs  17m06.2s/18m00.0s
+
+running (17m11.0s), 045/100 VUs, 24045 complete and 0 interrupted iterations
+default   [  95% ] 045/100 VUs  17m07.2s/18m00.0s
+
+running (17m12.0s), 044/100 VUs, 24077 complete and 0 interrupted iterations
+default   [  95% ] 044/100 VUs  17m08.2s/18m00.0s
+
+running (17m13.0s), 044/100 VUs, 24106 complete and 0 interrupted iterations
+default   [  95% ] 044/100 VUs  17m09.2s/18m00.0s
+
+running (17m14.0s), 043/100 VUs, 24136 complete and 0 interrupted iterations
+default   [  95% ] 043/100 VUs  17m10.2s/18m00.0s
+
+running (17m15.0s), 042/100 VUs, 24169 complete and 0 interrupted iterations
+default   [  95% ] 042/100 VUs  17m11.2s/18m00.0s
+
+running (17m16.0s), 040/100 VUs, 24200 complete and 0 interrupted iterations
+default   [  96% ] 040/100 VUs  17m12.2s/18m00.0s
+
+running (17m17.0s), 040/100 VUs, 24222 complete and 0 interrupted iterations
+default   [  96% ] 040/100 VUs  17m13.2s/18m00.0s
+
+running (17m18.0s), 040/100 VUs, 24253 complete and 0 interrupted iterations
+default   [  96% ] 040/100 VUs  17m14.2s/18m00.0s
+
+running (17m19.0s), 038/100 VUs, 24285 complete and 0 interrupted iterations
+default   [  96% ] 038/100 VUs  17m15.2s/18m00.0s
+
+running (17m20.0s), 038/100 VUs, 24310 complete and 0 interrupted iterations
+default   [  96% ] 038/100 VUs  17m16.2s/18m00.0s
+
+running (17m21.0s), 037/100 VUs, 24335 complete and 0 interrupted iterations
+default   [  96% ] 037/100 VUs  17m17.2s/18m00.0s
+
+running (17m22.0s), 036/100 VUs, 24363 complete and 0 interrupted iterations
+default   [  96% ] 036/100 VUs  17m18.2s/18m00.0s
+
+running (17m23.0s), 036/100 VUs, 24389 complete and 0 interrupted iterations
+default   [  96% ] 036/100 VUs  17m19.2s/18m00.0s
+
+running (17m24.0s), 034/100 VUs, 24411 complete and 0 interrupted iterations
+default   [  96% ] 034/100 VUs  17m20.2s/18m00.0s
+
+running (17m25.0s), 034/100 VUs, 24440 complete and 0 interrupted iterations
+default   [  96% ] 034/100 VUs  17m21.2s/18m00.0s
+
+running (17m26.0s), 034/100 VUs, 24464 complete and 0 interrupted iterations
+default   [  97% ] 034/100 VUs  17m22.2s/18m00.0s
+
+running (17m27.0s), 032/100 VUs, 24486 complete and 0 interrupted iterations
+default   [  97% ] 032/100 VUs  17m23.2s/18m00.0s
+
+running (17m28.0s), 032/100 VUs, 24513 complete and 0 interrupted iterations
+default   [  97% ] 032/100 VUs  17m24.2s/18m00.0s
+
+running (17m29.0s), 030/100 VUs, 24538 complete and 0 interrupted iterations
+default   [  97% ] 030/100 VUs  17m25.2s/18m00.0s
+
+running (17m30.0s), 030/100 VUs, 24557 complete and 0 interrupted iterations
+default   [  97% ] 030/100 VUs  17m26.2s/18m00.0s
+
+running (17m31.0s), 029/100 VUs, 24577 complete and 0 interrupted iterations
+default   [  97% ] 029/100 VUs  17m27.2s/18m00.0s
+
+running (17m32.0s), 028/100 VUs, 24601 complete and 0 interrupted iterations
+default   [  97% ] 028/100 VUs  17m28.2s/18m00.0s
+
+running (17m33.0s), 027/100 VUs, 24619 complete and 0 interrupted iterations
+default   [  97% ] 027/100 VUs  17m29.2s/18m00.0s
+
+running (17m34.0s), 026/100 VUs, 24636 complete and 0 interrupted iterations
+default   [  97% ] 026/100 VUs  17m30.2s/18m00.0s
+
+running (17m35.0s), 025/100 VUs, 24653 complete and 0 interrupted iterations
+default   [  97% ] 025/100 VUs  17m31.2s/18m00.0s
+
+running (17m36.0s), 024/100 VUs, 24671 complete and 0 interrupted iterations
+default   [  97% ] 024/100 VUs  17m32.2s/18m00.0s
+
+running (17m37.0s), 023/100 VUs, 24688 complete and 0 interrupted iterations
+default   [  98% ] 023/100 VUs  17m33.2s/18m00.0s
+
+running (17m38.0s), 023/100 VUs, 24708 complete and 0 interrupted iterations
+default   [  98% ] 023/100 VUs  17m34.2s/18m00.0s
+
+running (17m39.0s), 021/100 VUs, 24723 complete and 0 interrupted iterations
+default   [  98% ] 021/100 VUs  17m35.2s/18m00.0s
+
+running (17m40.0s), 021/100 VUs, 24741 complete and 0 interrupted iterations
+default   [  98% ] 021/100 VUs  17m36.2s/18m00.0s
+
+running (17m41.0s), 020/100 VUs, 24755 complete and 0 interrupted iterations
+default   [  98% ] 020/100 VUs  17m37.2s/18m00.0s
+
+running (17m42.0s), 019/100 VUs, 24769 complete and 0 interrupted iterations
+default   [  98% ] 019/100 VUs  17m38.2s/18m00.0s
+
+running (17m43.0s), 018/100 VUs, 24782 complete and 0 interrupted iterations
+default   [  98% ] 018/100 VUs  17m39.2s/18m00.0s
+
+running (17m44.0s), 018/100 VUs, 24793 complete and 0 interrupted iterations
+default   [  98% ] 018/100 VUs  17m40.2s/18m00.0s
+
+running (17m45.0s), 017/100 VUs, 24805 complete and 0 interrupted iterations
+default   [  98% ] 017/100 VUs  17m41.2s/18m00.0s
+
+running (17m46.0s), 016/100 VUs, 24815 complete and 0 interrupted iterations
+default   [  98% ] 016/100 VUs  17m42.2s/18m00.0s
+
+running (17m47.0s), 015/100 VUs, 24827 complete and 0 interrupted iterations
+default   [  98% ] 015/100 VUs  17m43.2s/18m00.0s
+
+running (17m48.0s), 014/100 VUs, 24838 complete and 0 interrupted iterations
+default   [  99% ] 014/100 VUs  17m44.2s/18m00.0s
+
+running (17m49.0s), 013/100 VUs, 24848 complete and 0 interrupted iterations
+default   [  99% ] 013/100 VUs  17m45.2s/18m00.0s
+
+running (17m50.0s), 012/100 VUs, 24857 complete and 0 interrupted iterations
+default   [  99% ] 012/100 VUs  17m46.2s/18m00.0s
+
+running (17m51.0s), 012/100 VUs, 24867 complete and 0 interrupted iterations
+default   [  99% ] 012/100 VUs  17m47.2s/18m00.0s
+
+running (17m52.0s), 011/100 VUs, 24874 complete and 0 interrupted iterations
+default   [  99% ] 011/100 VUs  17m48.2s/18m00.0s
+
+running (17m53.0s), 010/100 VUs, 24886 complete and 0 interrupted iterations
+default   [  99% ] 010/100 VUs  17m49.2s/18m00.0s
+
+running (17m54.0s), 009/100 VUs, 24893 complete and 0 interrupted iterations
+default   [  99% ] 009/100 VUs  17m50.2s/18m00.0s
+
+running (17m55.0s), 008/100 VUs, 24899 complete and 0 interrupted iterations
+default   [  99% ] 008/100 VUs  17m51.2s/18m00.0s
+
+running (17m56.0s), 008/100 VUs, 24906 complete and 0 interrupted iterations
+default   [  99% ] 008/100 VUs  17m52.2s/18m00.0s
+
+running (17m57.0s), 007/100 VUs, 24911 complete and 0 interrupted iterations
+default   [  99% ] 007/100 VUs  17m53.2s/18m00.0s
+
+running (17m58.0s), 006/100 VUs, 24915 complete and 0 interrupted iterations
+default   [  99% ] 006/100 VUs  17m54.2s/18m00.0s
+
+running (17m59.0s), 005/100 VUs, 24919 complete and 0 interrupted iterations
+default   [ 100% ] 005/100 VUs  17m55.2s/18m00.0s
+
+running (18m00.0s), 004/100 VUs, 24925 complete and 0 interrupted iterations
+default   [ 100% ] 004/100 VUs  17m56.2s/18m00.0s
+
+running (18m01.0s), 003/100 VUs, 24928 complete and 0 interrupted iterations
+default   [ 100% ] 003/100 VUs  17m57.2s/18m00.0s
+
+running (18m02.0s), 003/100 VUs, 24930 complete and 0 interrupted iterations
+default   [ 100% ] 003/100 VUs  17m58.2s/18m00.0s
+
+running (18m03.0s), 002/100 VUs, 24932 complete and 0 interrupted iterations
+default   [ 100% ] 002/100 VUs  17m59.2s/18m00.0s
+
+running (18m04.0s), 002/100 VUs, 24932 complete and 0 interrupted iterations
+default ↓ [ 100% ] 002/100 VUs  18m0s
+
+
+  █ THRESHOLDS 
+
+    http_req_duration
+    ✓ 'p(95)<3000' p(95)=2.05s
+
+    http_req_failed
+    ✓ 'rate<0.05' rate=0.98%
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 24951  23.007692/s
+    checks_succeeded...: 99.01% 24706 out of 24951
+    checks_failed......: 0.98%  245 out of 24951
+
+    ✓ /api/v1/accounts/self/courses status is 200
+    ✓ /api/v1/courses/15/assignments status is 200
+    ✓ /api/v1/courses/15/quizzes status is 200
+    ✓ /api/v1/courses/16/assignments status is 200
+    ✓ /api/v1/courses/16/quizzes status is 200
+    ✓ /api/v1/courses/17/assignments status is 200
+    ✓ /api/v1/courses/17/quizzes status is 200
+    ✓ /api/v1/courses/18/assignments status is 200
+    ✓ /api/v1/courses/18/quizzes status is 200
+    ✓ /api/v1/courses/19/assignments status is 200
+    ✓ /api/v1/courses/19/quizzes status is 200
+    ✓ /api/v1/courses/20/assignments status is 200
+    ✓ /api/v1/courses/20/quizzes status is 200
+    ✓ /api/v1/courses/21/assignments status is 200
+    ✓ /api/v1/courses/21/quizzes status is 200
+    ✓ /api/v1/courses/22/assignments status is 200
+    ✓ /api/v1/courses/22/quizzes status is 200
+    ✗ modules status is 200
+      ↳  98% — ✓ 4946 / ✗ 55
+    ✗ courses status is 200
+      ↳  98% — ✓ 4961 / ✗ 56
+    ✗ quizzes status is 200
+      ↳  98% — ✓ 4941 / ✗ 57
+    ✗ submission status is successful
+      ↳  99% — ✓ 4893 / ✗ 10
+    ✗ assignments status is 200
+      ↳  98% — ✓ 4948 / ✗ 67
+
+    HTTP
+    http_req_duration..............: avg=617.36ms min=10.34ms  med=295.94ms max=3.65s p(90)=1.67s p(95)=2.05s p(99)=2.63s
+      { expected_response:true }...: avg=621.47ms min=25.88ms  med=298.8ms  max=3.65s p(90)=1.68s p(95)=2.05s p(99)=2.63s
+    http_req_failed................: 0.98%  245 out of 24951
+    http_reqs......................: 24951  23.007692/s
+
+    EXECUTION
+    iteration_duration.............: avg=1.86s    min=534.53ms med=1.76s    max=5.3s  p(90)=3s    p(95)=3.42s p(99)=4.12s
+    iterations.....................: 24934  22.992016/s
+    vus............................: 2      min=0            max=100
+    vus_max........................: 100    min=100          max=100
+
+    NETWORK
+    data_received..................: 303 MB 279 kB/s
+    data_sent......................: 6.8 MB 6.3 kB/s
+
+
+
+
+running (18m04.5s), 000/100 VUs, 24934 complete and 0 interrupted iterations
+default ✓ [ 100% ] 000/100 VUs  18m0s
