@@ -306,7 +306,7 @@ echo "Submission flow enabled: $submission_enabled"
 if remote_mode; then
   echo "Running HPA clean-start on SUT ($SUT_SSH_HOST) ..."
   ssh $SSH_OPTS "$SUT_SSH_HOST" \
-    "cd $SUT_REPO_DIR && bash testing/hpa-clean-start.sh" \
+    "cd $SUT_REPO_DIR && WARMUP_SECONDS=${WARMUP_SECONDS:-240} bash testing/hpa-clean-start.sh" \
     || echo "WARN: remote hpa-clean-start.sh failed — continuing anyway."
   # Cluster snapshot collection runs on the SUT via start-collectors.sh (next
   # block), so we deliberately skip the local collect-k8s-snapshots.sh here.
