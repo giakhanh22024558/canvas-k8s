@@ -35,6 +35,14 @@ const profilePresets = {
   // ~23 min. "long-stress" is kept as a backward-compatible alias so old
   // experiment manifests still resolve.
   staircase: {
+    // ORIGINAL staircase — 3 levels (10 / 30 / 60 VUs), 5-min holds, total
+    // ~23 min. Designed before Stage 2 breakpoint data was available; its
+    // ceiling of 60 VUs assumed the system saturated around that load.
+    // Stage 2 200-VU breakpoint testing showed the actual saturation
+    // thresholds are higher (peak RPS @ 70 VUs, SLO breach @ 145 VUs),
+    // so this profile is now retained for backward compatibility with
+    // Stage 1 reproducibility but does not stress the cluster's full
+    // capacity envelope.
     stages: [
       { duration: "2m", target: 10 },
       { duration: "5m", target: 10 },
@@ -43,6 +51,27 @@ const profilePresets = {
       { duration: "2m", target: 60 },
       { duration: "5m", target: 60 },
       { duration: "2m", target: 0 },
+    ],
+  },
+  "staircase-tuned": {
+    // TUNED staircase — 3 levels (30 / 80 / 150 VUs) derived from Stage 2
+    // aggregate breakpoint analysis (median across 3 runs):
+    //   L1 = 30 VUs   — well below saturation; HPA expected at minReplicas
+    //   L2 = 80 VUs   — just past throughput saturation (peak RPS @ 70 VUs)
+    //   L3 = 150 VUs  — just past SLO breach (P95 ≥ 3 s @ 145 VUs)
+    // 5-min holds at each level (≥ HPA stabilizationWindow default) let
+    // HPA reach steady state at each level before the next ramp. 5-min
+    // cool-down is longer than the original (2 min) because dropping from
+    // 150 VUs requires more time for HPA scale-down observation.
+    // Total: 26 min.
+    stages: [
+      { duration: "2m", target: 30 },
+      { duration: "5m", target: 30 },
+      { duration: "2m", target: 80 },
+      { duration: "5m", target: 80 },
+      { duration: "2m", target: 150 },
+      { duration: "5m", target: 150 },
+      { duration: "5m", target: 0 },
     ],
   },
   breakpoint: {
