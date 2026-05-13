@@ -46,3 +46,11 @@ peak_web_replicas,3.0
 peak_jobs_replicas,2.0
 avg_web_replicas,3.0
 avg_jobs_replicas,2.0
+web_pod_count,3
+web_min_pod_share_percent,30.96
+web_max_pod_share_percent,36.66
+web_pod_share_spread_percent,5.7
+jobs_pod_count,2
+jobs_min_pod_share_percent,49.15
+jobs_max_pod_share_percent,50.85
+jobs_pod_share_spread_percent,1.7
