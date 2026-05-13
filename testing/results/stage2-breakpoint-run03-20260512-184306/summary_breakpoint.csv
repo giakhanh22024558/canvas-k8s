@@ -12,7 +12,7 @@ max_vus,197.0
 max_web_restart_total,0
 max_jobs_restart_total,0
 avg_web_memory_mb,9571.017
-avg_jobs_memory_mb,6262.064
+avg_jobs_memory_mb,6262.077
 max_hpa_cpu_percent,155.343
 prom_fallback_used,0
 peak_queue_depth,140
@@ -46,3 +46,11 @@ peak_web_replicas,3.0
 peak_jobs_replicas,2.0
 avg_web_replicas,3.0
 avg_jobs_replicas,2.0
+web_pod_count,3
+web_min_pod_share_percent,32.33
+web_max_pod_share_percent,33.9
+web_pod_share_spread_percent,1.57
+jobs_pod_count,2
+jobs_min_pod_share_percent,49.87
+jobs_max_pod_share_percent,50.13
+jobs_pod_share_spread_percent,0.26
