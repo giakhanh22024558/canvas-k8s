@@ -54,20 +54,21 @@ const profilePresets = {
     ],
   },
   "staircase-tuned": {
-    // TUNED staircase — 5 levels combining the original staircase's
-    // below-saturation levels with the Stage 2 breakpoint markers:
-    //   L1 = 10  VUs  — idle baseline (original); HPA expected at min
-    //   L2 = 30  VUs  — mild load (original); per-pod CPU still under target
-    //   L3 = 60  VUs  — just below throughput saturation (knee @ ~70 VUs);
-    //                   per-pod CPU approaching HPA target — fire window
-    //   L4 = 80  VUs  — just past throughput saturation; HPA should be at
-    //                   or near maxReplicas
-    //   L5 = 150 VUs  — past SLO breach (windowed p95 @ ~145 VUs); HPA at
-    //                   max, expected to expose queueing latency + errors
-    // 5-min holds at each level (≥ HPA stabilizationWindow default) let
-    // HPA reach steady state before the next ramp. 5-min cool-down to
-    // observe scale-down dynamics from 150 VUs back to 0.
-    // Total: 40 min (5 ramps × 2 min + 5 holds × 5 min + 1 × 5 min cool).
+    // TUNED staircase — 4 levels bracketing the throughput saturation
+    // knee identified in Stage 2 (peak RPS at ~70 VUs). Stops at 80 VUs
+    // because beyond throughput saturation the cluster behaves
+    // identically to Stage 2 prescaled (HPA already at maxReplicas,
+    // limited by node capacity), so higher levels would add no new
+    // HPA-specific observation.
+    //   L1 = 10 VUs  — idle baseline; HPA expected at minReplicas (1)
+    //   L2 = 30 VUs  — mild load; HPA scale-up zone (per-pod CPU
+    //                  approaches 80 % target → fires to ~3 pods)
+    //   L3 = 60 VUs  — just below throughput knee; cluster at max
+    //   L4 = 80 VUs  — just past throughput saturation; cluster at max
+    //                  with elevated latency, validates Stage 2 finding
+    // 5-min holds (≥ HPA stabilizationWindow default). 5-min cool-down
+    // captures HPA scale-down dynamics from 3+2 pods back to min.
+    // Total: 33 min (4 ramps × 2 min + 4 holds × 5 min + 5 min cool).
     stages: [
       { duration: "2m", target: 10 },
       { duration: "5m", target: 10 },
@@ -77,8 +78,6 @@ const profilePresets = {
       { duration: "5m", target: 60 },
       { duration: "2m", target: 80 },
       { duration: "5m", target: 80 },
-      { duration: "2m", target: 150 },
-      { duration: "5m", target: 150 },
       { duration: "5m", target: 0 },
     ],
   },
