@@ -77,14 +77,17 @@ case "$TEST_TYPE" in
     export STAGES_JSON="${STAGES_JSON:-[{\"duration\":\"2m\",\"target\":10},{\"duration\":\"5m\",\"target\":10},{\"duration\":\"2m\",\"target\":30},{\"duration\":\"5m\",\"target\":30},{\"duration\":\"2m\",\"target\":60},{\"duration\":\"5m\",\"target\":60},{\"duration\":\"2m\",\"target\":0}]}"
     ;;
   staircase-tuned)
-    # TUNED staircase — derived from Stage 2 200-VU breakpoint:
-    #   peak RPS observed @ VU 70 → L2 = 80 (just past throughput saturation)
-    #   P95 ≥ 3 s observed @ VU 145 → L3 = 150 (just past SLO breach)
-    #   L1 = 30 well below saturation for HPA minReplicas behaviour
-    # 5-min holds match HPA stabilizationWindow default. 5-min cool-down
-    # (vs 2-min in original) to observe HPA scale-down from L3.
-    # Total ~26 min.
-    export STAGES_JSON="${STAGES_JSON:-[{\"duration\":\"2m\",\"target\":30},{\"duration\":\"5m\",\"target\":30},{\"duration\":\"2m\",\"target\":80},{\"duration\":\"5m\",\"target\":80},{\"duration\":\"2m\",\"target\":150},{\"duration\":\"5m\",\"target\":150},{\"duration\":\"5m\",\"target\":0}]}"
+    # TUNED staircase — 5 levels combining the original staircase's
+    # below-saturation levels with the Stage 2 breakpoint markers:
+    #   L1 = 10  VUs  — idle baseline (original)
+    #   L2 = 30  VUs  — mild load (original)
+    #   L3 = 60  VUs  — just below throughput knee (~70 VUs)
+    #   L4 = 80  VUs  — just past throughput saturation
+    #   L5 = 150 VUs  — just past SLO breach (~145 VUs)
+    # 5-min holds (≥ HPA stabilizationWindow). 5-min cool-down to
+    # observe scale-down from 150 VUs.
+    # Total: 40 min.
+    export STAGES_JSON="${STAGES_JSON:-[{\"duration\":\"2m\",\"target\":10},{\"duration\":\"5m\",\"target\":10},{\"duration\":\"2m\",\"target\":30},{\"duration\":\"5m\",\"target\":30},{\"duration\":\"2m\",\"target\":60},{\"duration\":\"5m\",\"target\":60},{\"duration\":\"2m\",\"target\":80},{\"duration\":\"5m\",\"target\":80},{\"duration\":\"2m\",\"target\":150},{\"duration\":\"5m\",\"target\":150},{\"duration\":\"5m\",\"target\":0}]}"
     ;;
   breakpoint)
     # Ramp VUs through saturation — find the load level where the system
