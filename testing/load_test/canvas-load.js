@@ -55,20 +55,31 @@ const profilePresets = {
   },
   "staircase-tuned": {
     // TUNED staircase — 4 levels bracketing the throughput saturation
-    // knee identified in Stage 2 (peak RPS at ~70 VUs). Stops at 80 VUs
-    // because beyond throughput saturation the cluster behaves
-    // identically to Stage 2 prescaled (HPA already at maxReplicas,
-    // limited by node capacity), so higher levels would add no new
-    // HPA-specific observation.
+    // knee identified in Stage 2 (peak RPS at VU≈70 / minute 7 of the
+    // breakpoint test). Caps at 70 VUs — exactly the saturation point —
+    // because beyond this λ has already plateaued, and pushing further
+    // adds no new HPA-specific information (the cluster is at
+    // maxReplicas with Little's-Law-driven W growth, which Stage 2
+    // already characterised in detail).
     //   L1 = 10 VUs  — idle baseline; HPA expected at minReplicas (1)
     //   L2 = 30 VUs  — mild load; HPA scale-up zone (per-pod CPU
     //                  approaches 80 % target → fires to ~3 pods)
-    //   L3 = 60 VUs  — just below throughput knee; cluster at max
-    //   L4 = 80 VUs  — just past throughput saturation; cluster at max
-    //                  with elevated latency, validates Stage 2 finding
-    // 5-min holds (≥ HPA stabilizationWindow default). 5-min cool-down
-    // captures HPA scale-down dynamics from 3+2 pods back to min.
-    // Total: 33 min (4 ramps × 2 min + 4 holds × 5 min + 5 min cool).
+    //   L3 = 60 VUs  — just below throughput knee
+    //   L4 = 70 VUs  — at the throughput saturation knee (Stage 2 peak)
+    // 5-min holds at each level (≥ HPA stabilizationWindow default of
+    // 300 s) so HPA has at least one full evaluation cycle of clean
+    // metrics at each plateau.
+    //
+    // SCALE-DOWN OBSERVATION TAIL: after L4 the load is ramped DOWN
+    // slowly (10 min linear 70→10) instead of dropping straight to 0.
+    // The slow descent exposes the HPA scale-down gradient — we get to
+    // observe whether HPA reacts to the falling CPU smoothly or sits
+    // pinned at maxReplicas waiting for the 5-min stabilization window.
+    // A final 8-min hold at 10 VUs ensures we cross the stabilization
+    // window with low utilisation and capture the actual scale-down
+    // events (pod count returning to minReplicas).
+    // Total: 46 min (4 ramps × 2 min + 4 holds × 5 min + 10 min slow
+    // ramp-down + 8 min idle observation).
     stages: [
       { duration: "2m", target: 10 },
       { duration: "5m", target: 10 },
@@ -76,9 +87,10 @@ const profilePresets = {
       { duration: "5m", target: 30 },
       { duration: "2m", target: 60 },
       { duration: "5m", target: 60 },
-      { duration: "2m", target: 80 },
-      { duration: "5m", target: 80 },
-      { duration: "5m", target: 0 },
+      { duration: "2m", target: 70 },
+      { duration: "5m", target: 70 },
+      { duration: "10m", target: 10 },
+      { duration: "8m", target: 10 },
     ],
   },
   breakpoint: {

@@ -78,17 +78,23 @@ case "$TEST_TYPE" in
     ;;
   staircase-tuned)
     # TUNED staircase — 4 levels bracketing the throughput saturation
-    # knee identified in Stage 2 (~70 VUs). Stops at 80 VUs because past
-    # throughput saturation the cluster behaves identically to Stage 2
-    # prescaled (HPA at maxReplicas, no further dynamic behaviour to
-    # observe), so higher levels add no HPA-specific information.
+    # knee identified in Stage 2 (peak RPS at VU≈70 / minute 7 of the
+    # breakpoint test). Caps at 70 VUs — the saturation point — because
+    # past this λ has already plateaued and Little's-Law W growth has
+    # been characterised by Stage 2; higher levels add no HPA-specific
+    # information.
     #   L1 = 10 VUs  — idle baseline (HPA at min)
     #   L2 = 30 VUs  — HPA scale-up zone (fires to ~3 pods)
     #   L3 = 60 VUs  — just below throughput knee
-    #   L4 = 80 VUs  — just past throughput saturation
-    # 5-min holds. 5-min cool-down for HPA scale-down observation.
-    # Total: 33 min.
-    export STAGES_JSON="${STAGES_JSON:-[{\"duration\":\"2m\",\"target\":10},{\"duration\":\"5m\",\"target\":10},{\"duration\":\"2m\",\"target\":30},{\"duration\":\"5m\",\"target\":30},{\"duration\":\"2m\",\"target\":60},{\"duration\":\"5m\",\"target\":60},{\"duration\":\"2m\",\"target\":80},{\"duration\":\"5m\",\"target\":80},{\"duration\":\"5m\",\"target\":0}]}"
+    #   L4 = 70 VUs  — at the throughput saturation knee
+    # 5-min holds at each level (≥ HPA stabilizationWindow default).
+    #
+    # SCALE-DOWN OBSERVATION TAIL: 10-min slow ramp-down (70→10) exposes
+    # the HPA scale-down gradient against falling CPU; 8-min idle hold
+    # at 10 VUs crosses the 5-min stabilization window to capture the
+    # actual scale-down events back to minReplicas.
+    # Total: 46 min.
+    export STAGES_JSON="${STAGES_JSON:-[{\"duration\":\"2m\",\"target\":10},{\"duration\":\"5m\",\"target\":10},{\"duration\":\"2m\",\"target\":30},{\"duration\":\"5m\",\"target\":30},{\"duration\":\"2m\",\"target\":60},{\"duration\":\"5m\",\"target\":60},{\"duration\":\"2m\",\"target\":70},{\"duration\":\"5m\",\"target\":70},{\"duration\":\"10m\",\"target\":10},{\"duration\":\"8m\",\"target\":10}]}"
     ;;
   breakpoint)
     # Ramp VUs through saturation — find the load level where the system

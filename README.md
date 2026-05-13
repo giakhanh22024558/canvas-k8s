@@ -719,24 +719,25 @@ SEED_PREFIX=thesis \
 
 **Expected outcome**: a `MAX_VUS` number visible from the breakpoint chart's saturation point — the VU level at which error rate first crosses 1 % or p95 first crosses 5 s. Use that number to build the load profile for Stages 3-4.
 
-### Stage 3 — HPA Naive (stock Kubernetes default)
+### Stage 3 — HPA (stock Kubernetes default)
 
-**Goal**: show how an untuned engineer-default HPA behaves under the load level discovered in Stage 2 — slow reaction, transient outage during ramps, latency spikes while pods come up.
+**Goal**: characterise how Kubernetes' stock HPA behaves under the load level identified in Stage 2 — scale-up latency, ramp-transition error bumps, scale-down dynamics. The stage is labelled simply "HPA" (no "naive" qualifier) because pilot runs showed the stock default config already produces a stable elastic system; tuning further provides no material improvement and the comparison becomes uninformative. The thesis therefore contrasts HPA against a prescaled fleet at matched workload (Stage 4) rather than against a tuned-HPA variant.
 
 **Setup**:
 - HPA enabled with stock Kubernetes defaults: `targetAverageUtilization: 80%`, no `behavior:` block (so K8s applies built-in scale policies — 5-min scale-down stabilization, 0-second scale-up window, max +100% per minute).
 - Resources: VPA-recommended values from Stage 1.
-- Load profile: a custom `STAGES_JSON` that ramps to **`MAX_VUS`** from Stage 2 (override the default `staircase` if it caps at 60 and `MAX_VUS` is higher).
+- Load profile: `staircase-tuned` — 10/30/60/70 VU plateaus (cap = Stage 2 saturation point, validated by passenger-status Max pool size × 3 web pods = 18 workers ≈ λ_max at VU≈70) + 10-min slow ramp-down 70→10 + 8-min idle hold to observe HPA scale-down across the 5-min stabilization window.
 
 ```bash
-./deploy.sh hpa-naive
+./deploy.sh hpa-naive   # applies the stock-default HPA used as "Stage 3 — HPA"
 
-# Adjust STAGES_JSON if Stage 2's MAX_VUS exceeds 60 (staircase default cap)
+# staircase-tuned caps at 70 VUs (Stage 2 saturation point) + slow ramp-down
+# tail to observe HPA scale-down dynamics. 46 min per run.
 SEED_PREFIX=thesis \
-  RUNS_PER_SCENARIO=5 \
+  RUNS_PER_SCENARIO=3 \
   MATRIX_MODES=hpa-naive \
-  MATRIX_SCENARIOS=staircase \
-  EXPERIMENT_NAME=stage3-hpa-naive \
+  MATRIX_SCENARIOS=staircase-tuned \
+  EXPERIMENT_NAME=stage3-hpa \
   COOLDOWN_SECONDS=300 \
   SKIP_DEPLOY=true \
   bash testing/run-experiment-matrix.sh
@@ -748,31 +749,28 @@ SEED_PREFIX=thesis \
 - Error-rate spikes during ramp transitions.
 - HPA target threshold (80 %) being crossed before scale-out begins.
 
-### Stage 4 — HPA Tuned
+### Stage 4 — Prescaled Staircase (workload-matched baseline)
 
-**Goal**: prove that lowering the target and tuning `behavior:` keeps error rate low and latency stable under the same load that Stage 3 struggled with.
+**Goal**: isolate the marginal effect of HPA versus a same-shape static deployment. Stage 4 runs the identical `staircase-tuned` profile against a prescaled fleet (web=3, jobs=2 — matching Stage 3 HPA maxReplicas) so the only delta between Stage 3 and Stage 4 is the presence of the HPA controller in the loop.
 
-**Setup** (`deployment/hpa.yaml`):
-- Lower `targetAverageUtilization` (60-65 %).
-- `behavior.scaleUp` with an aggressive `Pods` or `Percent` policy for fast pod provisioning.
-- `behavior.scaleUp.stabilizationWindowSeconds` short (≤ 30 s).
-- `behavior.scaleDown.stabilizationWindowSeconds` long (≥ 300 s) to prevent flapping.
-- Same resources and replica caps as Stage 3 — only the HPA config differs.
+**Setup**:
+- Prescaled deployment via `./deploy.sh prescaled` adjusted to web=3, jobs=2.
+- Same VPA-recommended resources, same replica caps, same `staircase-tuned` load profile as Stage 3.
 
 ```bash
-./deploy.sh hpa
+./deploy.sh prescaled
 
 SEED_PREFIX=thesis \
-  RUNS_PER_SCENARIO=5 \
-  MATRIX_MODES=hpa \
-  MATRIX_SCENARIOS=staircase \
-  EXPERIMENT_NAME=stage4-hpa-tuned \
+  RUNS_PER_SCENARIO=3 \
+  MATRIX_MODES=prescaled \
+  MATRIX_SCENARIOS=staircase-tuned \
+  EXPERIMENT_NAME=stage4-prescaled \
   COOLDOWN_SECONDS=300 \
   SKIP_DEPLOY=true \
   bash testing/run-experiment-matrix.sh
 ```
 
-**Expected outcome**: same load as Stage 3, but error rate stays low, p95 latency stable, new pods come up *before* existing pods saturate.
+**Expected outcome**: ramp-transition error bumps disappear (no scale-up latency); p95 latency more stable across the staircase plateaus. Resource-time area (core·min, GiB·min) is higher because the fleet is pinned at max throughout the run — the cost side of the trade-off HPA pays for. The Stage 3 → Stage 4 delta quantifies this trade-off under identical workload.
 
 ### Optional — Prescaled comparison stage (legacy)
 
