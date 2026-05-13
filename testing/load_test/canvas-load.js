@@ -71,15 +71,15 @@ const profilePresets = {
     // metrics at each plateau.
     //
     // SCALE-DOWN OBSERVATION TAIL: after L4 the load is ramped DOWN
-    // slowly (10 min linear 70→10) instead of dropping straight to 0.
-    // The slow descent exposes the HPA scale-down gradient — we get to
-    // observe whether HPA reacts to the falling CPU smoothly or sits
-    // pinned at maxReplicas waiting for the 5-min stabilization window.
-    // A final 8-min hold at 10 VUs ensures we cross the stabilization
-    // window with low utilisation and capture the actual scale-down
-    // events (pod count returning to minReplicas).
-    // Total: 46 min (4 ramps × 2 min + 4 holds × 5 min + 10 min slow
-    // ramp-down + 8 min idle observation).
+    // (5 min linear 70→10) and then held at 10 VUs for 5 min. The HPA
+    // is tuned with stabilizationWindowSeconds=60 + 1-pod/30s
+    // scaleDown policy (see deployment/hpa-naive.yaml), so the
+    // 3 → 2 → 1 cooldown can finish within ~2 min of idle hold. The
+    // 5-min slow descent still exposes the HPA scale-down gradient
+    // against falling CPU; the 5-min idle hold confirms the system
+    // returns cleanly to minReplicas.
+    // Total: 38 min (4 ramps × 2 min + 4 holds × 5 min + 5 min slow
+    // ramp-down + 5 min idle observation).
     stages: [
       { duration: "2m", target: 10 },
       { duration: "5m", target: 10 },
@@ -89,8 +89,8 @@ const profilePresets = {
       { duration: "5m", target: 60 },
       { duration: "2m", target: 70 },
       { duration: "5m", target: 70 },
-      { duration: "10m", target: 10 },
-      { duration: "8m", target: 10 },
+      { duration: "5m", target: 10 },
+      { duration: "5m", target: 10 },
     ],
   },
   breakpoint: {

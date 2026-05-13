@@ -89,12 +89,13 @@ case "$TEST_TYPE" in
     #   L4 = 70 VUs  — at the throughput saturation knee
     # 5-min holds at each level (≥ HPA stabilizationWindow default).
     #
-    # SCALE-DOWN OBSERVATION TAIL: 10-min slow ramp-down (70→10) exposes
-    # the HPA scale-down gradient against falling CPU; 8-min idle hold
-    # at 10 VUs crosses the 5-min stabilization window to capture the
-    # actual scale-down events back to minReplicas.
-    # Total: 46 min.
-    export STAGES_JSON="${STAGES_JSON:-[{\"duration\":\"2m\",\"target\":10},{\"duration\":\"5m\",\"target\":10},{\"duration\":\"2m\",\"target\":30},{\"duration\":\"5m\",\"target\":30},{\"duration\":\"2m\",\"target\":60},{\"duration\":\"5m\",\"target\":60},{\"duration\":\"2m\",\"target\":70},{\"duration\":\"5m\",\"target\":70},{\"duration\":\"10m\",\"target\":10},{\"duration\":\"8m\",\"target\":10}]}"
+    # SCALE-DOWN OBSERVATION TAIL: 5-min slow ramp-down (70→10) + 5-min
+    # idle hold. Works in tandem with the tuned HPA scaleDown behavior
+    # (stabilizationWindowSeconds=60, 1-pod/30s policy — see
+    # deployment/hpa-naive.yaml) so the 3 → 2 → 1 cooldown finishes
+    # within the 5-min idle hold.
+    # Total: 38 min.
+    export STAGES_JSON="${STAGES_JSON:-[{\"duration\":\"2m\",\"target\":10},{\"duration\":\"5m\",\"target\":10},{\"duration\":\"2m\",\"target\":30},{\"duration\":\"5m\",\"target\":30},{\"duration\":\"2m\",\"target\":60},{\"duration\":\"5m\",\"target\":60},{\"duration\":\"2m\",\"target\":70},{\"duration\":\"5m\",\"target\":70},{\"duration\":\"5m\",\"target\":10},{\"duration\":\"5m\",\"target\":10}]}"
     ;;
   breakpoint)
     # Ramp VUs through saturation — find the load level where the system
