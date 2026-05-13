@@ -1704,36 +1704,37 @@ def plot_memory(output_dir, label,
     plt.close(fig)
 
 
-def plot_hpa_cpu(output_dir, label, hpa_cpu_values, target_percent=None):
+def plot_hpa_cpu(output_dir, label, hpa_cpu_values, target_percent=None,
+                 test_start=None):
     """HPA CPU utilisation % with the configured scale-out threshold line.
 
     Reads the actual HPA target threshold from the env_snapshot (via the
     `target_percent` argument) so the reference line matches the deployed
-    HPA configuration. Falls back to 70 % when not provided — this is the
-    Stage 4 tuned default and a safe historical reference.
+    HPA configuration. Falls back to 70 % when not provided.
 
-    Stage 3 HPA naive uses 80 %; Stage 4 HPA tuned uses 70 %; previous
-    versions of this function hard-coded 70 % which is incorrect for
-    Stage 3 charts.
+    X-axis is "minutes from test start" — matches the convention used by
+    every other per-run chart so HPA scaling events can be cross-referenced
+    against throughput / latency / replica charts at the same time index.
     """
     if not hpa_cpu_values:
         return
 
     threshold = float(target_percent) if target_percent else 70.0
+    if test_start is None:
+        test_start = hpa_cpu_values[0][0]
 
     fig, ax = plt.subplots(figsize=(12, 5))
-    xs = [x for x, _ in hpa_cpu_values]
-    ys = [y for _, y in hpa_cpu_values]
+    xs, ys = to_minutes_from_start(hpa_cpu_values, test_start)
     ax.plot(xs, ys, color="#2ca02c", label="canvas-web CPU % (HPA view)", linewidth=2)
     ax.axhline(y=threshold, color="#d62728", linewidth=2, linestyle="--",
                label=f"Scale-out threshold ({threshold:g}%)")
     ax.set_title(f"HPA CPU Utilisation % ({label})")
-    ax.set_xlabel("Time")
+    ax.set_xlabel("Minutes from test start")
     ax.set_ylabel("CPU utilisation (%)")
     ax.set_ylim(0, max(150, threshold + 30))
     ax.legend()
     ax.grid(alpha=0.25)
-    apply_time_axis(ax)
+    apply_minute_axis(ax, test_start)
     fig.tight_layout()
     fig.savefig(output_dir / f"hpa_cpu_{slugify(label)}.png")
     plt.close(fig)
@@ -2375,7 +2376,9 @@ def main():
                 hpa_target_pct = float(hpa_target_pct) if hpa_target_pct else None
             except ValueError:
                 hpa_target_pct = None
-            plot_hpa_cpu(output_dir, label, hpa_cpu, target_percent=hpa_target_pct)
+            plot_hpa_cpu(output_dir, label, hpa_cpu,
+                         target_percent=hpa_target_pct,
+                         test_start=start)
         plot_restart_counts(
             output_dir, label, snapshots,
             vus_values=vus,
