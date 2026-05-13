@@ -22,17 +22,29 @@ LOG_DIR="${COLLECTORS_LOG_DIR:-/tmp}"
 
 mkdir -p "$OUTPUT_DIR"
 
-# Refuse to start if a previous batch is still running. stop-collectors.sh
-# clears the PID file after killing, so this trips only on accidental
-# double-start.
+# Auto-clean stale state on every start. Previously this script refused to
+# start whenever the PID file existed, on the assumption that a prior batch
+# was already running. That assumption is brittle: if the prior test was
+# interrupted (Ctrl-C before the trap in run-load-test.sh installed, kill -9,
+# host reboot, etc.), some collectors may have died while others survived,
+# leaving a half-stale PID file. The old `pgrep -F` check returns success
+# if ANY listed PID is still alive — so 1 surviving zombie was enough to
+# block every subsequent run, silently losing the on-SUT CSVs for the test.
+#
+# New behaviour: if the file exists, iterate listed PIDs, kill any still
+# alive, remove the file, then proceed with a fresh start. This makes the
+# script idempotent and tolerant of any prior crash state. Belt-and-braces
+# with run-load-test.sh's cleanup trap.
 if [[ -f "$PID_FILE" ]]; then
-  if pgrep -F "$PID_FILE" >/dev/null 2>&1; then
-    echo "Collectors already running (PID file: $PID_FILE)."
-    echo "Run 'bash testing/stop-collectors.sh' first."
-    exit 1
-  else
-    rm -f "$PID_FILE"
-  fi
+  echo "Pre-existing PID file at $PID_FILE — auto-cleaning stale state ..."
+  while read -r stale_pid; do
+    [[ -z "$stale_pid" ]] && continue
+    if kill -0 "$stale_pid" 2>/dev/null; then
+      kill "$stale_pid" 2>/dev/null && echo "  killed stale pid=$stale_pid"
+    fi
+  done < "$PID_FILE"
+  rm -f "$PID_FILE"
+  echo "Stale state cleaned. Proceeding with fresh collector batch."
 fi
 
 start_one() {
