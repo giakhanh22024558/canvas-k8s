@@ -492,71 +492,61 @@ def plot_throughput_error(output_dir, label, throughput_values, error_values,
     apply_minute_axis(ax_err, test_start)
     fig.tight_layout()
 
-    # ── Saturation zone overlay (breakpoint tests only) ──────────────────────
-    # Data-driven: each run computes its own knee + SLO breach minute,
-    # so the shaded zones reflect that specific run's saturation behaviour
-    # rather than a hard-coded VU range. Skips silently when inputs are
-    # missing or thresholds are not reached.
+    # ── Saturation markers (breakpoint tests only) ──────────────────────────
+    # Two vertical markers and one shaded zone, all data-driven per-run:
+    #   Marker 1 (orange dashed): true throughput saturation = peak RPS minute
+    #     — beyond this point, additional VUs do not increase throughput
+    #   Marker 2 (red dashed):    QoS saturation = first minute P95 ≥ 3 s
+    #     — beyond this point, latency violates a typical web SLO
+    #   Shaded zone (red tint):   from Marker 1 to end of test
+    #     — the "saturated" plateau where RPS is capped and the system
+    #       absorbs additional load through queueing rather than service
+    #
+    # Pre-peak behaviour (including the transient error spike during
+    # ramp-up adaptation around minutes 5-9) is left UNSHADED so the
+    # reader sees the contrast: ramp errors occur BEFORE saturation
+    # technically begins (they are concurrency-growth artifacts, per
+    # Little's Law, not capacity-exhaustion symptoms).
     if label == "breakpoint" and throughput_values:
-        knee_min = _find_throughput_knee_minute(throughput_values, test_start)
+        sat_min = _find_throughput_saturation_minute(throughput_values, test_start)
         slo_min = _find_slo_breach_minute(latency_p95_values, test_start) if latency_p95_values else None
         end_min = (throughput_values[-1][0] - test_start).total_seconds() / 60.0
 
-        # Transition zone (orange tint): knee → SLO breach
-        if knee_min is not None and slo_min is not None and slo_min > knee_min:
+        # Shaded "Saturated" zone — peak RPS minute to end of test
+        if sat_min is not None and end_min > sat_min:
             for axis in (ax_rps, ax_err):
-                axis.axvspan(knee_min, slo_min,
-                             color="#ff9800", alpha=0.10, zorder=0)
-                axis.axvline(knee_min, color="#ff6f00", linestyle="--",
-                             linewidth=1.2, alpha=0.65, zorder=2)
-            # Label on top panel only
+                axis.axvspan(sat_min, end_min,
+                             color="#d62728", alpha=0.08, zorder=0)
+            # Throughput-saturation marker (orange dashed line)
+            for axis in (ax_rps, ax_err):
+                axis.axvline(sat_min, color="#ff6f00", linestyle="--",
+                             linewidth=1.4, alpha=0.85, zorder=2)
             ax_rps.text(
-                (knee_min + slo_min) / 2.0,
-                ax_rps.get_ylim()[1] * 0.94,
-                "Saturation transition\n(RPS knee → SLO breach)",
-                ha="center", va="top", fontsize=8.5,
+                sat_min, ax_rps.get_ylim()[1] * 0.96,
+                f"Throughput saturation\n(peak RPS @ {sat_min:.1f} min)",
+                ha="left", va="top", fontsize=8.5,
                 color="#bf360c", fontweight="bold",
                 bbox=dict(boxstyle="round,pad=0.25",
                           facecolor="white", edgecolor="#ff6f00",
-                          alpha=0.9),
+                          alpha=0.92),
                 zorder=4,
             )
 
-        # Saturated zone (red tint): SLO breach → end of test
-        if slo_min is not None and end_min > slo_min:
+        # QoS-saturation marker (red dashed line) — P95 first crosses 3 s
+        if slo_min is not None:
             for axis in (ax_rps, ax_err):
-                axis.axvspan(slo_min, end_min,
-                             color="#d62728", alpha=0.07, zorder=0)
                 axis.axvline(slo_min, color="#b71c1c", linestyle="--",
-                             linewidth=1.2, alpha=0.65, zorder=2)
+                             linewidth=1.4, alpha=0.85, zorder=2)
+            # Position the SLO label below the throughput-saturation label
+            # so they don't overlap when slo_min is close to sat_min.
             ax_rps.text(
-                (slo_min + end_min) / 2.0,
-                ax_rps.get_ylim()[1] * 0.94,
-                "Saturated\n(post-SLO queueing)",
-                ha="center", va="top", fontsize=8.5,
+                slo_min, ax_rps.get_ylim()[1] * 0.78,
+                f"SLO breach\n(P95 ≥ 3 s @ {slo_min:.1f} min)",
+                ha="left", va="top", fontsize=8.5,
                 color="#7f0000", fontweight="bold",
                 bbox=dict(boxstyle="round,pad=0.25",
                           facecolor="white", edgecolor="#b71c1c",
-                          alpha=0.9),
-                zorder=4,
-            )
-
-        # Edge case: knee found but no SLO breach (system didn't exceed 3 s)
-        if knee_min is not None and slo_min is None:
-            for axis in (ax_rps, ax_err):
-                axis.axvspan(knee_min, end_min,
-                             color="#ff9800", alpha=0.10, zorder=0)
-                axis.axvline(knee_min, color="#ff6f00", linestyle="--",
-                             linewidth=1.2, alpha=0.65, zorder=2)
-            ax_rps.text(
-                (knee_min + end_min) / 2.0,
-                ax_rps.get_ylim()[1] * 0.94,
-                "Saturated (RPS plateau)\nP95 below SLO threshold",
-                ha="center", va="top", fontsize=8.5,
-                color="#bf360c", fontweight="bold",
-                bbox=dict(boxstyle="round,pad=0.25",
-                          facecolor="white", edgecolor="#ff6f00",
-                          alpha=0.9),
+                          alpha=0.92),
                 zorder=4,
             )
 
@@ -565,22 +555,41 @@ def plot_throughput_error(output_dir, label, throughput_values, error_values,
     plt.close(fig)
 
 
-def _find_throughput_knee_minute(throughput_values, test_start, ratio=0.9):
-    """Earliest minute (from test_start) where RPS reaches `ratio` × peak.
+def _find_throughput_saturation_minute(throughput_values, test_start,
+                                       peak_tolerance=0.05,
+                                       future_overshoot=0.02):
+    """First minute where RPS reaches its observed peak AND stops growing.
 
-    Defaults to 90% of observed peak — the conventional "knee" criterion
-    for throughput saturation. Returns None when throughput_values is empty
-    or when no point in the series meets the threshold (shouldn't happen
-    by construction since peak itself meets ratio=1.0 ≥ ratio=0.9).
+    Earlier versions used "first time RPS ≥ 0.9 × peak", which fired
+    while RPS was still climbing — placing the marker before the curve
+    visibly bent. That definition mathematically captures "the load level
+    at which 90% throughput is delivered" but NOT "the load level beyond
+    which throughput stops scaling".
+
+    Revised definition (matches the visual knee):
+      - Find the earliest sample where RPS is within `peak_tolerance` of
+        the observed peak (default 5 %), AND
+      - No subsequent sample exceeds that value by more than
+        `future_overshoot` (default 2 %).
+
+    The persistence check filters early-ramp samples that happen to spike
+    near-peak before settling. Returns the time of true throughput
+    saturation onset — beyond which RPS plateaus and adding more VUs only
+    grows latency (Little's Law: λ = λ_max constant, W ∝ N).
     """
     if not throughput_values:
         return None
     peak = max(v for _, v in throughput_values)
     if peak <= 0:
         return None
-    threshold = peak * ratio
-    for ts, v in throughput_values:
-        if v >= threshold:
+    threshold = peak * (1.0 - peak_tolerance)
+    for i, (ts, v) in enumerate(throughput_values):
+        if v < threshold:
+            continue
+        # Persistence: no future value exceeds this one by >future_overshoot
+        future = throughput_values[i:]
+        future_max = max(vv for _, vv in future)
+        if future_max <= v * (1.0 + future_overshoot):
             return (ts - test_start).total_seconds() / 60.0
     return None
 
