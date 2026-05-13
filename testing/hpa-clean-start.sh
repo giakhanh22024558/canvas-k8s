@@ -3,16 +3,19 @@
 # before a load test starts. Idempotent and safe to call when no HPA exists.
 #
 # Behaviour when HPA is present:
-#   1. Clamp HPA maxReplicas to 1 so stale CPU metrics from the previous run
+#   1. Capture the ORIGINAL maxReplicas of each HPA so we can restore them
+#      exactly after warmup (previous versions hard-coded web=5, jobs=3
+#      which was wrong for Stage 3's max=3,2 configuration).
+#   2. Clamp HPA maxReplicas to 1 so stale CPU metrics from the previous run
 #      cannot trigger a scale-up before we have time to scale down.
-#   2. Scale the deployments to 1 replica.
-#   3. `rollout restart` both deployments so restart counters reset to 0 in
+#   3. Scale the deployments to 1 replica.
+#   4. `rollout restart` both deployments so restart counters reset to 0 in
 #      post-run snapshots.
-#   4. Wait for the rollouts to become Ready.
-#   5. Sleep 4 minutes so Rails finishes warming up (probes can pass before
+#   5. Wait for the rollouts to become Ready.
+#   6. Sleep 4 minutes so Rails finishes warming up (probes can pass before
 #      gems/routes/DB-pool are fully loaded) and HPA collects clean
 #      near-zero baseline samples.
-#   6. Restore HPA maxReplicas (web=5, jobs=3).
+#   7. Restore the ORIGINAL maxReplicas captured in step 1.
 #
 # Invoked locally by run-load-test.sh on single-host setups, and via SSH from
 # the load gen on split-host setups. Keeping it standalone gives one source of
@@ -34,9 +37,19 @@ fi
 
 echo "HPA detected — performing clean start (scale to 1 replica + pod restart)..."
 
+# Capture original HPA maxReplicas so we restore exactly what the user
+# deployed (whether that's Stage 3's 3/2 or Stage 4's 5/3 or anything
+# else). Fall back to a safe default only if the HPA doesn't exist yet
+# or the query fails.
+ORIG_WEB_MAX=$(kubectl get hpa canvas-web  -n "$NAMESPACE" -o jsonpath='{.spec.maxReplicas}' 2>/dev/null || echo "")
+ORIG_JOBS_MAX=$(kubectl get hpa canvas-jobs -n "$NAMESPACE" -o jsonpath='{.spec.maxReplicas}' 2>/dev/null || echo "")
+ORIG_WEB_MAX=${ORIG_WEB_MAX:-3}
+ORIG_JOBS_MAX=${ORIG_JOBS_MAX:-2}
+echo "Original HPA maxReplicas: web=${ORIG_WEB_MAX}, jobs=${ORIG_JOBS_MAX} (will restore after warmup)"
+
 # Clamp HPA maxReplicas to 1 BEFORE scaling down. Without this, HPA reads
 # stale high-CPU metrics from the previous test and immediately re-scales
-# back to 5 pods, defeating the clean start.
+# back, defeating the clean start.
 echo "Clamping HPA maxReplicas to 1 to prevent scale-up during warmup..."
 kubectl patch hpa canvas-web  -n "$NAMESPACE" -p '{"spec":{"maxReplicas":1}}' 2>/dev/null || true
 kubectl patch hpa canvas-jobs -n "$NAMESPACE" -p '{"spec":{"maxReplicas":1}}' 2>/dev/null || true
@@ -67,10 +80,12 @@ WARMUP_SECONDS="${WARMUP_SECONDS:-240}"
 echo "Waiting ${WARMUP_SECONDS}s for Rails to warm up after restart..."
 sleep "$WARMUP_SECONDS"
 
-# Restore HPA maxReplicas so it can scale freely during the actual test
-echo "Restoring HPA maxReplicas (web=5, jobs=3)..."
-kubectl patch hpa canvas-web  -n "$NAMESPACE" -p '{"spec":{"maxReplicas":5}}' 2>/dev/null || true
-kubectl patch hpa canvas-jobs -n "$NAMESPACE" -p '{"spec":{"maxReplicas":3}}' 2>/dev/null || true
+# Restore the ORIGINAL HPA maxReplicas captured at the top of the script.
+# Preserving the user's configured maxReplicas means this script is correct
+# for any HPA configuration without per-stage editing.
+echo "Restoring HPA maxReplicas (web=${ORIG_WEB_MAX}, jobs=${ORIG_JOBS_MAX})..."
+kubectl patch hpa canvas-web  -n "$NAMESPACE" -p "{\"spec\":{\"maxReplicas\":${ORIG_WEB_MAX}}}" 2>/dev/null || true
+kubectl patch hpa canvas-jobs -n "$NAMESPACE" -p "{\"spec\":{\"maxReplicas\":${ORIG_JOBS_MAX}}}" 2>/dev/null || true
 
 echo "Clean start complete. Current pod state:"
 kubectl get pods -n "$NAMESPACE"
