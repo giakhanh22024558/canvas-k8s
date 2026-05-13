@@ -22,6 +22,17 @@ RESULTS_DIR="${RESULTS_DIR:-$SCRIPT_DIR/results}"
 OUTPUT_DIR="${OUTPUT_DIR:-$RESULTS_DIR/analysis-${EXPERIMENT_NAME}}"
 STEP_SECONDS="${STEP_SECONDS:-15}"
 PUSH_GIT="${PUSH_GIT:-false}"
+# Saturation markers — defaults off (only meaningful for breakpoint).
+# Auto-enable when EXPERIMENT_NAME contains "breakpoint" so the most
+# common use case (Stage 2/breakpoint aggregate) just works.
+if [[ -z "${SATURATION_MARKERS:-}" ]]; then
+  if [[ "$EXPERIMENT_NAME" == *breakpoint* ]]; then
+    SATURATION_MARKERS="on"
+  else
+    SATURATION_MARKERS="off"
+  fi
+fi
+export SATURATION_MARKERS
 
 if [[ -z "$EXPERIMENT_NAME" ]]; then
   echo "ERROR: EXPERIMENT_NAME is required."
@@ -79,12 +90,20 @@ fi
 
 mkdir -p "$OUTPUT_DIR"
 
-"$PYTHON" "$SCRIPT_DIR/charts/aggregate_timeseries.py" \
-  --experiment "$EXPERIMENT_NAME" \
-  --results-dir "$RESULTS_DIR" \
-  --prometheus-url "$PROM_QUERY_URL" \
-  --output-dir "$OUTPUT_DIR" \
+PY_ARGS=(
+  "$SCRIPT_DIR/charts/aggregate_timeseries.py"
+  --experiment "$EXPERIMENT_NAME"
+  --results-dir "$RESULTS_DIR"
+  --prometheus-url "$PROM_QUERY_URL"
+  --output-dir "$OUTPUT_DIR"
   --step-seconds "$STEP_SECONDS"
+)
+if [[ "${SATURATION_MARKERS,,}" == "on" ]]; then
+  PY_ARGS+=(--saturation-markers)
+  echo "Saturation markers: enabled (auto-detected breakpoint experiment)"
+fi
+
+"$PYTHON" "${PY_ARGS[@]}"
 
 # ── Optional push ─────────────────────────────────────────────────────────────
 if [[ "$PUSH_GIT" == "true" ]]; then
