@@ -388,7 +388,7 @@ def plot_latency_timeline(output_dir, metrics_by_label,
 
 def plot_throughput_error(output_dir, label, throughput_values, error_values,
                           k6_error_rate_percent=None, vus_values=None,
-                          test_start=None):
+                          test_start=None, latency_p95_values=None):
     """Per-run throughput + error chart:
         Panel 1 — RPS stacked area: green = successful, red = failed (on top)
                   with a thin dark line tracing the total at the top edge.
@@ -396,11 +396,17 @@ def plot_throughput_error(output_dir, label, throughput_values, error_values,
     VU profile overlaid on each panel as a faint shaded twin axis.
     X-axis: minutes from test start, major tick per minute.
 
-    Saturation point is intentionally NOT marked here — automated detection
-    proved unreliable on graceful-degradation runs (transient ramp-up blips
-    were flagged as "saturation" even when the system fully recovered).
-    Read saturation visually from the chart: RPS plateau in panel 1
-    combined with elevated/rising error rate in panel 2.
+    Saturation zones are shaded across both panels (breakpoint tests only)
+    based on data-driven thresholds:
+      - Throughput-knee marker: first minute where RPS reaches 90% of peak
+      - SLO-breach marker:      first minute where windowed P95 ≥ 3 s
+      - Transition zone (orange tint): between knee and SLO-breach — where
+        the system is adapting to saturation and burst errors typically occur
+      - Saturated zone (red tint): from SLO-breach onward — post-saturation
+        queueing equilibrium where RPS plateaus and latency dominates
+    Computed per-run from the run's own data, so each chart's zones
+    reflect that specific run's behaviour. Skips zones for non-breakpoint
+    runs and when input data is insufficient.
     """
     if not throughput_values and not error_values:
         return
@@ -485,9 +491,115 @@ def plot_throughput_error(output_dir, label, throughput_values, error_values,
     apply_minute_axis(ax_rps, test_start)
     apply_minute_axis(ax_err, test_start)
     fig.tight_layout()
+
+    # ── Saturation zone overlay (breakpoint tests only) ──────────────────────
+    # Data-driven: each run computes its own knee + SLO breach minute,
+    # so the shaded zones reflect that specific run's saturation behaviour
+    # rather than a hard-coded VU range. Skips silently when inputs are
+    # missing or thresholds are not reached.
+    if label == "breakpoint" and throughput_values:
+        knee_min = _find_throughput_knee_minute(throughput_values, test_start)
+        slo_min = _find_slo_breach_minute(latency_p95_values, test_start) if latency_p95_values else None
+        end_min = (throughput_values[-1][0] - test_start).total_seconds() / 60.0
+
+        # Transition zone (orange tint): knee → SLO breach
+        if knee_min is not None and slo_min is not None and slo_min > knee_min:
+            for axis in (ax_rps, ax_err):
+                axis.axvspan(knee_min, slo_min,
+                             color="#ff9800", alpha=0.10, zorder=0)
+                axis.axvline(knee_min, color="#ff6f00", linestyle="--",
+                             linewidth=1.2, alpha=0.65, zorder=2)
+            # Label on top panel only
+            ax_rps.text(
+                (knee_min + slo_min) / 2.0,
+                ax_rps.get_ylim()[1] * 0.94,
+                "Saturation transition\n(RPS knee → SLO breach)",
+                ha="center", va="top", fontsize=8.5,
+                color="#bf360c", fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.25",
+                          facecolor="white", edgecolor="#ff6f00",
+                          alpha=0.9),
+                zorder=4,
+            )
+
+        # Saturated zone (red tint): SLO breach → end of test
+        if slo_min is not None and end_min > slo_min:
+            for axis in (ax_rps, ax_err):
+                axis.axvspan(slo_min, end_min,
+                             color="#d62728", alpha=0.07, zorder=0)
+                axis.axvline(slo_min, color="#b71c1c", linestyle="--",
+                             linewidth=1.2, alpha=0.65, zorder=2)
+            ax_rps.text(
+                (slo_min + end_min) / 2.0,
+                ax_rps.get_ylim()[1] * 0.94,
+                "Saturated\n(post-SLO queueing)",
+                ha="center", va="top", fontsize=8.5,
+                color="#7f0000", fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.25",
+                          facecolor="white", edgecolor="#b71c1c",
+                          alpha=0.9),
+                zorder=4,
+            )
+
+        # Edge case: knee found but no SLO breach (system didn't exceed 3 s)
+        if knee_min is not None and slo_min is None:
+            for axis in (ax_rps, ax_err):
+                axis.axvspan(knee_min, end_min,
+                             color="#ff9800", alpha=0.10, zorder=0)
+                axis.axvline(knee_min, color="#ff6f00", linestyle="--",
+                             linewidth=1.2, alpha=0.65, zorder=2)
+            ax_rps.text(
+                (knee_min + end_min) / 2.0,
+                ax_rps.get_ylim()[1] * 0.94,
+                "Saturated (RPS plateau)\nP95 below SLO threshold",
+                ha="center", va="top", fontsize=8.5,
+                color="#bf360c", fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.25",
+                          facecolor="white", edgecolor="#ff6f00",
+                          alpha=0.9),
+                zorder=4,
+            )
+
     fig.savefig(output_dir / f"throughput_error_rate_{slugify(label)}.png",
                 bbox_inches="tight")
     plt.close(fig)
+
+
+def _find_throughput_knee_minute(throughput_values, test_start, ratio=0.9):
+    """Earliest minute (from test_start) where RPS reaches `ratio` × peak.
+
+    Defaults to 90% of observed peak — the conventional "knee" criterion
+    for throughput saturation. Returns None when throughput_values is empty
+    or when no point in the series meets the threshold (shouldn't happen
+    by construction since peak itself meets ratio=1.0 ≥ ratio=0.9).
+    """
+    if not throughput_values:
+        return None
+    peak = max(v for _, v in throughput_values)
+    if peak <= 0:
+        return None
+    threshold = peak * ratio
+    for ts, v in throughput_values:
+        if v >= threshold:
+            return (ts - test_start).total_seconds() / 60.0
+    return None
+
+
+def _find_slo_breach_minute(p95_values, test_start, threshold_seconds=3.0):
+    """Earliest minute where windowed P95 latency exceeds `threshold_seconds`.
+
+    Uses windowed P95 (5-second flush window per k6 push) rather than
+    global P95 because we need the time at which the SLO is FIRST
+    violated, not the test-average value. Returns None if the threshold
+    is never crossed within the data — that's a valid result meaning the
+    SLO held throughout the test.
+    """
+    if not p95_values:
+        return None
+    for ts, v in p95_values:
+        if v is not None and v >= threshold_seconds:
+            return (ts - test_start).total_seconds() / 60.0
+    return None
 
 
 def plot_vu_profile(output_dir, label, vus_values):
@@ -2200,6 +2312,7 @@ def main():
             k6_error_rate_percent=k6_summary_metrics.get("error_rate_percent"),
             vus_values=vus,            # always show VU profile, not just breakpoint
             test_start=start,
+            latency_p95_values=latency.get("p95"),  # for SLO-breach zone (breakpoint only)
         )
         # VU profile is identical for all long-stress runs (same stages every time)
         # so it is omitted from per-run output. The previous dedicated
