@@ -139,6 +139,21 @@ fi
 
 mkdir -p "$RUN_DIR"
 
+# Initialise cleanup state EARLY so the trap below covers every interruption
+# from this point on — snapshot capture, y/N prompt, warmup wait, and k6
+# itself. Previously these fields were set immediately above the trap line
+# further down, leaving the snapshot/prompt phases unprotected: a Ctrl-C or
+# external kill during those phases left an empty $RUN_DIR behind.
+RUN_COMPLETED=false
+KEEP_INCOMPLETE_RUNS="${KEEP_INCOMPLETE_RUNS:-false}"
+K8S_SNAPSHOT_PID=""
+
+# Register the trap as soon as $RUN_DIR exists. cleanup() is defined further
+# down — bash resolves the function name when the trap fires, not when the
+# trap is registered, so forward-referencing a not-yet-defined function is
+# safe.
+trap cleanup EXIT
+
 # ── SSH plumbing (declared early so pre-test ops can route via SUT) ──────────
 # When this script runs on a dedicated load-generator host, the cluster lives
 # on a separate SUT. Setting SUT_SSH_HOST in testing.env switches every
@@ -237,13 +252,12 @@ else
   fi
 fi
 
-# Track whether the run reached a "completed" state (k6 produced a usable
-# summary). Cleanup removes the run folder when this is still false at exit,
-# preventing garbage folders from interrupted runs (Ctrl+C, script errors,
-# k6 failing to start, etc.) from polluting testing/results/.
-RUN_COMPLETED=false
-KEEP_INCOMPLETE_RUNS="${KEEP_INCOMPLETE_RUNS:-false}"
-
+# cleanup() removes the run folder when the test does not reach a usable
+# summary, preventing garbage folders from interrupted runs (Ctrl+C, script
+# errors, k6 failing to start, etc.) from polluting testing/results/. The
+# trap that invokes it is registered earlier — see "trap cleanup EXIT" near
+# the top of the file, right after mkdir -p $RUN_DIR — so coverage starts
+# the moment the folder exists.
 cleanup() {
   if [[ -n "$K8S_SNAPSHOT_PID" ]] && kill -0 "$K8S_SNAPSHOT_PID" >/dev/null 2>&1; then
     kill "$K8S_SNAPSHOT_PID" >/dev/null 2>&1 || true
@@ -288,8 +302,6 @@ cleanup() {
     echo "completed=false" >> "$RUN_DIR/metadata.env"
   fi
 }
-
-trap cleanup EXIT
 
 echo "Starting k6 load test"
 echo "Base URL: $BASE_URL"
