@@ -54,19 +54,27 @@ const profilePresets = {
     ],
   },
   "staircase-tuned": {
-    // TUNED staircase — 3 levels (30 / 80 / 150 VUs) derived from Stage 2
-    // aggregate breakpoint analysis (median across 3 runs):
-    //   L1 = 30 VUs   — well below saturation; HPA expected at minReplicas
-    //   L2 = 80 VUs   — just past throughput saturation (peak RPS @ 70 VUs)
-    //   L3 = 150 VUs  — just past SLO breach (P95 ≥ 3 s @ 145 VUs)
+    // TUNED staircase — 5 levels combining the original staircase's
+    // below-saturation levels with the Stage 2 breakpoint markers:
+    //   L1 = 10  VUs  — idle baseline (original); HPA expected at min
+    //   L2 = 30  VUs  — mild load (original); per-pod CPU still under target
+    //   L3 = 60  VUs  — just below throughput saturation (knee @ ~70 VUs);
+    //                   per-pod CPU approaching HPA target — fire window
+    //   L4 = 80  VUs  — just past throughput saturation; HPA should be at
+    //                   or near maxReplicas
+    //   L5 = 150 VUs  — past SLO breach (windowed p95 @ ~145 VUs); HPA at
+    //                   max, expected to expose queueing latency + errors
     // 5-min holds at each level (≥ HPA stabilizationWindow default) let
-    // HPA reach steady state at each level before the next ramp. 5-min
-    // cool-down is longer than the original (2 min) because dropping from
-    // 150 VUs requires more time for HPA scale-down observation.
-    // Total: 26 min.
+    // HPA reach steady state before the next ramp. 5-min cool-down to
+    // observe scale-down dynamics from 150 VUs back to 0.
+    // Total: 40 min (5 ramps × 2 min + 5 holds × 5 min + 1 × 5 min cool).
     stages: [
+      { duration: "2m", target: 10 },
+      { duration: "5m", target: 10 },
       { duration: "2m", target: 30 },
       { duration: "5m", target: 30 },
+      { duration: "2m", target: 60 },
+      { duration: "5m", target: 60 },
       { duration: "2m", target: 80 },
       { duration: "5m", target: 80 },
       { duration: "2m", target: 150 },
