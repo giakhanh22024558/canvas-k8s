@@ -1704,25 +1704,33 @@ def plot_memory(output_dir, label,
     plt.close(fig)
 
 
-def plot_hpa_cpu(output_dir, label, hpa_cpu_values):
-    """HPA CPU utilisation % with 70 % scale-out threshold line.
+def plot_hpa_cpu(output_dir, label, hpa_cpu_values, target_percent=None):
+    """HPA CPU utilisation % with the configured scale-out threshold line.
 
-    Matches Grafana panel 14 exactly — same metric
-    (kube_horizontalpodautoscaler_status_current_metrics_average_utilization),
-    same 70 % reference line, same y-axis range 0–150 %.
+    Reads the actual HPA target threshold from the env_snapshot (via the
+    `target_percent` argument) so the reference line matches the deployed
+    HPA configuration. Falls back to 70 % when not provided — this is the
+    Stage 4 tuned default and a safe historical reference.
+
+    Stage 3 HPA naive uses 80 %; Stage 4 HPA tuned uses 70 %; previous
+    versions of this function hard-coded 70 % which is incorrect for
+    Stage 3 charts.
     """
     if not hpa_cpu_values:
         return
+
+    threshold = float(target_percent) if target_percent else 70.0
 
     fig, ax = plt.subplots(figsize=(12, 5))
     xs = [x for x, _ in hpa_cpu_values]
     ys = [y for _, y in hpa_cpu_values]
     ax.plot(xs, ys, color="#2ca02c", label="canvas-web CPU % (HPA view)", linewidth=2)
-    ax.axhline(y=70, color="#d62728", linewidth=2, linestyle="--", label="Scale-out threshold (70%)")
+    ax.axhline(y=threshold, color="#d62728", linewidth=2, linestyle="--",
+               label=f"Scale-out threshold ({threshold:g}%)")
     ax.set_title(f"HPA CPU Utilisation % ({label})")
     ax.set_xlabel("Time")
     ax.set_ylabel("CPU utilisation (%)")
-    ax.set_ylim(0, 150)
+    ax.set_ylim(0, max(150, threshold + 30))
     ax.legend()
     ax.grid(alpha=0.25)
     apply_time_axis(ax)
@@ -2359,7 +2367,15 @@ def main():
         # meaningless and the chart would mislead readers into thinking HPA was
         # operating. Suppress it for non-HPA modes.
         if scaling_mode == "hpa":
-            plot_hpa_cpu(output_dir, label, hpa_cpu)
+            # Read HPA target from environment.env so the threshold line on
+            # the chart matches the actual deployed config (Stage 3 = 80 %,
+            # Stage 4 tuned = 70 %, etc.). Falls back to 70 % when missing.
+            hpa_target_pct = env_snapshot.get("web_hpa_target_cpu_percent", "")
+            try:
+                hpa_target_pct = float(hpa_target_pct) if hpa_target_pct else None
+            except ValueError:
+                hpa_target_pct = None
+            plot_hpa_cpu(output_dir, label, hpa_cpu, target_percent=hpa_target_pct)
         plot_restart_counts(
             output_dir, label, snapshots,
             vus_values=vus,
