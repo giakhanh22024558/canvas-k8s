@@ -69,12 +69,22 @@ case "$TEST_TYPE" in
     export DURATION="${DURATION:-30m}"
     ;;
   staircase|long-stress)
-    # Staircase load — three discrete VU levels with 5-min holds. Lets HPA
-    # converge on each step so we can observe scale-out latency and the
-    # cooldown stabilization-window behaviour separately.
-    # Total ~23 min: ramp 10 → hold 5m → ramp 30 → hold 5m → ramp 60 → hold 5m → ramp down.
-    # `long-stress` is kept as a backward-compatible alias.
+    # ORIGINAL staircase — 10/30/60 VUs with 5-min holds. Retained for
+    # backward compatibility with Stage 1 reproducibility. For Stages 3
+    # and 4 (HPA testing) use TEST_TYPE=staircase-tuned which uses the
+    # 30/80/150 levels derived from Stage 2 breakpoint analysis.
+    # Total ~23 min.
     export STAGES_JSON="${STAGES_JSON:-[{\"duration\":\"2m\",\"target\":10},{\"duration\":\"5m\",\"target\":10},{\"duration\":\"2m\",\"target\":30},{\"duration\":\"5m\",\"target\":30},{\"duration\":\"2m\",\"target\":60},{\"duration\":\"5m\",\"target\":60},{\"duration\":\"2m\",\"target\":0}]}"
+    ;;
+  staircase-tuned)
+    # TUNED staircase — derived from Stage 2 200-VU breakpoint:
+    #   peak RPS observed @ VU 70 → L2 = 80 (just past throughput saturation)
+    #   P95 ≥ 3 s observed @ VU 145 → L3 = 150 (just past SLO breach)
+    #   L1 = 30 well below saturation for HPA minReplicas behaviour
+    # 5-min holds match HPA stabilizationWindow default. 5-min cool-down
+    # (vs 2-min in original) to observe HPA scale-down from L3.
+    # Total ~26 min.
+    export STAGES_JSON="${STAGES_JSON:-[{\"duration\":\"2m\",\"target\":30},{\"duration\":\"5m\",\"target\":30},{\"duration\":\"2m\",\"target\":80},{\"duration\":\"5m\",\"target\":80},{\"duration\":\"2m\",\"target\":150},{\"duration\":\"5m\",\"target\":150},{\"duration\":\"5m\",\"target\":0}]}"
     ;;
   breakpoint)
     # Ramp VUs through saturation — find the load level where the system
@@ -99,7 +109,7 @@ case "$TEST_TYPE" in
     ;;
   *)
     echo "Unsupported TEST_TYPE: $TEST_TYPE"
-    echo "Use one of: smoke, load, stress, soak, staircase, breakpoint"
+    echo "Use one of: smoke, load, stress, soak, staircase, staircase-tuned, breakpoint"
     exit 1
     ;;
 esac
