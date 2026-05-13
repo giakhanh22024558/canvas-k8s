@@ -1,0 +1,116 @@
+============================================================
+  CLUSTER SNAPSHOT — captured at 2026-05-13T14:25:51+00:00
+  Namespace: canvas   Git commit: ef82cc3
+============================================================
+
+── Pods (canvas namespace) ──────────────────────────────────
+NAME                           READY   STATUS      RESTARTS        AGE     IP            NODE               NOMINATED NODE   READINESS GATES
+canvas-db-bootstrap-w584k      0/1     Completed   0               49d     <none>        ip-172-31-27-241   <none>           <none>
+canvas-db-migrate-hhqm6        0/1     Completed   0               3d22h   <none>        ip-172-31-27-241   <none>           <none>
+canvas-jobs-646ff99ffc-jk4zr   1/1     Running     0               33s     10.42.0.137   ip-172-31-27-241   <none>           <none>
+canvas-web-585bfcbfdf-4zhnq    1/1     Running     0               33s     10.42.0.138   ip-172-31-27-241   <none>           <none>
+canvas-web-585bfcbfdf-bxgfg    1/1     Running     0               3s      10.42.0.139   ip-172-31-27-241   <none>           <none>
+postgres-7fc854799f-jzdr7      1/1     Running     30 (100m ago)   49d     10.42.0.105   ip-172-31-27-241   <none>           <none>
+redis-78f87f4588-lkzvs         1/1     Running     30 (100m ago)   49d     10.42.0.109   ip-172-31-27-241   <none>           <none>
+
+── Deployments ─────────────────────────────────────────────
+NAME          READY   UP-TO-DATE   AVAILABLE   AGE
+canvas-web    2/2     2            2           7d6h
+canvas-jobs   1/1     1            1           7d6h
+
+── HPA ─────────────────────────────────────────────────────
+NAME          REFERENCE                TARGETS              MINPODS   MAXPODS   REPLICAS   AGE
+canvas-jobs   Deployment/canvas-jobs   cpu: <unknown>/80%   1         2         1          85m
+canvas-web    Deployment/canvas-web    cpu: 90%/80%         1         3         1          85m
+
+── VPA recommendations ─────────────────────────────────────
+    name: canvas-jobs-vpa
+          cpu: "2"
+          memory: 4Gi
+          cpu: 100m
+          memory: 256Mi
+      name: canvas-jobs
+      updateMode: "Off"
+    recommendation:
+        lowerBound:
+          cpu: 100m
+          memory: "2974125714"
+        target:
+          cpu: 100m
+          memory: "4066212754"
+          cpu: 35m
+          memory: "4066212754"
+        upperBound:
+          cpu: 814m
+          memory: 4Gi
+    name: canvas-web-vpa
+          cpu: "4"
+          memory: 8Gi
+          cpu: 200m
+          memory: 512Mi
+      name: canvas-web
+      updateMode: "Off"
+    recommendation:
+        lowerBound:
+          cpu: 200m
+          memory: "1835710463"
+        target:
+          cpu: 200m
+          memory: "4506574562"
+          cpu: 15m
+          memory: "4506574562"
+        upperBound:
+          cpu: 1435m
+          memory: "5830257887"
+
+── Recent events (last 50, oldest first) ───────────────────
+14m         Normal    ScalingReplicaSet              deployment/canvas-web                 Scaled up replica set canvas-web-d8b64fb9 from 1 to 2
+14m         Normal    SuccessfulCreate               replicaset/canvas-jobs-57786bc897     Created pod: canvas-jobs-57786bc897-hck9m
+14m         Normal    SuccessfulCreate               replicaset/canvas-web-d8b64fb9        Created pod: canvas-web-d8b64fb9-87ncc
+14m         Normal    Pulling                        pod/canvas-web-d8b64fb9-87ncc         Pulling image "khanhdev13/canvas-lms:latest"
+14m         Normal    Pulling                        pod/canvas-jobs-57786bc897-hck9m      Pulling image "khanhdev13/canvas-lms:latest"
+14m         Normal    Created                        pod/canvas-web-d8b64fb9-87ncc         Created container: web
+14m         Normal    Started                        pod/canvas-web-d8b64fb9-87ncc         Started container web
+14m         Normal    Pulled                         pod/canvas-jobs-57786bc897-hck9m      Successfully pulled image "khanhdev13/canvas-lms:latest" in 1.349s (1.349s including waiting). Image size: 3102950403 bytes.
+14m         Normal    Created                        pod/canvas-jobs-57786bc897-hck9m      Created container: jobs
+14m         Normal    Started                        pod/canvas-jobs-57786bc897-hck9m      Started container jobs
+14m         Normal    Pulled                         pod/canvas-web-d8b64fb9-87ncc         Successfully pulled image "khanhdev13/canvas-lms:latest" in 1.309s (1.309s including waiting). Image size: 3102950403 bytes.
+8m49s       Normal    SuccessfulDelete               replicaset/canvas-web-d8b64fb9        Deleted pod: canvas-web-d8b64fb9-bvtmc
+8m49s       Normal    SuccessfulRescale              horizontalpodautoscaler/canvas-web    New size: 1; reason: All metrics below target
+8m49s       Normal    ScalingReplicaSet              deployment/canvas-web                 Scaled down replica set canvas-web-d8b64fb9 from 2 to 1
+8m49s       Normal    Killing                        pod/canvas-web-d8b64fb9-bvtmc         Stopping container web
+8m34s       Normal    ScalingReplicaSet              deployment/canvas-jobs                Scaled down replica set canvas-jobs-57786bc897 from 2 to 1
+8m34s       Normal    SuccessfulDelete               replicaset/canvas-jobs-57786bc897     Deleted pod: canvas-jobs-57786bc897-hck9m
+8m34s       Normal    SuccessfulRescale              horizontalpodautoscaler/canvas-jobs   New size: 1; reason: All metrics below target
+8m34s       Normal    Killing                        pod/canvas-jobs-57786bc897-hck9m      Stopping container jobs
+34s         Normal    Killing                        pod/canvas-web-d8b64fb9-87ncc         Stopping container web
+34s         Normal    Killing                        pod/canvas-jobs-57786bc897-nkcb2      Stopping container jobs
+34s         Normal    ScalingReplicaSet              deployment/canvas-jobs                Scaled up replica set canvas-jobs-646ff99ffc from 0 to 1
+34s         Normal    ScalingReplicaSet              deployment/canvas-jobs                Scaled down replica set canvas-jobs-57786bc897 from 1 to 0
+34s         Normal    SuccessfulDelete               replicaset/canvas-jobs-57786bc897     Deleted pod: canvas-jobs-57786bc897-nkcb2
+34s         Normal    ScalingReplicaSet              deployment/canvas-web                 Scaled down replica set canvas-web-d8b64fb9 from 1 to 0
+34s         Normal    ScalingReplicaSet              deployment/canvas-web                 Scaled up replica set canvas-web-585bfcbfdf from 0 to 1
+34s         Normal    SuccessfulDelete               replicaset/canvas-web-d8b64fb9        Deleted pod: canvas-web-d8b64fb9-87ncc
+33s         Normal    SuccessfulCreate               replicaset/canvas-jobs-646ff99ffc     Created pod: canvas-jobs-646ff99ffc-jk4zr
+33s         Warning   FailedComputeMetricsReplicas   horizontalpodautoscaler/canvas-web    invalid metrics (1 invalid out of 1), first error is: failed to get cpu resource metric value: failed to get cpu utilization: did not receive metrics for targeted pods (pods might be unready)
+33s         Normal    SuccessfulCreate               replicaset/canvas-web-585bfcbfdf      Created pod: canvas-web-585bfcbfdf-4zhnq
+33s         Normal    Pulling                        pod/canvas-web-585bfcbfdf-4zhnq       Pulling image "khanhdev13/canvas-lms:latest"
+33s         Normal    Pulling                        pod/canvas-jobs-646ff99ffc-jk4zr      Pulling image "khanhdev13/canvas-lms:latest"
+33s         Warning   FailedGetResourceMetric        horizontalpodautoscaler/canvas-web    failed to get cpu utilization: did not receive metrics for targeted pods (pods might be unready)
+32s         Normal    Started                        pod/canvas-jobs-646ff99ffc-jk4zr      Started container jobs
+32s         Normal    Created                        pod/canvas-jobs-646ff99ffc-jk4zr      Created container: jobs
+32s         Normal    Pulled                         pod/canvas-jobs-646ff99ffc-jk4zr      Successfully pulled image "khanhdev13/canvas-lms:latest" in 1.28s (1.28s including waiting). Image size: 3102950403 bytes.
+31s         Normal    Created                        pod/canvas-web-585bfcbfdf-4zhnq       Created container: web
+31s         Normal    Started                        pod/canvas-web-585bfcbfdf-4zhnq       Started container web
+31s         Normal    Pulled                         pod/canvas-web-585bfcbfdf-4zhnq       Successfully pulled image "khanhdev13/canvas-lms:latest" in 1.307s (1.307s including waiting). Image size: 3102950403 bytes.
+18s         Warning   FailedComputeMetricsReplicas   horizontalpodautoscaler/canvas-web    invalid metrics (1 invalid out of 1), first error is: failed to get cpu resource metric value: failed to get cpu utilization: unable to get metrics for resource cpu: no metrics returned from resource metrics API
+18s         Warning   FailedGetResourceMetric        horizontalpodautoscaler/canvas-web    failed to get cpu utilization: unable to get metrics for resource cpu: no metrics returned from resource metrics API
+3s          Warning   FailedComputeMetricsReplicas   horizontalpodautoscaler/canvas-jobs   invalid metrics (1 invalid out of 1), first error is: failed to get cpu resource metric value: failed to get cpu utilization: did not receive metrics for targeted pods (pods might be unready)
+3s          Normal    SuccessfulCreate               replicaset/canvas-web-585bfcbfdf      Created pod: canvas-web-585bfcbfdf-bxgfg
+3s          Normal    Pulling                        pod/canvas-web-585bfcbfdf-bxgfg       Pulling image "khanhdev13/canvas-lms:latest"
+3s          Warning   FailedGetResourceMetric        horizontalpodautoscaler/canvas-jobs   failed to get cpu utilization: did not receive metrics for targeted pods (pods might be unready)
+3s          Normal    SuccessfulRescale              horizontalpodautoscaler/canvas-web    New size: 2; reason: cpu resource utilization (percentage of request) above target
+3s          Normal    ScalingReplicaSet              deployment/canvas-web                 Scaled up replica set canvas-web-585bfcbfdf from 1 to 2
+2s          Normal    Pulled                         pod/canvas-web-585bfcbfdf-bxgfg       Successfully pulled image "khanhdev13/canvas-lms:latest" in 1.25s (1.25s including waiting). Image size: 3102950403 bytes.
+1s          Normal    Created                        pod/canvas-web-585bfcbfdf-bxgfg       Created container: web
+1s          Normal    Started                        pod/canvas-web-585bfcbfdf-bxgfg       Started container web
