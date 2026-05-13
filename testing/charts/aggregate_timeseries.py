@@ -21,6 +21,7 @@ Charts generated:
 
 import argparse
 import csv
+import os
 import datetime as dt
 import warnings
 from pathlib import Path
@@ -536,8 +537,64 @@ def _plot_stacked_rps(ax, grid, tput, err):
     )
 
 
+def _median_curve(agg):
+    """Return 1-D median across runs for a stacked (n_runs, n_bins) array.
+    Returns None when input is missing.
+    """
+    if agg is None or agg[0] is None:
+        return None
+    with np.errstate(all="ignore"):
+        return np.nanmedian(agg[0], axis=0)
+
+
+def _find_throughput_saturation_grid_idx(grid_seconds, median_tput,
+                                         peak_tolerance=0.05,
+                                         future_overshoot=0.02):
+    """First grid index where median throughput reaches its peak AND
+    stops growing. Mirror of the per-run helper in plot_prometheus.py
+    but operates on a 1-D numpy array indexed by `grid_seconds`.
+
+    See plot_prometheus._find_throughput_saturation_minute for the
+    rationale on peak_tolerance and future_overshoot. Returns None
+    when no valid sample meets the criteria.
+    """
+    if median_tput is None or len(median_tput) == 0:
+        return None
+    valid_mask = np.isfinite(median_tput)
+    if not valid_mask.any():
+        return None
+    peak = float(np.nanmax(median_tput[valid_mask]))
+    if peak <= 0:
+        return None
+    threshold = peak * (1.0 - peak_tolerance)
+    for i in range(len(median_tput)):
+        v = median_tput[i]
+        if not np.isfinite(v) or v < threshold:
+            continue
+        future_slice = median_tput[i:]
+        future_max = float(np.nanmax(future_slice)) if np.isfinite(future_slice).any() else v
+        if future_max <= v * (1.0 + future_overshoot):
+            return i
+    return None
+
+
+def _find_slo_breach_grid_idx(median_p95, threshold_seconds=3.0):
+    """First grid index where median windowed P95 latency crosses
+    `threshold_seconds`. Returns None when threshold is never crossed
+    or when input is missing — both are valid "no marker" outcomes.
+    """
+    if median_p95 is None or len(median_p95) == 0:
+        return None
+    for i, v in enumerate(median_p95):
+        if np.isfinite(v) and v >= threshold_seconds:
+            return i
+    return None
+
+
 def plot_throughput_error(grid, tput, tput_success, err, vus,
-                          output, experiment, n_runs):
+                          output, experiment, n_runs,
+                          p95=None,
+                          draw_saturation_markers=False):
     """Two-panel load-response chart sharing a time axis:
         Panel 1 (top)    — RPS shown as a stacked area chart:
                            bottom band = median successful RPS (green),
@@ -586,6 +643,57 @@ def plot_throughput_error(grid, tput, tput_success, err, vus,
     apply_minute_ticks(ax_rps)
     apply_minute_ticks(ax_err)
     fig.tight_layout()
+
+    # ── Saturation markers on aggregate chart (breakpoint experiments) ──────
+    # Computed from the median curves rather than any single run, so the
+    # marker positions reflect the consensus saturation behaviour. Same
+    # visual treatment as per-run plot_prometheus.plot_throughput_error:
+    #   - Orange dashed line: throughput-saturation onset (median peak RPS)
+    #   - Red dashed line:    QoS saturation (median P95 first ≥ 3 s)
+    #   - Red-tinted shading: from throughput-saturation to end of x-axis
+    # Pre-peak region is intentionally left unshaded — ramp-up adaptation
+    # errors are concurrency-growth artifacts, not saturation symptoms.
+    if draw_saturation_markers:
+        median_tput = _median_curve(tput)
+        median_p95 = _median_curve(p95) if p95 is not None else None
+        sat_idx = _find_throughput_saturation_grid_idx(grid, median_tput)
+        slo_idx = _find_slo_breach_grid_idx(median_p95) if median_p95 is not None else None
+        end_min = grid[-1] / 60.0 if len(grid) else None
+
+        if sat_idx is not None and end_min is not None:
+            sat_min = grid[sat_idx] / 60.0
+            for axis in (ax_rps, ax_err):
+                axis.axvspan(sat_min, end_min,
+                             color="#d62728", alpha=0.08, zorder=0)
+                axis.axvline(sat_min, color="#ff6f00", linestyle="--",
+                             linewidth=1.4, alpha=0.85, zorder=2)
+            ax_rps.text(
+                sat_min, ax_rps.get_ylim()[1] * 0.96,
+                f"Throughput saturation\n(peak RPS @ {sat_min:.1f} min)",
+                ha="left", va="top", fontsize=8.5,
+                color="#bf360c", fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.25",
+                          facecolor="white", edgecolor="#ff6f00",
+                          alpha=0.92),
+                zorder=4,
+            )
+
+        if slo_idx is not None:
+            slo_min = grid[slo_idx] / 60.0
+            for axis in (ax_rps, ax_err):
+                axis.axvline(slo_min, color="#b71c1c", linestyle="--",
+                             linewidth=1.4, alpha=0.85, zorder=2)
+            ax_rps.text(
+                slo_min, ax_rps.get_ylim()[1] * 0.78,
+                f"SLO breach\n(P95 ≥ 3 s @ {slo_min:.1f} min)",
+                ha="left", va="top", fontsize=8.5,
+                color="#7f0000", fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.25",
+                          facecolor="white", edgecolor="#b71c1c",
+                          alpha=0.92),
+                zorder=4,
+            )
+
     fig.savefig(output, dpi=130)
     plt.close(fig)
     print(f"  → {output}")
@@ -749,6 +857,17 @@ def main():
     parser.add_argument("--results-dir", default="testing/results")
     parser.add_argument("--prometheus-url", default="http://127.0.0.1:30090")
     parser.add_argument("--output-dir", default=None)
+    # Saturation marker toggle for breakpoint-style experiments. Off by
+    # default because aggregate charts are commonly viewed for all
+    # experiment types (smoke / load / staircase / soak / breakpoint),
+    # and saturation markers only make sense for breakpoint. Enable via
+    # --saturation-markers flag or SATURATION_MARKERS=on env var.
+    parser.add_argument("--saturation-markers", action="store_true",
+                        default=(os.environ.get("SATURATION_MARKERS", "off").lower() == "on"),
+                        help="Draw throughput-saturation and SLO-breach "
+                             "markers on the aggregate throughput chart. "
+                             "Defaults off; recommended for breakpoint "
+                             "experiments only.")
     parser.add_argument("--step-seconds", type=int, default=15,
                         help="Time grid step in seconds (default 15)")
     args = parser.parse_args()
@@ -840,7 +959,9 @@ def main():
                           agg["throughput"], agg["throughput_success"],
                           agg["error_rate"], agg["vus"],
                           output_dir / "timeseries_throughput_error.png",
-                          args.experiment, n)
+                          args.experiment, n,
+                          p95=agg.get("p95"),
+                          draw_saturation_markers=args.saturation_markers)
     plot_latency(grid, agg["p50"], agg["p95"], agg["p99"],
                  agg["vus"],
                  output_dir / "timeseries_latency.png",

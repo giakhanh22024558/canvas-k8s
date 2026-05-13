@@ -1,4 +1,5 @@
 import argparse
+import os
 import csv
 import datetime as dt
 from pathlib import Path
@@ -388,7 +389,8 @@ def plot_latency_timeline(output_dir, metrics_by_label,
 
 def plot_throughput_error(output_dir, label, throughput_values, error_values,
                           k6_error_rate_percent=None, vus_values=None,
-                          test_start=None, latency_p95_values=None):
+                          test_start=None, latency_p95_values=None,
+                          draw_saturation_markers=True):
     """Per-run throughput + error chart:
         Panel 1 — RPS stacked area: green = successful, red = failed (on top)
                   with a thin dark line tracing the total at the top edge.
@@ -507,7 +509,7 @@ def plot_throughput_error(output_dir, label, throughput_values, error_values,
     # reader sees the contrast: ramp errors occur BEFORE saturation
     # technically begins (they are concurrency-growth artifacts, per
     # Little's Law, not capacity-exhaustion symptoms).
-    if label == "breakpoint" and throughput_values:
+    if draw_saturation_markers and label == "breakpoint" and throughput_values:
         sat_min = _find_throughput_saturation_minute(throughput_values, test_start)
         slo_min = _find_slo_breach_minute(latency_p95_values, test_start) if latency_p95_values else None
         end_min = (throughput_values[-1][0] - test_start).total_seconds() / 60.0
@@ -2237,6 +2239,16 @@ def main():
     parser.add_argument("--jobs-memory-limit", default="",
                         help="Jobs container memory limit (e.g. '4Gi'). "
                              "Same semantics as --web-memory-limit.")
+    # Saturation marker toggle — useful when generating "clean" charts
+    # for a thesis section that already discusses saturation textually
+    # or for comparing to runs of a different test type. Defaults to ON.
+    # Honors SATURATION_MARKERS=off env var so publish-results.sh can
+    # disable globally without editing this script.
+    parser.add_argument("--no-saturation-markers", action="store_true",
+                        default=(os.environ.get("SATURATION_MARKERS", "on").lower() == "off"),
+                        help="Suppress the throughput-saturation and SLO-breach "
+                             "marker lines + saturated-zone shading on the "
+                             "breakpoint throughput chart. Default: markers drawn.")
     args = parser.parse_args()
 
     output_dir = Path(args.output_dir)
@@ -2322,6 +2334,7 @@ def main():
             vus_values=vus,            # always show VU profile, not just breakpoint
             test_start=start,
             latency_p95_values=latency.get("p95"),  # for SLO-breach zone (breakpoint only)
+            draw_saturation_markers=not args.no_saturation_markers,
         )
         # VU profile is identical for all long-stress runs (same stages every time)
         # so it is omitted from per-run output. The previous dedicated
