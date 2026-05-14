@@ -8,8 +8,8 @@ avg_error_rate_percent,12.04
 error_logged_total,1099
 error_throttle_count,0
 error_server_5xx_count,0
-error_infra_count,0
-error_other_count,1099
+error_infra_count,1098
+error_other_count,1
 real_error_count,1099
 real_error_rate_percent,12.0597
 throttle_rate_percent,0.0
