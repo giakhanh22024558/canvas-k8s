@@ -43,13 +43,19 @@ DEFAULT_COLOR = "#8c564b"
 
 # (display label, y-axis unit, lower-is-better)
 METRIC_META = {
-    "avg_throughput_rps":     ("Throughput",       "req/s",   False),
-    "avg_error_rate_percent": ("Error Rate",        "%",       True),
-    "avg_p50_ms":             ("p50 Latency",       "ms",      True),
-    "avg_p95_ms":             ("p95 Latency",       "ms",      True),
-    "avg_p99_ms":             ("p99 Latency",       "ms",      True),
-    "max_web_restart_total":  ("Web Pod Restarts",  "count",   True),
-    "avg_web_memory_mb":      ("Avg Web Memory",    "MB",      True),
+    "avg_throughput_rps":      ("Throughput",          "req/s",  False),
+    "avg_error_rate_percent":  ("Error Rate (k6)",     "%",      True),
+    # Error rate excluding designed 403/429 load-shedding — the figure that
+    # answers "did the system actually fail". See parse_k6_error_breakdown
+    # in plot_prometheus.py. Older runs whose summary CSV predates that
+    # change simply won't have the column; stats() returns n=0 for them.
+    "real_error_rate_percent": ("Real Error Rate",     "%",      True),
+    "throttle_rate_percent":   ("Throttle (403) Rate", "%",      True),
+    "avg_p50_ms":              ("p50 Latency",         "ms",     True),
+    "avg_p95_ms":              ("p95 Latency",         "ms",     True),
+    "avg_p99_ms":              ("p99 Latency",         "ms",     True),
+    "max_web_restart_total":   ("Web Pod Restarts",    "count",  True),
+    "avg_web_memory_mb":       ("Avg Web Memory",      "MB",     True),
 }
 
 # Subset shown in the console table and bar summary
