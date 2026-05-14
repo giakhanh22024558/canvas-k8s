@@ -7,7 +7,19 @@ load_testing_env
 ensure_kubeconfig
 
 OUTPUT_FILE="${1:-}"
-INTERVAL_SECONDS="${SNAPSHOT_INTERVAL_SECONDS:-5}"
+# 1-second sampling. This collector feeds compute_scale_events() in
+# plot_prometheus.py, which derives HPA scale-out/scale-in latency from the
+# gap between web_hpa_desired_replicas rising and web_ready_replicas catching
+# up. At the previous 5 s interval a scale event that completes in ~6 s was
+# only resolvable to "within one sampling bucket" — stage3-hpa-run01 reported
+# 0.0 s and run02 reported 6–7 s for what is physically the same sub-10 s
+# latency. 1 s sampling resolves it properly. Cost is modest: ~10 fast
+# kubectl GETs per tick (each already wrapped in `timeout 4`), well within
+# k3s API-server capacity on the m6a.2xlarge node, and a 38 min run yields a
+# ~2300-row CSV (still tiny). Only this collector is sped up — the jobs/
+# postgres/redis collectors keep their 5 s interval since their DB round-
+# trips neither need nor warrant 1 s resolution.
+INTERVAL_SECONDS="${SNAPSHOT_INTERVAL_SECONDS:-1}"
 NAMESPACE="${SNAPSHOT_NAMESPACE:-canvas}"
 
 if [[ -z "$OUTPUT_FILE" ]]; then
