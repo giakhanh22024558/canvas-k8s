@@ -143,7 +143,80 @@ def parse_k6_summary_metrics(path):
     if vus_match:
         metrics["max_vus"] = float(vus_match.group(1))
 
+    # Decompose the logged per-request errors so the headline error rate can
+    # be split into designed load-shedding (throttle) vs genuine failures.
+    metrics.update(parse_k6_error_breakdown(text))
+
     return metrics
+
+
+def parse_k6_error_breakdown(text):
+    """Decompose k6's logged per-request errors into throttle / server / infra
+    / other buckets — pure post-processing, no test re-run needed.
+
+    canvas-load.js logs every failed request via console.error; k6 tees those
+    lines into k6-summary.txt, e.g.:
+        ... level=error msg="[submission] POST ... returned 500. Body
+            preview: {...internal_server_error...}" source=console
+        ... level=error msg="[quizzes] GET ... returned 403. Body
+            preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+
+    Buckets:
+      throttle     — 403/429 load-shedding by Canvas::RequestThrottle. A
+                     *designed* protective response, NOT a system failure.
+      server_5xx   — 5xx: genuine application/server failures.
+      infra        — timeout / connection refused / EOF / no HTTP status:
+                     network or pod-down class.
+      other        — anything else (e.g. a non-throttle 4xx) — kept visible
+                     so nothing is silently dropped.
+
+    Returns counts plus real_error_* (= everything that is NOT throttle).
+    real_error_rate_percent / throttle_rate_percent are over total http_reqs.
+
+    Caveat: this counts console.error lines, whose tally can differ slightly
+    from k6's own http_req_failed metric (different definition of "failed").
+    The headline error_rate_percent from k6 is left untouched; this is a
+    decomposition *of the logged error lines*, reported alongside it.
+    """
+    err_lines = [ln for ln in text.splitlines() if "level=error" in ln]
+
+    throttle = server_5xx = infra = other = 0
+    for ln in err_lines:
+        low = ln.lower()
+        m = re.search(r"returned (\d{3})", ln)
+        status = int(m.group(1)) if m else None
+        if status in (403, 429) or "rate limit exceeded" in low:
+            throttle += 1
+        elif status is not None and 500 <= status <= 599:
+            server_5xx += 1
+        elif status is None and re.search(
+                r"timeout|connection refused|eof|dial tcp|no such host|"
+                r"reset by peer|context deadline|broken pipe", low):
+            infra += 1
+        else:
+            other += 1
+
+    total_logged = len(err_lines)
+    real_errors = server_5xx + infra + other
+
+    out = {
+        "error_logged_total":     total_logged,
+        "error_throttle_count":   throttle,
+        "error_server_5xx_count": server_5xx,
+        "error_infra_count":      infra,
+        "error_other_count":      other,
+        "real_error_count":       real_errors,
+    }
+
+    # Total requests from the k6 summary block: "http_reqs...: <count> <rate>/s"
+    rm = re.search(r"http_reqs\.*:\s+(\d+)\s+\d", text)
+    if rm:
+        total_reqs = int(rm.group(1))
+        if total_reqs > 0:
+            out["real_error_rate_percent"] = round(100.0 * real_errors / total_reqs, 4)
+            out["throttle_rate_percent"]   = round(100.0 * throttle / total_reqs, 4)
+
+    return out
 
 
 def query_range(base_url, query, start, end, step):
@@ -2479,6 +2552,20 @@ def main():
             "avg_throughput_rps":    _thr,
             "avg_successful_rps":    _success_rps,
             "avg_error_rate_percent":_err,
+            # Error decomposition (post-processed from k6-summary.txt console
+            # error lines — see parse_k6_error_breakdown). avg_error_rate_percent
+            # above is k6's headline figure and lumps everything together;
+            # these split it into designed load-shedding vs genuine failures.
+            # real_error_rate_percent is the metric to quote when the question
+            # is "did the system actually fail" — throttle 403s are by design.
+            "error_logged_total":      k6_summary_metrics.get("error_logged_total", 0),
+            "error_throttle_count":    k6_summary_metrics.get("error_throttle_count", 0),
+            "error_server_5xx_count":  k6_summary_metrics.get("error_server_5xx_count", 0),
+            "error_infra_count":       k6_summary_metrics.get("error_infra_count", 0),
+            "error_other_count":       k6_summary_metrics.get("error_other_count", 0),
+            "real_error_count":        k6_summary_metrics.get("real_error_count", 0),
+            "real_error_rate_percent": k6_summary_metrics.get("real_error_rate_percent", 0.0),
+            "throttle_rate_percent":   k6_summary_metrics.get("throttle_rate_percent", 0.0),
             "avg_p50_ms":            k6_or_prom(k6_summary_metrics, "p50",  average_value(latency["p50"]), scale=1000),
             "avg_p95_ms":            k6_or_prom(k6_summary_metrics, "p95",  average_value(latency["p95"]), scale=1000),
             # p99 now uses k6's true population p99 when available (post-fix runs
