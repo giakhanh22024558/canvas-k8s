@@ -2,6 +2,7 @@ import argparse
 import os
 import csv
 import datetime as dt
+import math
 from pathlib import Path
 import re
 
@@ -35,9 +36,33 @@ def parse_timestamp(value):
 
 
 def parse_numeric(value):
+    """Empty CSV cell → NaN, not 0.0.
+
+    The on-SUT collectors emit empty fields when a scrape fails (kubectl
+    exec timeout, DB/Redis unreachable). Mapping an empty cell to 0.0
+    fabricates a real-looking sample — exactly what produced the false
+    ~4-minute "empty queue, zero throughput" plateau in stage3-hpa-run01,
+    where collect-jobs-metrics.sh had backfilled 0,0,0,0,0 on failure.
+    NaN instead: matplotlib renders it as a gap, and _finite() strips it
+    out of scalar reductions so it cannot poison a max/min/sum.
+    """
     if value in (None, ""):
-        return 0.0
+        return float("nan")
     return float(value)
+
+
+def _isnan(value):
+    return isinstance(value, float) and math.isnan(value)
+
+
+def _finite(values):
+    """Drop NaN/None from an iterable before min/max/sum aggregation.
+
+    Required because collector CSVs now carry NaN cells for failed scrapes;
+    an unfiltered NaN poisons the aggregate (and `int(nan)` raises
+    ValueError). Pair with `default=`/`if seq` guards for the empty case.
+    """
+    return [v for v in values if v is not None and not _isnan(v)]
 
 
 def parse_duration_to_seconds(value):
@@ -1171,17 +1196,19 @@ def compute_db_summary(pg_rows, redis_rows):
         "redis_evictions_total": 0,
     }
     if pg_rows:
-        out["peak_postgres_cpu_millicores"] = int(max((r.get("postgres_cpu_millicores", 0) or 0 for r in pg_rows), default=0))
-        out["peak_postgres_memory_mib"]    = int(max((r.get("postgres_memory_mib", 0) or 0 for r in pg_rows), default=0))
-        out["peak_active_conns"]           = int(max((r.get("active_conns", 0) or 0 for r in pg_rows), default=0))
-        out["max_db_lock_waits"]           = int(max((r.get("waiting_on_locks", 0) or 0 for r in pg_rows), default=0))
-        out["max_db_idle_in_tx"]           = int(max((r.get("idle_in_tx_conns", 0) or 0 for r in pg_rows), default=0))
-        out["total_slow_queries_over_1s"]  = int(max((r.get("slow_queries_over_1s", 0) or 0 for r in pg_rows), default=0))
-        ratios = [r.get("cache_hit_ratio_percent", 100) or 100 for r in pg_rows]
-        out["min_cache_hit_ratio_percent"] = round(min(ratios, default=100.0), 2)
+        # _finite() strips NaN cells (failed scrapes) so they neither poison
+        # the max/min nor raise on int(nan).
+        out["peak_postgres_cpu_millicores"] = int(max(_finite(r.get("postgres_cpu_millicores") for r in pg_rows), default=0))
+        out["peak_postgres_memory_mib"]    = int(max(_finite(r.get("postgres_memory_mib") for r in pg_rows), default=0))
+        out["peak_active_conns"]           = int(max(_finite(r.get("active_conns") for r in pg_rows), default=0))
+        out["max_db_lock_waits"]           = int(max(_finite(r.get("waiting_on_locks") for r in pg_rows), default=0))
+        out["max_db_idle_in_tx"]           = int(max(_finite(r.get("idle_in_tx_conns") for r in pg_rows), default=0))
+        out["total_slow_queries_over_1s"]  = int(max(_finite(r.get("slow_queries_over_1s") for r in pg_rows), default=0))
+        ratios = _finite(r.get("cache_hit_ratio_percent") for r in pg_rows)
+        out["min_cache_hit_ratio_percent"] = round(min(ratios), 2) if ratios else 100.0
     if redis_rows:
-        out["peak_redis_cpu_millicores"]   = int(max((r.get("redis_cpu_millicores", 0) or 0 for r in redis_rows), default=0))
-        out["peak_redis_memory_mb"]        = int(max((r.get("redis_memory_used_mb", 0) or 0 for r in redis_rows), default=0))
+        out["peak_redis_cpu_millicores"]   = int(max(_finite(r.get("redis_cpu_millicores") for r in redis_rows), default=0))
+        out["peak_redis_memory_mb"]        = int(max(_finite(r.get("redis_memory_used_mb") for r in redis_rows), default=0))
         # Percentage-of-maxmemory invariant — only meaningful when Redis is
         # configured with an explicit cap. Bare `redis:alpine` defaults to
         # maxmemory=0 (unlimited); the manifest now sets --maxmemory 256mb so
@@ -1189,17 +1216,14 @@ def compute_db_summary(pg_rows, redis_rows):
         # (Stages 1–2) still have redis_memory_max_mb=0 in their CSVs, in
         # which case we leave the percent column as None rather than dividing
         # by zero, and rely on the absolute peak_redis_memory_mb instead.
-        max_mb_samples = [r.get("redis_memory_max_mb", 0) or 0 for r in redis_rows]
-        max_mb = max(max_mb_samples, default=0)
+        max_mb = max(_finite(r.get("redis_memory_max_mb") for r in redis_rows), default=0)
         if max_mb > 0:
-            pcts = [
-                100.0 * (r.get("redis_memory_used_mb", 0) or 0) / max_mb
-                for r in redis_rows
-            ]
-            out["peak_redis_memory_percent"] = round(max(pcts, default=0.0), 2)
-        ratios = [r.get("hit_ratio_percent", 100) or 100 for r in redis_rows]
-        out["min_redis_hit_ratio_percent"] = round(min(ratios, default=100.0), 2)
-        out["redis_evictions_total"]       = int(max((r.get("evicted_keys_cumulative", 0) or 0 for r in redis_rows), default=0))
+            used_vals = _finite(r.get("redis_memory_used_mb") for r in redis_rows)
+            pcts = [100.0 * v / max_mb for v in used_vals]
+            out["peak_redis_memory_percent"] = round(max(pcts), 2) if pcts else None
+        ratios = _finite(r.get("hit_ratio_percent") for r in redis_rows)
+        out["min_redis_hit_ratio_percent"] = round(min(ratios), 2) if ratios else 100.0
+        out["redis_evictions_total"]       = int(max(_finite(r.get("evicted_keys_cumulative") for r in redis_rows), default=0))
     return out
 
 
@@ -1221,12 +1245,17 @@ def compute_jobs_summary(jobs_rows):
             "peak_failed_jobs": 0,
         }
 
-    pending = [row["pending"] for row in jobs_rows]
-    ages = [row["oldest_pending_age_sec"] for row in jobs_rows]
-    rates = [row["jobs_per_minute"] for row in jobs_rows]
-    failed = [row["failed"] for row in jobs_rows]
-    processed_first = jobs_rows[0].get("total_processed_cumulative", 0) or 0
-    processed_last = jobs_rows[-1].get("total_processed_cumulative", 0) or 0
+    # _finite() drops NaN cells from failed scrapes — without it a single
+    # missing-data row poisons every aggregate below (and int(nan) raises).
+    pending = _finite(row["pending"] for row in jobs_rows)
+    ages = _finite(row["oldest_pending_age_sec"] for row in jobs_rows)
+    rates = _finite(row["jobs_per_minute"] for row in jobs_rows)
+    failed = _finite(row["failed"] for row in jobs_rows)
+    # First/last *finite* cumulative counter — a NaN at either end would make
+    # the processed-count delta NaN.
+    processed_vals = _finite(row.get("total_processed_cumulative") for row in jobs_rows)
+    processed_first = processed_vals[0] if processed_vals else 0
+    processed_last = processed_vals[-1] if processed_vals else 0
 
     return {
         "peak_queue_depth":       int(max(pending, default=0)),
@@ -1794,6 +1823,15 @@ def compute_scale_events(snapshots):
     for row in snapshots[1:]:
         desired = row["web_hpa_desired_replicas"] or row["web_spec_replicas"]
         ready = row["web_ready_replicas"] or row["web_spec_replicas"]
+        # Skip rows where the k8s snapshot scrape failed (NaN cells). Letting
+        # a NaN through silently poisons previous_desired for the rest of the
+        # run — every subsequent comparison against NaN is False, so no
+        # further scale events would be detected.
+        if _isnan(desired) or _isnan(ready):
+            continue
+        if _isnan(previous_desired):
+            previous_desired = desired
+            continue
         direction = 0
         if desired > previous_desired:
             direction = 1
@@ -1876,7 +1914,9 @@ def infer_scaling_mode(snapshots):
     """
     if not snapshots:
         return "unknown"
-    web_specs = [row["web_spec_replicas"] for row in snapshots]
+    web_specs = _finite(row["web_spec_replicas"] for row in snapshots)
+    if not web_specs:
+        return "unknown"
     min_spec = int(min(web_specs))
     max_spec = int(max(web_specs))
     has_hpa = any(row.get("web_hpa_desired_replicas", 0) > 0 for row in snapshots)

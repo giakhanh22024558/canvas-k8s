@@ -60,10 +60,22 @@ echo "Stop with Ctrl+C."
 while true; do
   ts="$(date -Is)"
 
-  row="$(kubectl exec -n "$NAMESPACE" deployment/postgres -- \
+  # `timeout 4` caps a single scrape below the 5s interval. A bare
+  # `kubectl exec` can hang for minutes when the SUT node is CPU-saturated
+  # (kubelet slow to attach), which both stalls the loop AND — with the old
+  # `:-0` fallback below — silently backfilled fake zeros. That combination
+  # produced the false ~4-minute "empty queue" plateau in stage3-hpa-run01.
+  row="$(timeout 4 kubectl exec -n "$NAMESPACE" deployment/postgres -- \
     psql -U "$DB_USER" -d "$DB_NAME" -t -A -F ',' -c "$SQL" 2>/dev/null | head -1 || true)"
-  row="${row:-0,0,0,0,0}"
 
-  echo "${ts},${row}" >> "$OUTPUT_FILE"
+  if [[ -z "$row" ]]; then
+    # Scrape failed or timed out — emit EMPTY fields, not zeros. The chart
+    # pipeline reads empty CSV cells as NaN and renders a gap, which is the
+    # truthful representation of "we don't know" rather than a fabricated
+    # "queue drained to 0, throughput 0" sample.
+    echo "${ts},,,,," >> "$OUTPUT_FILE"
+  else
+    echo "${ts},${row}" >> "$OUTPUT_FILE"
+  fi
   sleep "$INTERVAL_SECONDS"
 done

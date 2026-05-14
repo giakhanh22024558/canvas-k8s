@@ -51,20 +51,24 @@ echo "Stop with Ctrl+C."
 while true; do
   ts="$(date -Is)"
 
-  # CPU/memory from kubectl top
-  top_line="$(kubectl top pod -n "$NAMESPACE" -l app=redis --no-headers 2>/dev/null | head -1 || true)"
+  # CPU/memory from kubectl top. `timeout 4` caps the scrape below the 5s
+  # interval so a hung kubectl call cannot stall the loop.
+  top_line="$(timeout 4 kubectl top pod -n "$NAMESPACE" -l app=redis --no-headers 2>/dev/null | head -1 || true)"
   cpu="$(echo "$top_line" | awk '{print $2}' | sed 's/m$//')"
-  cpu="${cpu:-0}"
+  # Empty (not 0) when kubectl top failed — chart pipeline reads it as NaN.
+  cpu="${cpu:-}"
 
   # Single round-trip: pull all needed sections at once. INFO without args
   # returns everything; we'll grep the keys we care about. -c flag from kubectl
   # exec into the container's redis-cli.
-  info_dump="$(kubectl exec -n "$NAMESPACE" deployment/redis -- \
+  info_dump="$(timeout 4 kubectl exec -n "$NAMESPACE" deployment/redis -- \
     redis-cli INFO 2>/dev/null || true)"
 
   if [[ -z "$info_dump" ]]; then
-    # Redis unreachable — write a row of zeros so the timeline is continuous
-    echo "${ts},${cpu},0,0,0,0,0,0,0,0" >> "$OUTPUT_FILE"
+    # Redis unreachable — emit EMPTY fields, not zeros. A row of zeros here
+    # fabricates a "0 ops/sec, 0 hits, 0 misses" sample that is indistinguish-
+    # able from a real idle Redis; empty cells render as a gap (the truth).
+    echo "${ts},${cpu},,,,,,,," >> "$OUTPUT_FILE"
     sleep "$INTERVAL_SECONDS"
     continue
   fi
@@ -78,9 +82,12 @@ while true; do
   misses="$(parse_info "$info_dump" keyspace_misses)"
   evicted="$(parse_info "$info_dump" evicted_keys)"
 
-  used_mb=$(( ${used_bytes:-0} / 1048576 ))
-  max_mb=$(( ${max_bytes:-0} / 1048576 ))
+  # info_dump is non-empty here (the unreachable case `continue`d above), so
+  # these are real readings. Individual keys missing from a valid INFO dump
+  # fall back to empty (NaN in the chart) rather than a fabricated 0.
+  used_mb=$([[ -n "${used_bytes:-}" ]] && echo $(( used_bytes / 1048576 )) || echo "")
+  max_mb=$([[ -n "${max_bytes:-}" ]] && echo $(( max_bytes / 1048576 )) || echo "")
 
-  echo "${ts},${cpu},${used_mb},${max_mb},${conn:-0},${blocked:-0},${ops:-0},${hits:-0},${misses:-0},${evicted:-0}" >> "$OUTPUT_FILE"
+  echo "${ts},${cpu},${used_mb},${max_mb},${conn:-},${blocked:-},${ops:-},${hits:-},${misses:-},${evicted:-}" >> "$OUTPUT_FILE"
   sleep "$INTERVAL_SECONDS"
 done
