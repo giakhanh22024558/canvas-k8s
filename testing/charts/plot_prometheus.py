@@ -160,13 +160,19 @@ def parse_k6_error_breakdown(text):
             preview: {...internal_server_error...}" source=console
         ... level=error msg="[quizzes] GET ... returned 403. Body
             preview: 403 Forbidden (Rate Limit Exceeded) " source=console
+        ... level=error msg="[courses] GET ... returned 0. Body
+            preview: " source=console        <- no HTTP response at all
 
     Buckets:
       throttle     — 403/429 load-shedding by Canvas::RequestThrottle. A
                      *designed* protective response, NOT a system failure.
-      server_5xx   — 5xx: genuine application/server failures.
-      infra        — timeout / connection refused / EOF / no HTTP status:
-                     network or pod-down class.
+      server_5xx   — 5xx: genuine application/server failures (pod alive,
+                     app-level error — e.g. the PG-adapter exceptions seen
+                     in Stage 2/3).
+      infra        — transport-level failure: k6 status 0 (no HTTP response
+                     received — connection refused / timeout / EOF / pod
+                     down), or an explicit timeout/connection keyword. This
+                     is the OOMKill / pod-death class that dominates Stage 1.
       other        — anything else (e.g. a non-throttle 4xx) — kept visible
                      so nothing is silently dropped.
 
@@ -183,13 +189,20 @@ def parse_k6_error_breakdown(text):
     throttle = server_5xx = infra = other = 0
     for ln in err_lines:
         low = ln.lower()
-        m = re.search(r"returned (\d{3})", ln)
+        # `(\d+)` not `(\d{3})` — k6 logs "returned 0" when no HTTP response
+        # was received at all, and that single digit must still be captured.
+        m = re.search(r"returned (\d+)", ln)
         status = int(m.group(1)) if m else None
-        if status in (403, 429) or "rate limit exceeded" in low:
+        if status == 0:
+            # k6 status 0 = no HTTP response: connection refused / timeout /
+            # EOF / pod down. Transport-level failure — the OOMKill / pod-
+            # death class. Dominates Stage 1 (naive resources).
+            infra += 1
+        elif status in (403, 429) or "rate limit exceeded" in low:
             throttle += 1
         elif status is not None and 500 <= status <= 599:
             server_5xx += 1
-        elif status is None and re.search(
+        elif re.search(
                 r"timeout|connection refused|eof|dial tcp|no such host|"
                 r"reset by peer|context deadline|broken pipe", low):
             infra += 1
