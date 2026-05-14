@@ -11,9 +11,9 @@ avg_p99_ms,1810.0
 max_vus,70.0
 max_web_restart_total,0
 max_jobs_restart_total,0
-avg_web_memory_mb,6376.585
-avg_jobs_memory_mb,5491.928
-max_hpa_cpu_percent,148.663
+avg_web_memory_mb,6695.134
+avg_jobs_memory_mb,5708.78
+max_hpa_cpu_percent,149.159
 prom_fallback_used,0
 scale_out_events,2
 scale_in_events,2
@@ -34,7 +34,7 @@ peak_active_conns,16
 max_db_lock_waits,14
 max_db_idle_in_tx,3
 total_slow_queries_over_1s,1
-min_cache_hit_ratio_percent,99.94
+min_cache_hit_ratio_percent,0.0
 peak_redis_cpu_millicores,111
 peak_redis_memory_mb,42
 peak_redis_memory_percent,
@@ -52,10 +52,10 @@ peak_jobs_replicas,2.0
 avg_web_replicas,2.3
 avg_jobs_replicas,1.9
 web_pod_count,3
-web_min_pod_share_percent,30.41
+web_min_pod_share_percent,30.4
 web_max_pod_share_percent,38.01
-web_pod_share_spread_percent,7.6
+web_pod_share_spread_percent,7.61
 jobs_pod_count,3
 jobs_min_pod_share_percent,1.43
-jobs_max_pod_share_percent,50.39
-jobs_pod_share_spread_percent,48.97
+jobs_max_pod_share_percent,50.41
+jobs_pod_share_spread_percent,48.98
