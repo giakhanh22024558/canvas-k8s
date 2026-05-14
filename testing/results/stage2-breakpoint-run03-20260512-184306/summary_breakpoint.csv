@@ -5,6 +5,14 @@ scaling_mode,prescaled
 avg_throughput_rps,26.845
 avg_successful_rps,26.386
 avg_error_rate_percent,1.71
+error_logged_total,500
+error_throttle_count,0
+error_server_5xx_count,499
+error_infra_count,0
+error_other_count,1
+real_error_count,500
+real_error_rate_percent,1.7189
+throttle_rate_percent,0.0
 avg_p50_ms,1650.0
 avg_p95_ms,5140.0
 avg_p99_ms,6790.0
@@ -29,7 +37,7 @@ peak_active_conns,14
 max_db_lock_waits,11
 max_db_idle_in_tx,4
 total_slow_queries_over_1s,0
-min_cache_hit_ratio_percent,99.95
+min_cache_hit_ratio_percent,0.0
 peak_redis_cpu_millicores,128
 peak_redis_memory_mb,53
 peak_redis_memory_percent,
