@@ -312,16 +312,10 @@ echo "Test ID: $TEST_ID"
 echo "Using API token: $token_preview (length: $token_len)"
 echo "Login flow enabled: $login_enabled"
 echo "Submission flow enabled: $submission_enabled"
-{
-  echo "test_id=$TEST_ID"
-  echo "experiment_name=${EXPERIMENT_NAME:-}"
-  echo "base_url=$BASE_URL"
-  echo "prom_url=$PROM_URL"
-  echo "test_type=$TEST_TYPE"
-  echo "login_flow_enabled=$login_enabled"
-  echo "submission_flow_enabled=$submission_enabled"
-  echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-} > "$RUN_DIR/metadata.env"
+
+# NOTE: metadata.env (with started_at) is intentionally written LATER — after
+# hpa-clean-start's warmup and the collector launch, immediately before k6.
+# See the block just above the `k6 run` invocation for the rationale.
 
 # HPA clean-start is implemented in testing/hpa-clean-start.sh — that script is
 # the single source of truth. Local runs invoke it directly; remote runs SSH
@@ -358,6 +352,29 @@ if remote_mode; then
     "cd $SUT_REPO_DIR && bash testing/start-collectors.sh" \
     || echo "WARN: remote start-collectors.sh failed — continuing without on-SUT collectors."
 fi
+
+# Write metadata.env HERE — after hpa-clean-start's warmup sleep and the
+# collector launch, immediately before k6 begins. `started_at` therefore
+# marks the actual start of load generation.
+#
+# Previously this block ran ~10 lines after the snapshot/prompt, BEFORE
+# hpa-clean-start. With WARMUP_SECONDS=120 (plus the rollout restart) that
+# put `started_at` ~2 min ahead of any real data. Every per-run chart anchors
+# its "Minutes from test start" x-axis to `started_at`, so minutes 0–2 were a
+# dead zone with no k6/collector samples — looked like missing data but was
+# just the pre-load warmup window. Anchoring to the k6-launch moment removes
+# that artefact. (~30–60 s of k6 setup() + the rate() window fill still
+# precede the first plotted point, but that is unavoidable and small.)
+{
+  echo "test_id=$TEST_ID"
+  echo "experiment_name=${EXPERIMENT_NAME:-}"
+  echo "base_url=$BASE_URL"
+  echo "prom_url=$PROM_URL"
+  echo "test_type=$TEST_TYPE"
+  echo "login_flow_enabled=$login_enabled"
+  echo "submission_flow_enabled=$submission_enabled"
+  echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+} > "$RUN_DIR/metadata.env"
 
 # k6 exits non-zero when thresholds fail (exit code 108) — expected under stress
 # conditions where error rate is high. Use || true so the matrix continues to
