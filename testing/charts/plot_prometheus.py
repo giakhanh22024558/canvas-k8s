@@ -2323,19 +2323,28 @@ def collect_run_metrics(base_url, selector, start, end, step):
     )
     jobs_memory_per_pod = _parse_per_pod_memory(jobs_memory_per_pod_result)
 
-    # HPA CPU utilisation % — calculated directly from cAdvisor.
-    # Formula: sum(actualCPU) / sum(cpuRequest) * 100
-    # This is mathematically identical to what the HPA controller uses and
-    # produces a continuous time-series (unlike the kube-state-metrics metric
-    # which is only emitted when the HPA controller is actively sampling).
-    # The KSM metric is kept as a cross-check fallback only.
+    # HPA CPU utilisation % — the signal the HPA controller scales on.
+    #
+    # Primary: the actual utilisation % the controller observed, straight from
+    # its status.currentMetrics. kube-state-metrics exposes it as
+    # ..._status_target_metric with metric_target_type="utilization" — the
+    # name is misleading; it is the *current* observed value, not the spec
+    # target. Using this means a scale-out event lines up with the line
+    # crossing the target threshold, because it IS the number the controller
+    # acted on — no rate-window or aggregation interpretation gap. (Note: the
+    # older ..._status_current_metrics_average_utilization name does not exist
+    # in this KSM version, which is why the previous "fallback" was dead.)
+    #
+    # Fallback: cAdvisor reconstruction — sum(usage)/sum(request), the same
+    # formula the controller uses, for runs/stages with no HPA object. The
+    # rate window is 1 minute (≈ the controller's sampling horizon); the
+    # previous 2-minute window damped the transients HPA reacts to below the
+    # target line, hiding the very phenomenon the chart exists to show.
     hpa_cpu_result, _ = try_queries(
         base_url,
         [
-            # Primary: cAdvisor-based calculation — always has data
-            '100 * sum(rate(container_cpu_usage_seconds_total{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"}[2m]) * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}) / sum(kube_pod_container_resource_requests{namespace="canvas",resource="cpu",pod=~"canvas-web-.*",container!="",container!="POD"})',
-            # Fallback: KSM official HPA metric (sparse — only emitted when HPA is sampling)
-            'kube_horizontalpodautoscaler_status_current_metrics_average_utilization{namespace="canvas",horizontalpodautoscaler="canvas-web"}',
+            'kube_horizontalpodautoscaler_status_target_metric{namespace="canvas",horizontalpodautoscaler="canvas-web",metric_target_type="utilization"}',
+            '100 * sum(rate(container_cpu_usage_seconds_total{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"}[1m]) * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}) / sum(kube_pod_container_resource_requests{namespace="canvas",resource="cpu",pod=~"canvas-web-.*",container!="",container!="POD"})',
         ],
         start,
         end,

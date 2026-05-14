@@ -391,8 +391,25 @@ def q_jobs_memory_mb():
 
 
 def q_web_cpu_percent_of_request():
+    # try_queries() takes the first query that returns data.
+    #
+    # Primary: the CPU utilisation % the HPA controller actually observed,
+    # straight from its status.currentMetrics. kube-state-metrics exposes it
+    # as ..._status_target_metric with metric_target_type="utilization" — the
+    # name is misleading (it is the *current* observed value, not the spec
+    # target). This is exactly what the controller acted on, with no rate-
+    # window or aggregation interpretation gap, so a scale-out event lines up
+    # with the line crossing the target threshold. Empty for the non-HPA
+    # stages (no HPA object), which fall through to the cAdvisor query.
+    #
+    # Fallback: cAdvisor reconstruction — sum(usage)/sum(request), the same
+    # formula the controller uses. 1-minute rate window (≈ the controller's
+    # sampling horizon); the previous 2-minute window damped the transients
+    # HPA reacts to below the target line, hiding the very phenomenon the
+    # chart exists to show.
     return [
-        '100 * sum(rate(container_cpu_usage_seconds_total{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"}[2m])) / sum(kube_pod_container_resource_requests{namespace="canvas",resource="cpu",pod=~"canvas-web-.*",container!="",container!="POD"})',
+        'kube_horizontalpodautoscaler_status_target_metric{namespace="canvas",horizontalpodautoscaler="canvas-web",metric_target_type="utilization"}',
+        '100 * sum(rate(container_cpu_usage_seconds_total{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"}[1m])) / sum(kube_pod_container_resource_requests{namespace="canvas",resource="cpu",pod=~"canvas-web-.*",container!="",container!="POD"})',
     ]
 
 
