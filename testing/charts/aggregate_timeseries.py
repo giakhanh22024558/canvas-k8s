@@ -745,16 +745,29 @@ def plot_latency(grid, p50, p95, p99, vus, output, experiment, n_runs):
 
 
 def plot_cpu_replicas(grid, replicas, cpu_pct, vus, output, experiment, n_runs,
-                      hpa_target_pct=None):
+                      hpa_target_pct=None, jobs_replicas=None):
     fig, ax1 = plt.subplots(figsize=(11, 5))
     plot_band(ax1, grid, replicas, "Web replicas", "#1f77b4")
+    # Jobs replicas share the same integer replica axis. They are plotted here
+    # deliberately AGAINST the web CPU% line: web replicas track web CPU%
+    # closely, jobs replicas do not — that visible mismatch is the evidence
+    # that CPU is the right HPA signal for the synchronous web tier but the
+    # wrong one for the queue-driven jobs tier.
+    if jobs_replicas is not None:
+        plot_band(ax1, grid, jobs_replicas, "Jobs replicas", "#ff7f0e")
     ax1.set_xlabel("Minutes from test start")
-    ax1.set_ylabel("Replicas", color="#1f77b4")
-    ax1.tick_params(axis="y", labelcolor="#1f77b4")
+    ax1.set_ylabel("Replica count")
+    ax1.set_ylim(bottom=0)
+    ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
     ax1.grid(True, alpha=0.3)
+    ax1.legend(loc="upper left")
 
     ax2 = ax1.twinx()
-    plot_band(ax2, grid, cpu_pct, "CPU % of request", "#d62728")
+    # The CPU% series is the WEB tier's HPA signal (kube_horizontalpod-
+    # autoscaler_status_target_metric for canvas-web). It is paired with the
+    # web replica line; the jobs replica line is intentionally NOT explained
+    # by it.
+    plot_band(ax2, grid, cpu_pct, "Web CPU % of request", "#d62728")
     # HPA scale-out threshold line — only drawn when the runs actually had an
     # HPA, and at the threshold they were really configured with (read from
     # environment.env, not hard-coded). Previously this was a fixed 70% line,
@@ -764,7 +777,7 @@ def plot_cpu_replicas(grid, replicas, cpu_pct, vus, output, experiment, n_runs,
         ax2.axhline(hpa_target_pct, color="#d62728", linestyle="--",
                     linewidth=1, alpha=0.5,
                     label=f"HPA target {hpa_target_pct:.0f}%")
-    ax2.set_ylabel("CPU %", color="#d62728")
+    ax2.set_ylabel("Web CPU %", color="#d62728")
     ax2.tick_params(axis="y", labelcolor="#d62728")
     ax2.legend(loc="upper right")
 
@@ -772,7 +785,7 @@ def plot_cpu_replicas(grid, replicas, cpu_pct, vus, output, experiment, n_runs,
     # so it doesn't overlap the CPU% spine already at the right edge.
     overlay_vus_background(ax1, grid, vus, offset_pt=55)
 
-    fig.suptitle(f"{experiment} — Replicas & CPU% (median across runs, n={n_runs})")
+    fig.suptitle(f"{experiment} — Replicas & Web CPU% (median across runs, n={n_runs})")
     apply_minute_ticks(ax1)
     fig.tight_layout()
     fig.savefig(output, dpi=130)
@@ -1049,7 +1062,8 @@ def main():
     plot_cpu_replicas(grid, agg["replicas"], agg["cpu_pct"],
                       agg["vus"],
                       output_dir / "timeseries_cpu_replicas.png",
-                      args.experiment, n, hpa_target_pct=hpa_target_pct)
+                      args.experiment, n, hpa_target_pct=hpa_target_pct,
+                      jobs_replicas=agg["jobs_replicas"])
     plot_replicas_vs_vus(grid, agg["replicas"], agg["jobs_replicas"],
                          agg["vus"],
                          output_dir / "timeseries_replicas_vs_vus.png",
