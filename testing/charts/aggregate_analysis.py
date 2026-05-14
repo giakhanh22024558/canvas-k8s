@@ -289,10 +289,27 @@ def print_per_run_table(groups: dict):
     print()
 
 
-# ── Box plots ─────────────────────────────────────────────────────────────────
+# ── Per-metric run plots ──────────────────────────────────────────────────────
+
+# A box plot summarises a distribution through quartiles. With only a handful
+# of runs that is meaningless: the IQR of 3 points just re-traces the 3 points
+# with a box that *looks* like a distribution but carries no more information
+# than the raw values — and misleads a reader into thinking it does. So a real
+# box plot is only drawn when there are enough runs for quartiles to mean
+# something; below that threshold we render a strip plot (the individual run
+# values as points) with a mean marker and a mean ± 1 SD error bar.
+BOXPLOT_MIN_N = 5
+
 
 def plot_boxplots(groups: dict, output_dir: Path):
-    """One PNG per metric — box + individual point overlay."""
+    """One PNG per metric — box plot when n >= BOXPLOT_MIN_N, otherwise a
+    strip plot of the individual runs with mean ± 1 SD."""
+    # Drop stale boxplot_*.png from older runs of this script: the output
+    # filename is now metric_*.png, and aggregate-results.sh stages the
+    # folder, so orphaned files would otherwise linger.
+    for stale in output_dir.glob("boxplot_*.png"):
+        stale.unlink()
+
     all_metrics = list(METRIC_META.keys())
 
     for metric_key in all_metrics:
@@ -314,33 +331,63 @@ def plot_boxplots(groups: dict, output_dir: Path):
         if not plot_data:
             continue
 
+        max_n = max(len(v) for v in plot_data)
+        use_box = max_n >= BOXPLOT_MIN_N
+
         fig, ax = plt.subplots(figsize=(max(6, len(plot_data) * 2.0), 5))
-
-        bp = ax.boxplot(
-            plot_data, patch_artist=True, widths=0.55,
-            showfliers=False,
-            medianprops={"color": "black", "linewidth": 2.0},
-            whiskerprops={"linewidth": 1.2},
-            capprops={"linewidth": 1.5},
-        )
-        for patch, color in zip(bp["boxes"], colors):
-            patch.set_facecolor(color)
-            patch.set_alpha(0.65)
-
-        # Overlay individual data points (jitter for clarity)
         rng = np.random.default_rng(seed=42)
-        for i, (values, color) in enumerate(zip(plot_data, colors), start=1):
-            jitter = rng.uniform(-0.08, 0.08, size=len(values))
-            ax.scatter(
-                np.array([i] * len(values)) + jitter, values,
-                color=color, s=45, zorder=5,
-                edgecolors="black", linewidths=0.6, alpha=0.9,
+
+        if use_box:
+            bp = ax.boxplot(
+                plot_data, patch_artist=True, widths=0.55,
+                showfliers=False,
+                medianprops={"color": "black", "linewidth": 2.0},
+                whiskerprops={"linewidth": 1.2},
+                capprops={"linewidth": 1.5},
             )
+            for patch, color in zip(bp["boxes"], colors):
+                patch.set_facecolor(color)
+                patch.set_alpha(0.65)
+            for i, (values, color) in enumerate(zip(plot_data, colors), start=1):
+                jitter = rng.uniform(-0.08, 0.08, size=len(values))
+                ax.scatter(
+                    np.array([i] * len(values)) + jitter, values,
+                    color=color, s=45, zorder=5,
+                    edgecolors="black", linewidths=0.6, alpha=0.9,
+                )
+            subtitle = "Distribution Across Runs"
+        else:
+            # Strip plot: individual run values + mean marker + mean ± 1 SD bar.
+            for i, (values, color) in enumerate(zip(plot_data, colors), start=1):
+                jitter = rng.uniform(-0.10, 0.10, size=len(values))
+                ax.scatter(
+                    np.array([i] * len(values)) + jitter, values,
+                    color=color, s=70, zorder=5,
+                    edgecolors="black", linewidths=0.7, alpha=0.9,
+                    label="individual runs" if i == 1 else None,
+                )
+                m = sum(values) / len(values)
+                if len(values) >= 2:
+                    sd = math.sqrt(
+                        sum((v - m) ** 2 for v in values) / (len(values) - 1))
+                else:
+                    sd = 0.0
+                ax.errorbar(
+                    i, m, yerr=sd, fmt="none", ecolor="black",
+                    elinewidth=1.5, capsize=6, capthick=1.5, zorder=4,
+                )
+                ax.plot(
+                    [i - 0.22, i + 0.22], [m, m], color="black",
+                    linewidth=2.5, zorder=6,
+                    label="mean ± 1 SD" if i == 1 else None,
+                )
+            subtitle = f"Individual Runs (n={max_n}) — mean ± 1 SD"
+            ax.legend(fontsize=8, loc="best")
 
         ax.set_xticks(range(1, len(tick_labels) + 1))
         ax.set_xticklabels(tick_labels, fontsize=9)
         ax.set_ylabel(f"{label} ({unit})", fontsize=10)
-        ax.set_title(f"{label} — Distribution Across Runs", fontsize=11)
+        ax.set_title(f"{label} — {subtitle}", fontsize=11)
         ax.grid(axis="y", linestyle="--", alpha=0.35)
 
         arrow = "↓ better" if lower_better else "↑ better"
@@ -348,7 +395,7 @@ def plot_boxplots(groups: dict, output_dir: Path):
                 fontsize=8, ha="right", va="top", color="gray")
 
         fig.tight_layout()
-        out = output_dir / f"boxplot_{metric_key}.png"
+        out = output_dir / f"metric_{metric_key}.png"
         fig.savefig(out, dpi=150)
         plt.close(fig)
         print(f"  Saved: {out.name}")
