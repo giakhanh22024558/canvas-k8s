@@ -27,7 +27,8 @@ import numpy as np
 
 # `long-stress` is kept alongside `staircase` so manifests written before the
 # rename still parse. New runs should record `staircase`.
-KNOWN_SCENARIOS = {"smoke", "load", "stress", "staircase", "long-stress", "soak", "breakpoint"}
+KNOWN_SCENARIOS = {"smoke", "load", "stress", "staircase", "staircase-tuned",
+                   "long-stress", "soak", "breakpoint"}
 
 SCENARIO_ORDER = ["smoke", "load", "stress", "staircase", "long-stress", "soak", "breakpoint"]
 
@@ -80,32 +81,50 @@ def load_summary_csv(path: Path) -> dict:
 
 def parse_run_dir(name: str, experiment: str):
     """
-    Parse a run directory name into (mode, scenario, run_number).
+    Parse a run directory name into (mode, run_number).
 
-    Expected pattern: {experiment}-{mode}-{scenario}-run{nn}
-    where scenario may contain hyphens (e.g. long-stress).
+    Accepts every folder shape run-load-test.sh has produced, all of them
+    optionally suffixed with the -YYYYMMDD-HHMMSS timestamp it appends:
 
-    Returns None if the name doesn't match.
+        {experiment}-{mode}-{scenario}-run{nn}-{ts}   (old multi-segment)
+        {experiment}-{scenario}-run{nn}-{ts}          (mode omitted)
+        {experiment}-run{nn}-{ts}                     (mode+scenario omitted)
+
+    The scenario is NO LONGER required in the folder name — discover_runs()
+    resolves it from the summary_*.csv that is actually present in the
+    folder. `mode` is whatever hyphen-segment(s) sit between the experiment
+    prefix and `run{nn}` once any known scenario suffix is stripped; it may
+    be empty (returned as "").
+
+    Returns (mode, run_number), or None if the name doesn't match.
     """
     prefix = experiment + "-"
     if not name.startswith(prefix):
         return None
-    remainder = name[len(prefix):]          # e.g. "baseline-long-stress-run01"
+    remainder = name[len(prefix):]          # e.g. "run01-20260514-020236"
 
-    m = re.match(r"^(.+)-run(\d+)$", remainder)
+    # Strip the trailing -YYYYMMDD-HHMMSS timestamp run-load-test.sh appends.
+    remainder = re.sub(r"-\d{8}-\d{6}$", "", remainder)
+
+    # `run{nn}` may be the whole string ("run01") or hyphen-suffixed onto a
+    # lead segment ("vpa-run01", "baseline-long-stress-run01").
+    m = re.match(r"^(.*?)-?run(\d+)$", remainder)
     if not m:
         return None
-    mode_scenario_str = m.group(1)           # e.g. "baseline-long-stress"
+    lead = m.group(1)                        # "", "vpa", "baseline-long-stress", ...
     run_number = int(m.group(2))
 
-    # Match scenario suffix (longest first so "long-stress" beats "stress")
+    # Strip a known scenario suffix from `lead`; whatever remains is the mode.
+    mode = lead
     for scenario in sorted(KNOWN_SCENARIOS, key=len, reverse=True):
-        if mode_scenario_str.endswith("-" + scenario):
-            mode = mode_scenario_str[: -(len(scenario) + 1)]
-            if mode:
-                return mode, scenario, run_number
+        if lead == scenario:
+            mode = ""
+            break
+        if lead.endswith("-" + scenario):
+            mode = lead[: -(len(scenario) + 1)]
+            break
 
-    return None
+    return mode, run_number
 
 
 def discover_runs(results_dir: Path, experiment: str) -> dict:
@@ -122,12 +141,21 @@ def discover_runs(results_dir: Path, experiment: str) -> dict:
         if parsed is None:
             continue
 
-        mode, scenario, run_number = parsed
-        slug = scenario.replace("-", "_")
-        summary_path = d / f"summary_{slug}.csv"
-        if not summary_path.exists():
-            print(f"  [skip] No summary_{slug}.csv in {d.name}", file=sys.stderr)
+        mode, run_number = parsed
+
+        # Resolve the scenario from the summary CSV actually present in the
+        # folder rather than from the directory name — the name no longer
+        # carries the scenario for current-style runs (e.g. the staircase-
+        # tuned profile lands in stage3-hpa-run01-<ts>/summary_staircase_tuned.csv).
+        summaries = sorted(d.glob("summary_*.csv"))
+        if not summaries:
+            print(f"  [skip] No summary_*.csv in {d.name}", file=sys.stderr)
             continue
+        summary_path = summaries[0]
+        scenario = summary_path.stem[len("summary_"):].replace("_", "-")
+
+        # Empty mode → "default" so the group key is a stable, printable tuple.
+        mode = mode or "default"
 
         row = load_summary_csv(summary_path)
         row["_run_number"] = run_number
