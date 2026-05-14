@@ -5,6 +5,14 @@ scaling_mode,hpa
 avg_throughput_rps,19.979
 avg_successful_rps,19.815
 avg_error_rate_percent,0.82
+error_logged_total,375
+error_throttle_count,351
+error_server_5xx_count,23
+error_infra_count,0
+error_other_count,1
+real_error_count,24
+real_error_rate_percent,0.0526
+throttle_rate_percent,0.7692
 avg_p50_ms,335.63
 avg_p95_ms,1610.0
 avg_p99_ms,2110.0
