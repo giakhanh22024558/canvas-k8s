@@ -1,15 +1,26 @@
 #!/bin/bash
-# aggregate-timeseries.sh — Generate cross-run mean ± std time-series charts.
+# aggregate-timeseries.sh — One-shot cross-run aggregation for an experiment.
+#
+# Produces, in testing/results/analysis-<experiment>/:
+#   1. cross-run mean ± std TIME-SERIES charts (aggregate_timeseries.py)
+#   2. an aggregate STATS TABLE — aggregate_stats_<experiment>.csv with
+#      mean/std/min/max/median per metric — plus the bar-summary chart
+#      (aggregate_analysis.py --no-boxplots)
+#
+# Per-metric box/strip plots are deliberately skipped: for the 3-run thesis
+# design they add nothing over the stats table. Set NO_STATS=true to get the
+# time-series charts only.
 #
 # Usage:
-#   EXPERIMENT_NAME=stage5-hpa-tuned bash testing/aggregate-timeseries.sh
+#   EXPERIMENT_NAME=stage3-hpa bash testing/aggregate-timeseries.sh
 #
 # Options:
 #   EXPERIMENT_NAME   Experiment prefix (required)
 #   RESULTS_DIR       Defaults to testing/results
 #   OUTPUT_DIR        Defaults to RESULTS_DIR/analysis-<experiment>
-#   STEP_SECONDS      Grid resolution (default 15)
-#   PUSH_GIT          Set to "true" to commit + push the charts (default false)
+#   STEP_SECONDS      Grid resolution for time-series (default 15)
+#   NO_STATS          "true" → skip the stats table, time-series charts only
+#   PUSH_GIT          "true" → commit + push the analysis output (default false)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -105,17 +116,33 @@ fi
 
 "$PYTHON" "${PY_ARGS[@]}"
 
+# ── Statistical aggregate: mean ± std table ───────────────────────────────────
+# Runs aggregate_analysis.py for the same experiment to emit
+# aggregate_stats_<experiment>.csv (mean/std/min/max/median per metric) plus
+# the bar-summary chart. Box/strip plots are skipped (--no-boxplots) — for a
+# 3-run thesis they add no information over the table. Pass NO_STATS=true to
+# skip this step and produce time-series charts only.
+if [[ "${NO_STATS:-false}" != "true" ]]; then
+  echo ""
+  echo "Generating aggregate stats table (mean ± std)..."
+  "$PYTHON" "$SCRIPT_DIR/charts/aggregate_analysis.py" \
+    --experiment "$EXPERIMENT_NAME" \
+    --results-dir "$RESULTS_DIR" \
+    --output-dir "$OUTPUT_DIR" \
+    --no-boxplots
+fi
+
 # ── Optional push ─────────────────────────────────────────────────────────────
 if [[ "$PUSH_GIT" == "true" ]]; then
   echo ""
   echo "Pushing charts to git..."
   cd "$ROOT_DIR"
   git pull origin "$BRANCH" --rebase || true
-  git add "testing/results/analysis-${EXPERIMENT_NAME}/"
+  git add -A "testing/results/analysis-${EXPERIMENT_NAME}/"
   if git diff --cached --quiet; then
     echo "Nothing new to commit."
   else
-    git commit -m "Add cross-run time-series charts for ${EXPERIMENT_NAME}"
+    git commit -m "Add cross-run time-series + aggregate stats for ${EXPERIMENT_NAME}"
     git push origin "$BRANCH"
     echo "Pushed."
   fi

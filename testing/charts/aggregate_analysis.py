@@ -525,7 +525,12 @@ def main():
                         help="Output directory for charts/CSV "
                              "(default: <results-dir>/analysis-<experiment>)")
     parser.add_argument("--no-plots", action="store_true",
-                        help="Skip chart generation (CSV + console only)")
+                        help="Skip ALL chart generation (CSV + console only)")
+    parser.add_argument("--no-boxplots", action="store_true",
+                        help="Skip only the per-metric box/strip plots; still "
+                             "write the aggregate stats CSV and the bar "
+                             "summary chart. Use when the mean/std table is "
+                             "all that's wanted from this script.")
     args = parser.parse_args()
 
     results_dir = Path(args.results_dir).resolve()
@@ -567,8 +572,11 @@ def main():
     write_aggregate_csv(groups, output_dir / f"aggregate_stats_{args.experiment}.csv")
 
     if not args.no_plots:
-        print("\nGenerating box plots (one per metric)...")
-        plot_boxplots(groups, output_dir)
+        if args.no_boxplots:
+            print("\nSkipping per-metric box/strip plots (--no-boxplots).")
+        else:
+            print("\nGenerating per-metric plots...")
+            plot_boxplots(groups, output_dir)
 
         print("\nGenerating bar summary chart...")
         plot_bar_summary(groups, output_dir, args.experiment)
