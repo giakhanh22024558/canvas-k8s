@@ -22,6 +22,7 @@ Charts generated:
 import argparse
 import csv
 import os
+import re
 import datetime as dt
 import warnings
 from pathlib import Path
@@ -828,15 +829,24 @@ def plot_memory(grid, web_mem, jobs_mem, vus, output, experiment, n_runs):
 # ── main ──────────────────────────────────────────────────────────────────────
 
 def discover_runs(results_dir: Path, experiment: str):
-    """Find all subdirectories starting with `<experiment>-` that contain a
-    valid metadata.env. Accepts both the simple `<experiment>-<timestamp>`
-    folder name (no RUN_LABEL) and the `<experiment>-<run_label>-<timestamp>`
-    form produced when RUN_LABEL is set in run-load-test.sh."""
+    """Find all run subdirectories for an experiment that carry a valid
+    metadata.env.
+
+    A folder qualifies when it (a) starts with `<experiment>-` and (b) has a
+    `run<NN>` segment, optionally followed by the `-YYYYMMDD-HHMMSS` timestamp
+    run-load-test.sh appends. The run<NN> requirement keeps this consistent
+    with aggregate_analysis.parse_run_dir: a folder that merely shares the
+    prefix but is not part of the numbered run series — e.g. an ablation run
+    renamed to `<experiment>-throttleoff-<ts>` — must NOT be averaged into the
+    mean ± std bands, or the time-series and the stats table would disagree
+    on n."""
     runs = []
     for d in sorted(results_dir.iterdir()):
         if not d.is_dir():
             continue
         if not d.name.startswith(experiment + "-"):
+            continue
+        if not re.search(r"-run\d+(-\d{8}-\d{6})?$", d.name):
             continue
         meta = load_env_file(d / "metadata.env")
         if "started_at" not in meta or "ended_at" not in meta:
