@@ -307,15 +307,25 @@ def print_per_run_table(groups: dict):
 BOXPLOT_MIN_N = 5
 
 
+def clean_stale_metric_plots(output_dir: Path, drop_metric_plots: bool):
+    """Remove stale per-metric plot files left by earlier runs of this script.
+
+    Always drops the old boxplot_*.png name (renamed to metric_*.png). When
+    drop_metric_plots is set (--no-boxplots / --no-plots — i.e. no per-metric
+    plots will be regenerated this run) it also drops metric_*.png so the
+    output dir doesn't carry orphans. Lives outside plot_boxplots() so the
+    cleanup still happens when plot_boxplots is skipped.
+    """
+    for stale in output_dir.glob("boxplot_*.png"):
+        stale.unlink()
+    if drop_metric_plots:
+        for stale in output_dir.glob("metric_*.png"):
+            stale.unlink()
+
+
 def plot_boxplots(groups: dict, output_dir: Path):
     """One PNG per metric — box plot when n >= BOXPLOT_MIN_N, otherwise a
     strip plot of the individual runs with mean ± 1 SD."""
-    # Drop stale boxplot_*.png from older runs of this script: the output
-    # filename is now metric_*.png, and aggregate-results.sh stages the
-    # folder, so orphaned files would otherwise linger.
-    for stale in output_dir.glob("boxplot_*.png"):
-        stale.unlink()
-
     all_metrics = list(METRIC_META.keys())
 
     for metric_key in all_metrics:
@@ -570,6 +580,11 @@ def main():
     # CSV
     print("Writing aggregate CSV...")
     write_aggregate_csv(groups, output_dir / f"aggregate_stats_{args.experiment}.csv")
+
+    # Always clear stale per-metric plot files first — runs even when the
+    # per-metric plots are skipped, so --no-boxplots doesn't leave orphans.
+    clean_stale_metric_plots(output_dir,
+                             drop_metric_plots=args.no_boxplots or args.no_plots)
 
     if not args.no_plots:
         if args.no_boxplots:
