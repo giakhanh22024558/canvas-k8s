@@ -52,16 +52,23 @@ while true; do
 
   # CPU/memory from kubectl top — output: NAME CPU(cores) MEMORY(bytes)
   # e.g. "postgres-7fc854799f-jzdr7   234m   512Mi"
-  top_line="$(kubectl top pod -n "$NAMESPACE" -l app=postgres --no-headers 2>/dev/null | head -1 || true)"
+  # `timeout 4` caps the scrape below the 5s interval — a hung kubectl call
+  # on a CPU-saturated node must not stall the loop.
+  top_line="$(timeout 4 kubectl top pod -n "$NAMESPACE" -l app=postgres --no-headers 2>/dev/null | head -1 || true)"
   cpu="$(echo "$top_line" | awk '{print $2}' | sed 's/m$//')"
   mem="$(echo "$top_line" | awk '{print $3}' | sed 's/Mi$//')"
-  cpu="${cpu:-0}"
-  mem="${mem:-0}"
+  # Empty (not 0) when kubectl top failed — distinguishes "metrics scrape
+  # failed" from a genuine near-idle reading. Chart pipeline reads empty as NaN.
+  cpu="${cpu:-}"
+  mem="${mem:-}"
 
   # 8-column row from SQL above
-  pg_row="$(kubectl exec -n "$NAMESPACE" deployment/postgres -- \
+  pg_row="$(timeout 4 kubectl exec -n "$NAMESPACE" deployment/postgres -- \
     psql -U "$DB_USER" -d "$DB_NAME" -t -A -F ',' -c "$SQL" 2>/dev/null | head -1 || true)"
-  pg_row="${pg_row:-0,0,0,0,0,100,0,0}"
+  # 8 EMPTY fields (7 commas) when the SQL round-trip failed — previously this
+  # backfilled 0,0,0,0,0,100,0,0 which fabricated a "0 active conns, 100% cache
+  # hit" sample indistinguishable from a real idle reading.
+  pg_row="${pg_row:-,,,,,,,}"
 
   echo "${ts},${cpu},${mem},${pg_row}" >> "$OUTPUT_FILE"
   sleep "$INTERVAL_SECONDS"
