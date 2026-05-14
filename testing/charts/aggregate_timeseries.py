@@ -727,7 +727,8 @@ def plot_latency(grid, p50, p95, p99, vus, output, experiment, n_runs):
     print(f"  → {output}")
 
 
-def plot_cpu_replicas(grid, replicas, cpu_pct, vus, output, experiment, n_runs):
+def plot_cpu_replicas(grid, replicas, cpu_pct, vus, output, experiment, n_runs,
+                      hpa_target_pct=None):
     fig, ax1 = plt.subplots(figsize=(11, 5))
     plot_band(ax1, grid, replicas, "Web replicas", "#1f77b4")
     ax1.set_xlabel("Minutes from test start")
@@ -737,8 +738,15 @@ def plot_cpu_replicas(grid, replicas, cpu_pct, vus, output, experiment, n_runs):
 
     ax2 = ax1.twinx()
     plot_band(ax2, grid, cpu_pct, "CPU % of request", "#d62728")
-    ax2.axhline(70, color="#d62728", linestyle="--", linewidth=1, alpha=0.5,
-                label="HPA target 70%")
+    # HPA scale-out threshold line — only drawn when the runs actually had an
+    # HPA, and at the threshold they were really configured with (read from
+    # environment.env, not hard-coded). Previously this was a fixed 70% line,
+    # which mislabelled Stage 3 (target 80%) and drew a meaningless HPA line
+    # on the non-HPA Stage 1/2 charts.
+    if hpa_target_pct is not None:
+        ax2.axhline(hpa_target_pct, color="#d62728", linestyle="--",
+                    linewidth=1, alpha=0.5,
+                    label=f"HPA target {hpa_target_pct:.0f}%")
     ax2.set_ylabel("CPU %", color="#d62728")
     ax2.tick_params(axis="y", labelcolor="#d62728")
     ax2.legend(loc="upper right")
@@ -958,6 +966,21 @@ def main():
         metrics["jobs_age"].append(q_age)
         metrics["jobs_per_min"].append(q_jpm)
 
+    # HPA scale-out threshold for the CPU% chart's reference line. Read from
+    # each run's environment.env snapshot rather than hard-coded: Stage 3 uses
+    # 80%, the non-HPA stages (1, 2) leave it empty so no line is drawn. If the
+    # runs disagree, fall back to None and skip the line rather than mislead.
+    hpa_targets = set()
+    for r in runs:
+        env = load_env_file(r["dir"] / "environment.env")
+        val = env.get("web_hpa_target_cpu_percent", "").strip()
+        if val:
+            try:
+                hpa_targets.add(float(val))
+            except ValueError:
+                pass
+    hpa_target_pct = hpa_targets.pop() if len(hpa_targets) == 1 else None
+
     # Aggregate
     print("\nAggregating across runs...")
     agg = {k: aggregate_runs(v, grid) for k, v in metrics.items()}
@@ -979,7 +1002,7 @@ def main():
     plot_cpu_replicas(grid, agg["replicas"], agg["cpu_pct"],
                       agg["vus"],
                       output_dir / "timeseries_cpu_replicas.png",
-                      args.experiment, n)
+                      args.experiment, n, hpa_target_pct=hpa_target_pct)
     plot_memory(grid, agg["web_memory"], agg["jobs_memory"],
                 agg["vus"],
                 output_dir / "timeseries_memory.png",
