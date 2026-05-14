@@ -407,9 +407,26 @@ if remote_mode; then
   #   2. fold their CSVs into testing/results/<TEST_ID>/
   #   3. invoke publish-results.sh which rsyncs raw k6 data, generates
   #      charts, and pushes to origin
-  ssh $SSH_OPTS "$SUT_SSH_HOST" \
-    "cd $SUT_REPO_DIR && TEST_ID=$TEST_ID bash testing/finalize-run.sh" \
-    || echo "WARN: remote finalize-run.sh failed. Run manually: ssh $SUT_SSH_HOST 'cd $SUT_REPO_DIR && TEST_ID=$TEST_ID bash testing/finalize-run.sh'"
+  if ssh $SSH_OPTS "$SUT_SSH_HOST" \
+       "cd $SUT_REPO_DIR && TEST_ID=$TEST_ID bash testing/finalize-run.sh"; then
+    # finalize-run.sh succeeded: the SUT has rsynced this run folder, folded
+    # in the collector CSVs, generated charts, committed and pushed to
+    # origin. The copy in the load gen's working tree is now redundant AND
+    # actively harmful — it is untracked here but tracked in the commit the
+    # SUT just pushed, so the next `git pull` on the load gen aborts with
+    # "untracked working tree files would be overwritten by merge".
+    #
+    # Remove the local run folder so the load gen tree stays clean and
+    # `git pull` fast-forwards without manual intervention. The canonical
+    # copy lives in git (fetchable) and on the SUT — nothing is lost.
+    if [[ -n "$RUN_DIR" && -d "$RUN_DIR" && "$RUN_DIR" == *"/testing/results/"* ]]; then
+      echo "Finalize succeeded — removing redundant local run folder: $RUN_DIR"
+      rm -rf "$RUN_DIR"
+    fi
+  else
+    echo "WARN: remote finalize-run.sh failed. Run manually: ssh $SUT_SSH_HOST 'cd $SUT_REPO_DIR && TEST_ID=$TEST_ID bash testing/finalize-run.sh'"
+    echo "      Local run folder kept for recovery: $RUN_DIR"
+  fi
 else
   echo "Run 'bash testing/finalize-run.sh' on the SUT to stop collectors and publish."
   echo "Tip: set SUT_SSH_HOST in testing.env to auto-orchestrate the full pipeline from this host."
