@@ -30,7 +30,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import requests
-from matplotlib.ticker import MultipleLocator
+from matplotlib.ticker import MultipleLocator, MaxNLocator
 
 # Silence "All-NaN slice encountered" / "Mean of empty slice" warnings from
 # nanmedian / nanmean — these fire at grid bins where every run has NaN
@@ -780,6 +780,34 @@ def plot_cpu_replicas(grid, replicas, cpu_pct, vus, output, experiment, n_runs,
     print(f"  → {output}")
 
 
+def plot_replicas_vs_vus(grid, web_replicas, jobs_replicas, vus,
+                         output, experiment, n_runs):
+    """Elasticity profile — web AND jobs replica counts (median ± 1σ band
+    across runs) plotted against the VU profile. The cross-run aggregate
+    of the per-run replicas_vs_vus chart: shows whether the scaling
+    trajectory is reproducible across the n runs. Both replica series share
+    one integer y-axis (counts are small); VUs are the faint background."""
+    fig, ax1 = plt.subplots(figsize=(11, 5))
+    plot_band(ax1, grid, web_replicas, "Web replicas", "#1f77b4")
+    plot_band(ax1, grid, jobs_replicas, "Jobs replicas", "#ff7f0e")
+    ax1.set_xlabel("Minutes from test start")
+    ax1.set_ylabel("Replica count")
+    ax1.set_ylim(bottom=0)
+    ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
+    ax1.grid(True, alpha=0.3)
+    ax1.legend(loc="upper left")
+
+    overlay_vus_background(ax1, grid, vus)
+
+    fig.suptitle(f"{experiment} — Elasticity Profile: Replicas vs VUs "
+                 f"(median ± 1σ across runs, n={n_runs})")
+    apply_minute_ticks(ax1)
+    fig.tight_layout()
+    fig.savefig(output, dpi=130)
+    plt.close(fig)
+    print(f"  → {output}")
+
+
 def plot_jobs_queue(grid, queue_depth, job_age, jobs_per_min, vus,
                     output, experiment, n_runs):
     """Three-panel jobs-tier chart: queue depth, oldest pending age, jobs
@@ -932,7 +960,7 @@ def main():
         "throughput": [], "throughput_success": [],
         "error_rate": [], "vus": [],
         "p50": [], "p95": [], "p99": [],
-        "replicas": [], "cpu_pct": [],
+        "replicas": [], "jobs_replicas": [], "cpu_pct": [],
         "web_memory": [], "jobs_memory": [],
         "jobs_queue_depth": [], "jobs_age": [], "jobs_per_min": [],
     }
@@ -961,9 +989,10 @@ def main():
         jmem = try_queries(args.prometheus_url, q_jobs_memory_mb(), s, e, step_str)
         cpu  = try_queries(args.prometheus_url, q_web_cpu_percent_of_request(), s, e, step_str)
 
-        # Replica count from local snapshots CSV (more reliable)
+        # Replica counts from local snapshots CSV (more reliable than Prom)
         snap_csv = r["dir"] / "k8s-snapshots.csv"
         rep = read_snapshots_csv(snap_csv, s, "web_ready_replicas")
+        jobs_rep = read_snapshots_csv(snap_csv, s, "jobs_ready_replicas")
 
         # Jobs-queue series from local CSV (collect-jobs-metrics.sh output)
         q_pending, q_age, q_jpm = read_jobs_queue_csv(r["dir"] / "jobs-queue.csv", s)
@@ -976,6 +1005,7 @@ def main():
         metrics["p95"].append(to_relative(p95, s))
         metrics["p99"].append(to_relative(p99, s))
         metrics["replicas"].append(rep)
+        metrics["jobs_replicas"].append(jobs_rep)
         metrics["cpu_pct"].append(to_relative(cpu, s))
         metrics["web_memory"].append(to_relative(wmem, s))
         metrics["jobs_memory"].append(to_relative(jmem, s))
@@ -1020,6 +1050,10 @@ def main():
                       agg["vus"],
                       output_dir / "timeseries_cpu_replicas.png",
                       args.experiment, n, hpa_target_pct=hpa_target_pct)
+    plot_replicas_vs_vus(grid, agg["replicas"], agg["jobs_replicas"],
+                         agg["vus"],
+                         output_dir / "timeseries_replicas_vs_vus.png",
+                         args.experiment, n)
     plot_memory(grid, agg["web_memory"], agg["jobs_memory"],
                 agg["vus"],
                 output_dir / "timeseries_memory.png",
