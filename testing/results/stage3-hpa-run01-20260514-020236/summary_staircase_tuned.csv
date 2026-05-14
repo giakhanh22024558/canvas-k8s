@@ -21,7 +21,7 @@ max_web_restart_total,0
 max_jobs_restart_total,0
 avg_web_memory_mb,6695.134
 avg_jobs_memory_mb,5708.78
-max_hpa_cpu_percent,149.159
+max_hpa_cpu_percent,153.0
 prom_fallback_used,0
 scale_out_events,2
 scale_in_events,2
