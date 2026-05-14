@@ -8,8 +8,8 @@ avg_error_rate_percent,0.82
 error_logged_total,375
 error_throttle_count,351
 error_server_5xx_count,23
-error_infra_count,0
-error_other_count,1
+error_infra_count,1
+error_other_count,0
 real_error_count,24
 real_error_rate_percent,0.0526
 throttle_rate_percent,0.7692
@@ -21,7 +21,7 @@ max_web_restart_total,0
 max_jobs_restart_total,0
 avg_web_memory_mb,6713.751
 avg_jobs_memory_mb,5959.299
-max_hpa_cpu_percent,149.688
+max_hpa_cpu_percent,159.0
 prom_fallback_used,0
 scale_out_events,2
 scale_in_events,2
