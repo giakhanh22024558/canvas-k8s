@@ -453,7 +453,7 @@
     },
     {
       "type": "timeseries",
-      "title": "Web CPU% vs HPA Threshold (70%)",
+      "title": "Web CPU% vs HPA Threshold (80%)",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -492,7 +492,7 @@
               },
               {
                 "color": "red",
-                "value": 70
+                "value": 80
               }
             ]
           }
@@ -651,7 +651,7 @@
       "targets": [
         {
           "format": "table",
-          "rawSql": "SELECT COALESCE(EXTRACT(EPOCH FROM (now() - min(run_at))), 0)::int AS age_sec FROM delayed_jobs WHERE locked_at IS NULL AND failed_at IS NULL AND run_at <= now()",
+          "rawSql": "SELECT COALESCE(EXTRACT(EPOCH FROM (now() - min(run_at))), 0)::int AS age_sec FROM delayed_jobs WHERE locked_at IS NULL AND failed_at IS NULL AND run_at <= now() AND run_at >= now() - interval '1 hour'",
           "refId": "A"
         }
       ],
@@ -675,100 +675,6 @@
               {
                 "color": "red",
                 "value": 10
-              }
-            ]
-          }
-        }
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "textMode": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Running Jobs",
-      "datasource": {
-        "type": "postgres",
-        "uid": "canvas-postgres"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 12,
-        "y": 31
-      },
-      "id": 18,
-      "targets": [
-        {
-          "format": "table",
-          "rawSql": "SELECT count(*)::int AS running FROM delayed_jobs WHERE locked_at IS NOT NULL AND failed_at IS NULL",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        }
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "textMode": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Failed Jobs",
-      "datasource": {
-        "type": "postgres",
-        "uid": "canvas-postgres"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 18,
-        "y": 31
-      },
-      "id": 19,
-      "targets": [
-        {
-          "format": "table",
-          "rawSql": "SELECT count(*)::int AS failed FROM delayed_jobs WHERE failed_at IS NOT NULL",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
               }
             ]
           }
@@ -825,7 +731,7 @@
     },
     {
       "type": "timeseries",
-      "title": "Jobs CPU% vs HPA Threshold (60%)",
+      "title": "Jobs CPU% vs HPA Threshold (80%)",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -864,7 +770,7 @@
               },
               {
                 "color": "red",
-                "value": 60
+                "value": 80
               }
             ]
           }
@@ -900,45 +806,6 @@
             "fillOpacity": 10
           },
           "unit": "decmbytes"
-        }
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Total Jobs Processed (cumulative)",
-      "datasource": {
-        "type": "postgres",
-        "uid": "canvas-postgres"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 43
-      },
-      "id": 23,
-      "targets": [
-        {
-          "format": "table",
-          "rawSql": "SELECT COALESCE(n_tup_del, 0)::bigint AS processed FROM pg_stat_user_tables WHERE relname = 'delayed_jobs'",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        }
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "textMode": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
         }
       }
     },
@@ -996,65 +863,6 @@
               {
                 "color": "red",
                 "value": 1500
-              }
-            ]
-          }
-        }
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "textMode": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Postgres Cache Hit Ratio",
-      "datasource": {
-        "type": "postgres",
-        "uid": "canvas-postgres"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 6,
-        "y": 52
-      },
-      "id": 26,
-      "targets": [
-        {
-          "format": "table",
-          "rawSql": "SELECT round(100.0 * sum(blks_hit)::numeric / nullif(sum(blks_hit + blks_read), 0), 2) AS hit_ratio FROM pg_stat_database",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent",
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 95
-              },
-              {
-                "color": "green",
-                "value": 99
               }
             ]
           }
@@ -1224,96 +1032,6 @@
       }
     },
     {
-      "type": "timeseries",
-      "title": "Postgres Connection Activity",
-      "datasource": {
-        "type": "postgres",
-        "uid": "canvas-postgres"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 56
-      },
-      "id": 30,
-      "targets": [
-        {
-          "format": "time_series",
-          "rawSql": "SELECT now() AS time, count(*) FILTER (WHERE state='active')::int AS active, count(*) FILTER (WHERE state='idle')::int AS idle, count(*) FILTER (WHERE wait_event_type IN ('Lock','LWLock','BufferPin') AND state = 'active')::int AS waiting FROM pg_stat_activity",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 10
-          }
-        }
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Redis CPU (millicores)",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 0,
-        "y": 64
-      },
-      "id": 31,
-      "targets": [
-        {
-          "expr": "1000 * sum(rate(container_cpu_usage_seconds_total{namespace=\"canvas\",pod=~\"redis-.*\",container!=\"POD\",container!=\"\"}[1m]))",
-          "refId": "A",
-          "instant": true
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 500
-              },
-              {
-                "color": "red",
-                "value": 1000
-              }
-            ]
-          }
-        }
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "textMode": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      }
-    },
-    {
       "type": "stat",
       "title": "Redis Memory Used (MB)",
       "datasource": {
@@ -1349,120 +1067,6 @@
           ],
           "fields": "",
           "values": false
-        }
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Redis Connected Clients",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 12,
-        "y": 64
-      },
-      "id": 33,
-      "targets": [
-        {
-          "expr": "max(redis_connected_clients) or vector(0)",
-          "refId": "A",
-          "instant": true
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        }
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "textMode": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      }
-    },
-    {
-      "type": "stat",
-      "title": "Redis Operations / sec",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 18,
-        "y": 64
-      },
-      "id": 34,
-      "targets": [
-        {
-          "expr": "max(redis_instantaneous_ops_per_sec) or vector(0)",
-          "refId": "A",
-          "instant": true
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        }
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "textMode": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      }
-    },
-    {
-      "type": "timeseries",
-      "title": "Redis CPU and Memory History",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 68
-      },
-      "id": 35,
-      "targets": [
-        {
-          "expr": "1000 * sum(rate(container_cpu_usage_seconds_total{namespace=\"canvas\",pod=~\"redis-.*\",container!=\"POD\",container!=\"\"}[1m]))",
-          "legendFormat": "CPU (millicores)",
-          "refId": "A"
-        },
-        {
-          "expr": "sum(container_memory_working_set_bytes{namespace=\"canvas\",pod=~\"redis-.*\",container!=\"POD\",container!=\"\"}) / 1048576",
-          "legendFormat": "Memory (MB)",
-          "refId": "B"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 10
-          }
         }
       }
     },
