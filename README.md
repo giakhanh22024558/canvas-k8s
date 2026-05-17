@@ -197,7 +197,6 @@ Important scripts:
 - `testing/run-load-test.sh`
 - `testing/run-experiment-matrix.sh`
 - `testing/charts/setup-python.sh`
-- `testing/charts/analyze_experiments.py`
 - `testing/publish-results.sh`
 
 ## Save local testing config once
