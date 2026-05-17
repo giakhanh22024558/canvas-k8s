@@ -13,10 +13,10 @@
       "type": "row",
       "title": "System Overview (live)",
       "gridPos": {
-        "h": 1,
-        "w": 24,
         "x": 0,
-        "y": 0
+        "y": 0,
+        "w": 24,
+        "h": 1
       },
       "id": 1,
       "collapsed": false,
@@ -30,10 +30,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
         "x": 0,
-        "y": 1
+        "y": 1,
+        "w": 4,
+        "h": 4
       },
       "id": 2,
       "targets": [
@@ -69,10 +69,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
         "x": 4,
-        "y": 1
+        "y": 1,
+        "w": 4,
+        "h": 4
       },
       "id": 3,
       "targets": [
@@ -108,10 +108,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
         "x": 8,
-        "y": 1
+        "y": 1,
+        "w": 4,
+        "h": 4
       },
       "id": 4,
       "targets": [
@@ -167,10 +167,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
         "x": 12,
-        "y": 1
+        "y": 1,
+        "w": 4,
+        "h": 4
       },
       "id": 5,
       "targets": [
@@ -226,10 +226,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
         "x": 16,
-        "y": 1
+        "y": 1,
+        "w": 4,
+        "h": 4
       },
       "id": 6,
       "targets": [
@@ -281,10 +281,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
         "x": 20,
-        "y": 1
+        "y": 1,
+        "w": 4,
+        "h": 4
       },
       "id": 7,
       "targets": [
@@ -332,10 +332,10 @@
       "type": "row",
       "title": "Web Pod",
       "gridPos": {
-        "h": 1,
-        "w": 24,
         "x": 0,
-        "y": 5
+        "y": 5,
+        "w": 24,
+        "h": 1
       },
       "id": 8,
       "collapsed": false,
@@ -349,10 +349,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 0,
-        "y": 6
+        "y": 6,
+        "w": 12,
+        "h": 8
       },
       "id": 9,
       "targets": [
@@ -381,10 +381,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 12,
-        "y": 6
+        "y": 6,
+        "w": 12,
+        "h": 8
       },
       "id": 10,
       "targets": [
@@ -423,10 +423,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 0,
-        "y": 14
+        "y": 14,
+        "w": 12,
+        "h": 8
       },
       "id": 11,
       "targets": [
@@ -459,10 +459,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 12,
-        "y": 14
+        "y": 14,
+        "w": 12,
+        "h": 8
       },
       "id": 12,
       "targets": [
@@ -507,10 +507,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 0,
-        "y": 22
+        "y": 22,
+        "w": 12,
+        "h": 8
       },
       "id": 13,
       "targets": [
@@ -539,10 +539,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 12,
-        "y": 22
+        "y": 22,
+        "w": 12,
+        "h": 8
       },
       "id": 14,
       "targets": [
@@ -566,10 +566,10 @@
       "type": "row",
       "title": "Jobs Pod (Background Workers)",
       "gridPos": {
-        "h": 1,
-        "w": 24,
         "x": 0,
-        "y": 30
+        "y": 30,
+        "w": 24,
+        "h": 1
       },
       "id": 15,
       "collapsed": false,
@@ -583,10 +583,10 @@
         "uid": "canvas-postgres"
       },
       "gridPos": {
-        "h": 4,
-        "w": 6,
         "x": 0,
-        "y": 31
+        "y": 31,
+        "w": 12,
+        "h": 4
       },
       "id": 16,
       "targets": [
@@ -642,10 +642,10 @@
         "uid": "canvas-postgres"
       },
       "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 6,
-        "y": 31
+        "x": 12,
+        "y": 31,
+        "w": 12,
+        "h": 4
       },
       "id": 17,
       "targets": [
@@ -701,10 +701,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 0,
-        "y": 35
+        "y": 35,
+        "w": 12,
+        "h": 8
       },
       "id": 20,
       "targets": [
@@ -737,10 +737,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 12,
-        "y": 35
+        "y": 35,
+        "w": 12,
+        "h": 8
       },
       "id": 21,
       "targets": [
@@ -785,10 +785,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 0,
-        "y": 43
+        "y": 43,
+        "w": 24,
+        "h": 6
       },
       "id": 22,
       "targets": [
@@ -813,10 +813,10 @@
       "type": "row",
       "title": "Database & Cache - Saturation Invariants",
       "gridPos": {
-        "h": 1,
-        "w": 24,
         "x": 0,
-        "y": 51
+        "y": 49,
+        "w": 24,
+        "h": 1
       },
       "id": 24,
       "collapsed": false,
@@ -830,10 +830,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "h": 4,
-        "w": 6,
         "x": 0,
-        "y": 52
+        "y": 50,
+        "w": 6,
+        "h": 4
       },
       "id": 25,
       "targets": [
@@ -889,10 +889,10 @@
         "uid": "canvas-postgres"
       },
       "gridPos": {
-        "h": 4,
+        "x": 6,
+        "y": 50,
         "w": 6,
-        "x": 12,
-        "y": 52
+        "h": 4
       },
       "id": 27,
       "targets": [
@@ -948,10 +948,10 @@
         "uid": "canvas-postgres"
       },
       "gridPos": {
-        "h": 4,
+        "x": 12,
+        "y": 50,
         "w": 6,
-        "x": 18,
-        "y": 52
+        "h": 4
       },
       "id": 28,
       "targets": [
@@ -996,42 +996,6 @@
       }
     },
     {
-      "type": "timeseries",
-      "title": "Postgres CPU and Memory History",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 56
-      },
-      "id": 29,
-      "targets": [
-        {
-          "expr": "1000 * sum(rate(container_cpu_usage_seconds_total{namespace=\"canvas\",pod=~\"postgres-.*\",container!=\"POD\",container!=\"\"}[1m]))",
-          "legendFormat": "CPU (millicores)",
-          "refId": "A"
-        },
-        {
-          "expr": "sum(container_memory_working_set_bytes{namespace=\"canvas\",pod=~\"postgres-.*\",container!=\"POD\",container!=\"\"}) / 1048576",
-          "legendFormat": "Memory (MB)",
-          "refId": "B"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 10
-          }
-        }
-      }
-    },
-    {
       "type": "stat",
       "title": "Redis Memory Used (MB)",
       "datasource": {
@@ -1039,10 +1003,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "h": 4,
+        "x": 18,
+        "y": 50,
         "w": 6,
-        "x": 6,
-        "y": 64
+        "h": 4
       },
       "id": 32,
       "targets": [
@@ -1072,16 +1036,52 @@
     },
     {
       "type": "timeseries",
+      "title": "Postgres CPU and Memory History",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 54,
+        "w": 12,
+        "h": 8
+      },
+      "id": 29,
+      "targets": [
+        {
+          "expr": "1000 * sum(rate(container_cpu_usage_seconds_total{namespace=\"canvas\",pod=~\"postgres-.*\",container!=\"POD\",container!=\"\"}[1m]))",
+          "legendFormat": "CPU (millicores)",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(container_memory_working_set_bytes{namespace=\"canvas\",pod=~\"postgres-.*\",container!=\"POD\",container!=\"\"}) / 1048576",
+          "legendFormat": "Memory (MB)",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
       "title": "Postgres + Redis Pod Restarts",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
         "x": 12,
-        "y": 68
+        "y": 54,
+        "w": 12,
+        "h": 8
       },
       "id": 36,
       "targets": [
