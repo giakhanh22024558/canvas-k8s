@@ -32,6 +32,10 @@ import numpy as np
 import requests
 from matplotlib.ticker import MultipleLocator, MaxNLocator
 
+# Reuse the K8s-resource-string parser from plot_prometheus to keep one
+# canonical implementation of "3Gi → 3072 MiB", "4400Mi → 4400 MiB", etc.
+from plot_prometheus import parse_memory_limit_mb
+
 # Silence "All-NaN slice encountered" / "Mean of empty slice" warnings from
 # nanmedian / nanmean — these fire at grid bins where every run has NaN
 # (e.g. the tail of the time grid past a shorter run's end). The resulting
@@ -359,35 +363,54 @@ def q_vus(testid):
     return [f'max(k6_vus{{testid="{testid}"}})']
 
 
-def q_web_memory_mb():
-    # Primary query drops ghost cgroup series via `unless on(id)`. Each
-    # container instance (live or dead) has a unique `id` label (cgroup
-    # path); container_last_seen indicates when cAdvisor last observed each.
-    # During a crash-loop, a previous container instance's cgroup persists
-    # in cAdvisor for ~30-60s before kernel GC, inflating naive sum() by
-    # 2-4× (Stage 1 baseline observed 6867 MB without filter → 492 MB with
-    # filter at the same OOMKill-transition timestamp).
-    return [
-        'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-web-.*",container="web"} '
+def _q_memory_per_pod_mb(pod_regex, container, aggregator):
+    """Per-pod memory-working-set series, aggregated across pods with
+    ``aggregator`` ∈ {"max", "avg"}.
+
+    The ``unless on(id) (container_last_seen > 30)`` filter drops ghost
+    cgroups from crash-looped or recently-terminated containers; the
+    cgroup path persists in cAdvisor for 30–60 s after the kernel reaps
+    the container, which inflated naive aggregates by 2–4× at OOMKill
+    transitions in Stage 1 baseline. Two label-scheme fallbacks cover
+    older cAdvisor versions.
+
+    ``max()`` reflects the hottest pod (the one that will OOM-kill first
+    since OOM is per-pod); ``avg()`` reflects the cluster mean, which
+    smooths nicely but undercounts when one pod is under-load.
+    """
+    primary = (
+        f'{aggregator}(container_memory_working_set_bytes{{namespace="canvas",pod=~"{pod_regex}",container="{container}"}} '
         'unless on(id) '
-        '(time() - container_last_seen{namespace="canvas",pod=~"canvas-web-.*",container="web"} > 30)) '
-        '/ 1048576',
-        # Fallback 1: legacy namespace-aware query without freshness filter.
-        'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"} * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}) / 1048576',
-        # Fallback 2: pre-namespace-label cAdvisor scheme.
-        'sum(container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-web-.*",container!="",container!="POD"}) / 1048576',
-    ]
+        f'(time() - container_last_seen{{namespace="canvas",pod=~"{pod_regex}",container="{container}"}} > 30)) '
+        '/ 1048576'
+    )
+    fallback1 = (
+        f'{aggregator}(container_memory_working_set_bytes{{namespace="canvas",pod=~"{pod_regex}",container!="",container!="POD"}} '
+        f'* on(pod) group_left() kube_pod_status_phase{{namespace="canvas",phase="Running"}}) / 1048576'
+    )
+    fallback2 = (
+        f'{aggregator}(container_memory_working_set_bytes{{container_label_io_kubernetes_pod_namespace="canvas",'
+        f'container_label_io_kubernetes_pod_name=~"{pod_regex}",container!="",container!="POD"}}) / 1048576'
+    )
+    return [primary, fallback1, fallback2]
 
 
-def q_jobs_memory_mb():
-    return [
-        'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-jobs-.*",container="jobs"} '
-        'unless on(id) '
-        '(time() - container_last_seen{namespace="canvas",pod=~"canvas-jobs-.*",container="jobs"} > 30)) '
-        '/ 1048576',
-        'sum(container_memory_working_set_bytes{namespace="canvas",pod=~"canvas-jobs-.*",container!="",container!="POD"} * on(pod) group_left() kube_pod_status_phase{namespace="canvas",phase="Running"}) / 1048576',
-        'sum(container_memory_working_set_bytes{container_label_io_kubernetes_pod_namespace="canvas",container_label_io_kubernetes_pod_name=~"canvas-jobs-.*",container!="",container!="POD"}) / 1048576',
-    ]
+def q_web_memory_max_mb():
+    """Hottest web pod — the OOM-risk indicator."""
+    return _q_memory_per_pod_mb("canvas-web-.*", "web", "max")
+
+
+def q_web_memory_avg_mb():
+    """Per-pod mean across the web fleet — smooths spawn-time RSS dips."""
+    return _q_memory_per_pod_mb("canvas-web-.*", "web", "avg")
+
+
+def q_jobs_memory_max_mb():
+    return _q_memory_per_pod_mb("canvas-jobs-.*", "jobs", "max")
+
+
+def q_jobs_memory_avg_mb():
+    return _q_memory_per_pod_mb("canvas-jobs-.*", "jobs", "avg")
 
 
 def q_web_cpu_percent_of_request():
@@ -875,16 +898,74 @@ def plot_jobs_queue(grid, queue_depth, job_age, jobs_per_min, vus,
     print(f"  → {output}")
 
 
-def plot_memory(grid, web_mem, jobs_mem, vus, output, experiment, n_runs):
+def _plot_memory_line(ax, grid, agg, label, color, linestyle="-"):
+    """Per-pod memory line (median across runs). Same break-point marker
+    treatment as plot_metric, but linestyle is overridable so the dashed
+    avg line sits visually under the solid max line of the same colour."""
+    if agg is None or agg[0] is None:
+        return
+    arr = agg[0]
+    minutes = grid / 60.0
+    with np.errstate(all="ignore"):
+        median = np.nanmedian(arr, axis=0)
+    breakpoints = detect_breakpoints(median)
+    ax.plot(
+        minutes, median,
+        color=color, linewidth=1.4, linestyle=linestyle, zorder=3,
+        marker="o", markersize=5.0,
+        markerfacecolor=color,
+        markeredgecolor="white", markeredgewidth=0.8,
+        markevery=breakpoints if breakpoints else None,
+        label=label,
+    )
+
+
+def plot_memory(grid, web_mem_max, web_mem_avg, jobs_mem_max, jobs_mem_avg,
+                vus, output, experiment, n_runs,
+                web_limit_mb=None, jobs_limit_mb=None):
+    """Per-pod memory chart — 4 lines, all in MiB:
+
+      • Web max  (solid blue)   — the hottest web pod  ← OOM-risk signal
+      • Web avg  (dashed blue)  — mean across web pods (load distribution)
+      • Jobs max (solid orange) — hottest jobs pod
+      • Jobs avg (dashed orange)
+
+    A wide gap between max and avg of the same colour reveals load
+    imbalance across pods (e.g. sticky sessions, LB skew). When max
+    approaches the horizontal limit reference line, OOMKill is imminent
+    on that one pod regardless of how the rest of the fleet looks.
+
+    sum() across pods was avoided deliberately: with HPA scaling 1→3
+    pods during a run, a sum line jumps at scale-out events even when
+    no individual pod's RSS changed, conflating "scaled out" with
+    "memory grew". Per-pod aggregation matches how OOMKill actually
+    fires (per-pod, not per-tier total)."""
     fig, ax = plt.subplots(figsize=(11, 5))
     overlay_vus_background(ax, grid, vus)
-    plot_band(ax, grid, web_mem,  "Web memory (MB)",  "#1f77b4")
-    plot_band(ax, grid, jobs_mem, "Jobs memory (MB)", "#2ca02c")
+
+    _plot_memory_line(ax, grid, web_mem_max,  "Web max per pod (MB)",   "#1f77b4", "-")
+    _plot_memory_line(ax, grid, web_mem_avg,  "Web avg per pod (MB)",   "#1f77b4", "--")
+    _plot_memory_line(ax, grid, jobs_mem_max, "Jobs max per pod (MB)",  "#ff7f0e", "-")
+    _plot_memory_line(ax, grid, jobs_mem_avg, "Jobs avg per pod (MB)",  "#ff7f0e", "--")
+
+    # Per-pod memory-limit reference lines: OOMKill triggers when one
+    # pod's working set exceeds its own limit, so the comparison must be
+    # against per-pod values (which is exactly what max/avg here are).
+    if web_limit_mb is not None:
+        ax.axhline(web_limit_mb, color="#1f77b4", linestyle=":",
+                   linewidth=1, alpha=0.7,
+                   label=f"Web pod limit ({web_limit_mb:.0f} MB)")
+    if jobs_limit_mb is not None:
+        ax.axhline(jobs_limit_mb, color="#ff7f0e", linestyle=":",
+                   linewidth=1, alpha=0.7,
+                   label=f"Jobs pod limit ({jobs_limit_mb:.0f} MB)")
+
     ax.set_xlabel("Minutes from test start")
-    ax.set_ylabel("Memory (MB)")
+    ax.set_ylabel("Per-pod memory working set (MB)")
+    ax.set_ylim(bottom=0)
     ax.grid(True, alpha=0.3)
-    ax.legend(loc="upper left")
-    fig.suptitle(f"{experiment} — Memory Working Set (median across runs, n={n_runs})")
+    ax.legend(loc="upper left", fontsize=9, ncol=2)
+    fig.suptitle(f"{experiment} — Per-Pod Memory (max & avg, median across runs, n={n_runs})")
     apply_minute_ticks(ax)
     fig.tight_layout()
     fig.savefig(output, dpi=130)
@@ -974,7 +1055,8 @@ def main():
         "error_rate": [], "vus": [],
         "p50": [], "p95": [], "p99": [],
         "replicas": [], "jobs_replicas": [], "cpu_pct": [],
-        "web_memory": [], "jobs_memory": [],
+        "web_memory_max": [], "web_memory_avg": [],
+        "jobs_memory_max": [], "jobs_memory_avg": [],
         "jobs_queue_depth": [], "jobs_age": [], "jobs_per_min": [],
     }
 
@@ -998,8 +1080,10 @@ def main():
         p99 = try_queries(args.prometheus_url, q_latency(tid, "p99"), s, e, step_str)
 
         # Cluster metrics from Prometheus
-        wmem = try_queries(args.prometheus_url, q_web_memory_mb(),  s, e, step_str)
-        jmem = try_queries(args.prometheus_url, q_jobs_memory_mb(), s, e, step_str)
+        wmem_max = try_queries(args.prometheus_url, q_web_memory_max_mb(),  s, e, step_str)
+        wmem_avg = try_queries(args.prometheus_url, q_web_memory_avg_mb(),  s, e, step_str)
+        jmem_max = try_queries(args.prometheus_url, q_jobs_memory_max_mb(), s, e, step_str)
+        jmem_avg = try_queries(args.prometheus_url, q_jobs_memory_avg_mb(), s, e, step_str)
         cpu  = try_queries(args.prometheus_url, q_web_cpu_percent_of_request(), s, e, step_str)
 
         # Replica counts from local snapshots CSV (more reliable than Prom)
@@ -1020,8 +1104,10 @@ def main():
         metrics["replicas"].append(rep)
         metrics["jobs_replicas"].append(jobs_rep)
         metrics["cpu_pct"].append(to_relative(cpu, s))
-        metrics["web_memory"].append(to_relative(wmem, s))
-        metrics["jobs_memory"].append(to_relative(jmem, s))
+        metrics["web_memory_max"].append(to_relative(wmem_max, s))
+        metrics["web_memory_avg"].append(to_relative(wmem_avg, s))
+        metrics["jobs_memory_max"].append(to_relative(jmem_max, s))
+        metrics["jobs_memory_avg"].append(to_relative(jmem_avg, s))
         metrics["jobs_queue_depth"].append(q_pending)
         metrics["jobs_age"].append(q_age)
         metrics["jobs_per_min"].append(q_jpm)
@@ -1040,6 +1126,24 @@ def main():
             except ValueError:
                 pass
     hpa_target_pct = hpa_targets.pop() if len(hpa_targets) == 1 else None
+
+    # Per-pod memory limits for the memory-chart reference lines. Same
+    # protocol as the HPA target: read from environment.env per run; if
+    # all runs in the experiment agree, draw the line — if they disagree
+    # (mixed VPA / unscaled), fall back to None and skip.
+    web_limits, jobs_limits = set(), set()
+    for r in runs:
+        env = load_env_file(r["dir"] / "environment.env")
+        wl = parse_memory_limit_mb(env.get("web_memory_limit", "")
+                                   or env.get("web_memory_limit_spec", ""))
+        jl = parse_memory_limit_mb(env.get("jobs_memory_limit", "")
+                                   or env.get("jobs_memory_limit_spec", ""))
+        if wl is not None:
+            web_limits.add(wl)
+        if jl is not None:
+            jobs_limits.add(jl)
+    web_limit_mb  = web_limits.pop()  if len(web_limits)  == 1 else None
+    jobs_limit_mb = jobs_limits.pop() if len(jobs_limits) == 1 else None
 
     # Aggregate
     print("\nAggregating across runs...")
@@ -1068,10 +1172,14 @@ def main():
                          agg["vus"],
                          output_dir / "timeseries_replicas_vs_vus.png",
                          args.experiment, n)
-    plot_memory(grid, agg["web_memory"], agg["jobs_memory"],
+    plot_memory(grid,
+                agg["web_memory_max"], agg["web_memory_avg"],
+                agg["jobs_memory_max"], agg["jobs_memory_avg"],
                 agg["vus"],
                 output_dir / "timeseries_memory.png",
-                args.experiment, n)
+                args.experiment, n,
+                web_limit_mb=web_limit_mb,
+                jobs_limit_mb=jobs_limit_mb)
     plot_jobs_queue(grid,
                     agg["jobs_queue_depth"], agg["jobs_age"],
                     agg["jobs_per_min"],   agg["vus"],
