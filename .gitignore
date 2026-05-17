@@ -7,3 +7,9 @@ testing/results-publish-repo/
 
 # Thesis — local only, synced to Overleaf separately
 thesis/
+
+# Python artefacts
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
