@@ -87,6 +87,5 @@ echo "=== canvas-jobs resources after patch ==="
 grep -A6 '^ \{10\}resources:' "$JOBS" | head -8
 echo ""
 echo "Done. Apply with:"
-echo "  ./deploy.sh hpa-naive   # for Stage 3"
-echo "  ./deploy.sh hpa         # for Stage 4"
+echo "  ./deploy.sh hpa         # for Stage 3"
 echo "  PRESCALED_WEB_REPLICAS=2 PRESCALED_JOBS_REPLICAS=3 ./deploy.sh prescaled  # for Stage 2 max-pack"

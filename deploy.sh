@@ -24,14 +24,6 @@ case "$MODE" in
     DB_MODE="migrate"
     SCALING_MODE="hpa"
     ;;
-  hpa-naive)
-    # Stage 4 — VPA-tuned resources + STOCK HPA config (no behavior block).
-    # Isolates the impact of HPA tuning by holding resources constant between
-    # Stage 4 (this) and Stage 5 (tuned HPA). Expected: HPA reacts late and
-    # oscillates, causing higher tail latency and more pod churn vs Stage 5.
-    DB_MODE="migrate"
-    SCALING_MODE="hpa-naive"
-    ;;
   prescaled)
     # Fixed at HPA-maximum replicas (web=5, jobs=3) with no autoscaler.
     # Use this to isolate whether HPA's benefit comes from auto-scaling
@@ -40,10 +32,9 @@ case "$MODE" in
     SCALING_MODE="prescaled"
     ;;
   *)
-    echo "Usage: ./deploy.sh [baseline|hpa|hpa-naive|prescaled|bootstrap|migrate]"
+    echo "Usage: ./deploy.sh [baseline|hpa|prescaled|bootstrap|migrate]"
     echo "  baseline:  migrate DB, 1 web + 1 jobs pod, no HPA"
-    echo "  hpa:       migrate DB, deploy with TUNED HPAs (VPA resources, behavior block)"
-    echo "  hpa-naive: migrate DB, VPA resources + STOCK HPA, no behavior block (Stage 4 thesis)"
+    echo "  hpa:       migrate DB, deploy with HPA enabled (VPA resources)"
     echo "  prescaled: migrate DB, fixed 5 web + 3 jobs pods, no HPA"
     echo "  bootstrap: initialize DB, deploy with HPAs enabled"
     echo "  migrate:   alias for hpa"
@@ -127,14 +118,7 @@ case "$SCALING_MODE" in
     fi
     ;;
   hpa)
-    kubectl delete -f deployment/hpa-naive.yaml --ignore-not-found
     kubectl apply -f deployment/hpa.yaml
-    ;;
-  hpa-naive)
-    # Apply naive HPA (no behavior block, stock Kubernetes defaults).
-    # Remove the tuned HPA first if it exists from a previous deploy.
-    kubectl delete -f deployment/hpa.yaml --ignore-not-found
-    kubectl apply -f deployment/hpa-naive.yaml
     ;;
   prescaled)
     # Remove HPA so Kubernetes cannot override the replica counts
@@ -157,7 +141,7 @@ if ! [[ "$SCALING_MODE" == "baseline" && "$BASELINE_DISABLE_JOBS" == "true" ]]; 
   kubectl rollout status deployment/canvas-jobs -n canvas --timeout=300s
 fi
 
-if [[ "$SCALING_MODE" == "hpa" || "$SCALING_MODE" == "hpa-naive" ]]; then
+if [[ "$SCALING_MODE" == "hpa" ]]; then
   kubectl get hpa -n canvas
 else
   echo "HPAs removed — fixed replica counts in effect."
@@ -176,8 +160,6 @@ if [[ "$SCALING_MODE" == "baseline" ]]; then
 elif [[ "$SCALING_MODE" == "prescaled" ]]; then
   echo "Replicas:         web=5, jobs=3 (fixed, no HPA)"
 elif [[ "$SCALING_MODE" == "hpa" ]]; then
-  echo "Replicas:         web=1-5, jobs=1-3 (TUNED HPA managed)"
-elif [[ "$SCALING_MODE" == "hpa-naive" ]]; then
-  echo "Replicas:         web=1-5, jobs=1-3 (STOCK HPA, VPA resources)"
+  echo "Replicas:         web=1-3, jobs=1-2 (HPA managed, VPA resources)"
 fi
 echo "Canvas service URL: http://canvas.io.vn"

@@ -619,18 +619,16 @@ Deployment modes:
 
 - `./deploy.sh baseline` — migrate DB, fixed replicas (web=1, jobs=1), no HPA. Used for **Stage 1**.
 - `BASELINE_DISABLE_JOBS=true ./deploy.sh baseline` — same as baseline but scales `canvas-jobs` to `0`.
-- `./deploy.sh prescaled` — migrate DB, fixed replicas (web=5, jobs=3), no HPA, VPA resources. Used for **Stage 3** to isolate "more pods" from "HPA-managed pods".
-- `./deploy.sh hpa-naive` — migrate DB, HPA enabled with **stock** behavior (no `behavior:` block, Kubernetes defaults), VPA resources. Used for **Stage 4** — untuned HPA.
-- `./deploy.sh hpa` — migrate DB, HPA enabled with **tuned** behavior (`stabilizationWindowSeconds`, capped scale rates), VPA resources. Used for **Stage 5** — tuned HPA.
+- `./deploy.sh prescaled` — migrate DB, fixed replica fleet, no HPA, VPA resources. Used for **Stage 2** (breakpoint characterisation).
+- `./deploy.sh hpa` — migrate DB, HPA enabled (stock CPU target + accelerated scale-down), VPA resources. Used for **Stage 3**.
 - `./deploy.sh` — alias of `./deploy.sh hpa`.
-- `./deploy.sh bootstrap` — initialize a fresh DB, then deploy with tuned HPA.
+- `./deploy.sh bootstrap` — initialize a fresh DB, then deploy with HPA enabled.
 
-HPA manifests:
+HPA manifest:
 
-- `deployment/hpa.yaml` — tuned HPA used by `hpa` mode.
-- `deployment/hpa-naive.yaml` — stock HPA used by `hpa-naive` mode (no `behavior:` block).
+- `deployment/hpa.yaml` — the HPA applied by `hpa` mode: web/jobs `averageUtilization: 80%` with stock scale-up and an accelerated scale-down (`stabilizationWindowSeconds: 60`, `1 pod / 30s`) for shorter, observable test runs.
 
-`hpa-naive` and `hpa` reuse the same `deployment-web.yaml` and `deployment-jobs.yaml` so cross-stage comparisons isolate HPA tuning from resource sizing.
+`baseline`, `prescaled` and `hpa` reuse the same `deployment-web.yaml` and `deployment-jobs.yaml` so cross-stage comparisons isolate the scaling strategy from resource sizing.
 
 To verify after deployment:
 
@@ -723,18 +721,18 @@ SEED_PREFIX=thesis \
 **Goal**: characterise how Kubernetes' stock HPA behaves under the load level identified in Stage 2 — scale-up latency, ramp-transition error bumps, scale-down dynamics. The stage is labelled simply "HPA" (no "naive" qualifier) because pilot runs showed the stock default config already produces a stable elastic system; tuning further provides no material improvement and the comparison becomes uninformative. The thesis therefore contrasts HPA against a prescaled fleet at matched workload (Stage 4) rather than against a tuned-HPA variant.
 
 **Setup**:
-- HPA enabled with stock Kubernetes defaults: `targetAverageUtilization: 80%`, no `behavior:` block (so K8s applies built-in scale policies — 5-min scale-down stabilization, 0-second scale-up window, max +100% per minute).
+- HPA enabled: `targetAverageUtilization: 80%`. Scale-up is left at stock Kubernetes defaults (no `scaleUp` behavior block — 0-second stabilization, max +100% per 60s). Scale-down carries an accelerated `behavior` block (`stabilizationWindowSeconds: 60`, `1 pod / 30s`) so the cooldown is observable within a short idle hold.
 - Resources: VPA-recommended values from Stage 1.
-- Load profile: `staircase-tuned` — 10/30/60/70 VU plateaus (cap = Stage 2 saturation point, validated by passenger-status Max pool size × 3 web pods = 18 workers ≈ λ_max at VU≈70) + 10-min slow ramp-down 70→10 + 8-min idle hold to observe HPA scale-down across the 5-min stabilization window.
+- Load profile: `staircase-tuned` — 10/30/60/70 VU plateaus (cap = Stage 2 saturation point, validated by passenger-status Max pool size × 3 web pods = 18 workers ≈ λ_max at VU≈70) + 10-min slow ramp-down 70→10 + 8-min idle hold to observe HPA scale-down across the 60-second stabilization window.
 
 ```bash
-./deploy.sh hpa-naive   # applies the stock-default HPA used as "Stage 3 — HPA"
+./deploy.sh hpa   # applies the Stage 3 HPA (deployment/hpa.yaml)
 
 # staircase-tuned caps at 70 VUs (Stage 2 saturation point) + slow ramp-down
 # tail to observe HPA scale-down dynamics. 46 min per run.
 SEED_PREFIX=thesis \
   RUNS_PER_SCENARIO=3 \
-  MATRIX_MODES=hpa-naive \
+  MATRIX_MODES=hpa \
   MATRIX_SCENARIOS=staircase-tuned \
   EXPERIMENT_NAME=stage3-hpa \
   COOLDOWN_SECONDS=300 \
