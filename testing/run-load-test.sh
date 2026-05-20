@@ -90,9 +90,9 @@ case "$TEST_TYPE" in
     # 5-min holds at each level (≥ HPA stabilizationWindow default).
     #
     # SCALE-DOWN OBSERVATION TAIL: 5-min slow ramp-down (70→10) + 5-min
-    # idle hold. Works in tandem with the tuned HPA scaleDown behavior
+    # idle hold. Works in tandem with the HPA scaleDown behavior
     # (stabilizationWindowSeconds=60, 1-pod/30s policy — see
-    # deployment/hpa-naive.yaml) so the 3 → 2 → 1 cooldown finishes
+    # deployment/hpa.yaml) so the 3 → 2 → 1 cooldown finishes
     # within the 5-min idle hold.
     # Total: 38 min.
     export STAGES_JSON="${STAGES_JSON:-[{\"duration\":\"2m\",\"target\":10},{\"duration\":\"5m\",\"target\":10},{\"duration\":\"2m\",\"target\":30},{\"duration\":\"5m\",\"target\":30},{\"duration\":\"2m\",\"target\":60},{\"duration\":\"5m\",\"target\":60},{\"duration\":\"2m\",\"target\":70},{\"duration\":\"5m\",\"target\":70},{\"duration\":\"5m\",\"target\":10},{\"duration\":\"5m\",\"target\":10}]}"
