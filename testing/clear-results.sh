@@ -6,6 +6,8 @@
 #   bash testing/clear-results.sh --all               # delete every run
 #   bash testing/clear-results.sh --type breakpoint   # delete all runs of a test type
 #   bash testing/clear-results.sh --id canvas-20260420-164022  # delete one specific run
+#   bash testing/clear-results.sh --keep stage1       # delete everything whose folder name
+#                                                       does NOT contain "stage1"
 #   bash testing/clear-results.sh --dry-run --all     # preview without deleting
 
 set -euo pipefail
@@ -18,9 +20,10 @@ RED='\033[0;31m'; YELLOW='\033[1;33m'; GREEN='\033[0;32m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
 
 # ── argument parsing ──────────────────────────────────────────────────────────
-MODE=""          # all | type | id | interactive
+MODE=""          # all | type | id | keep | interactive
 FILTER_TYPE=""
 FILTER_ID=""
+KEEP_SUBSTR=""
 DRY_RUN=false
 
 while [[ $# -gt 0 ]]; do
@@ -28,6 +31,7 @@ while [[ $# -gt 0 ]]; do
     --all)       MODE="all" ;;
     --type)      MODE="type";  FILTER_TYPE="${2:-}"; shift ;;
     --id)        MODE="id";    FILTER_ID="${2:-}";   shift ;;
+    --keep)      MODE="keep";  KEEP_SUBSTR="${2:-}"; shift ;;
     --dry-run)   DRY_RUN=true ;;
     -h|--help)
       echo "Usage: bash testing/clear-results.sh [OPTIONS]"
@@ -36,8 +40,13 @@ while [[ $# -gt 0 ]]; do
       echo "  (no flags)          Interactive mode — choose what to delete"
       echo "  --all               Delete every result folder"
       echo "  --type <test_type>  Delete all runs of a specific type"
-      echo "                      Types: smoke, load, stress, long-stress, breakpoint, soak"
+      echo "                      Types: smoke, load, stress, staircase, breakpoint, soak"
       echo "  --id <test_id>      Delete one specific run folder"
+      echo "  --keep <substr>     Delete everything whose folder name does NOT"
+      echo "                      contain <substr>. Use to clean failed/abandoned"
+      echo "                      runs while preserving an experiment family:"
+      echo "                        --keep stage1       (keeps stage1-* and analysis-stage1-*)"
+      echo "                        --keep '20260509'   (keeps that date's runs only)"
       echo "  --dry-run           Preview what would be deleted without actually deleting"
       echo "  -h, --help          Show this help"
       exit 0
@@ -124,7 +133,7 @@ if [[ -z "$MODE" ]]; then
     1) MODE="all" ;;
     2)
       MODE="type"
-      read -rp "Test type (smoke/load/stress/long-stress/breakpoint/soak): " FILTER_TYPE
+      read -rp "Test type (smoke/load/stress/staircase/breakpoint/soak): " FILTER_TYPE
       ;;
     3)
       MODE="id"
@@ -160,6 +169,17 @@ case "$MODE" in
       echo -e "${RED}Error: Run not found: $FILTER_ID${RESET}"; exit 1
     fi
     TARGETS=("$TARGET_PATH")
+    ;;
+  keep)
+    if [[ -z "$KEEP_SUBSTR" ]]; then
+      echo -e "${RED}Error: --keep requires a substring value.${RESET}"; exit 1
+    fi
+    for dir in "${ALL_RUNS[@]}"; do
+      base="$(basename "$dir")"
+      if [[ "$base" != *"$KEEP_SUBSTR"* ]]; then
+        TARGETS+=("$dir")
+      fi
+    done
     ;;
 esac
 

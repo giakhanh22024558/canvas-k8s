@@ -9,37 +9,38 @@ spec:
     kind: Deployment
     name: canvas-web
   minReplicas: 1
-  maxReplicas: 5
+  maxReplicas: 3
+  # Stage 3 — "HPA" (stock CPU target + accelerated scale-down for test
+  # efficiency).
+  #
+  # CPU target is left at the K8s/kubectl-autoscale default of 80 % and the
+  # scaleUp policy is left implicit so K8s applies its built-in defaults
+  # (stabilizationWindowSeconds=0, +100%/60s or +4 pods/60s policy). This
+  # preserves the "untuned reactive scale-up" characteristic we want to
+  # observe — the bumps during ramp transitions when CPU crosses 80 % and
+  # HPA reacts after the fact.
+  #
+  # The ONLY tuning applied is on scale-DOWN: the default
+  # stabilizationWindowSeconds=300 makes one test run unnecessarily long
+  # (we would have to hold low load for >5 min just to see the cooldown).
+  # We shorten the window to 60 s and cap the descent at 1 pod / 30 s so
+  # scale-down still happens stepwise and is clearly observable, but the
+  # whole event fits within ~2 min of idle hold instead of ~6 min.
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 30
+    # scaleUp intentionally omitted — keep K8s stock defaults.
   metrics:
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 70
-  behavior:
-    scaleDown:
-      # 300 s = the long-stress hold duration per VU level.
-      # HPA must see CPU below threshold for the ENTIRE window before scaling in.
-      # This prevents premature scale-in during the 5-minute hold phases:
-      # the window expires just as the next VU ramp begins, so CPU rises again
-      # before any scale-in can fire.
-      stabilizationWindowSeconds: 300
-      policies:
-        # Remove at most 1 pod per 2 minutes even after the window expires.
-        # This extra guard prevents a rapid cascade collapse if CPU dips briefly.
-      - type: Pods
-        value: 1
-        periodSeconds: 120
-    scaleUp:
-      # 30s window filters out single-scrape CPU spikes (e.g. Rails/Passenger
-      # startup, GC pauses) without meaningfully delaying response to real load.
-      # Without this, a 15s startup spike is enough to cascade to maxReplicas.
-      stabilizationWindowSeconds: 30
-      policies:
-      - type: Pods
-        value: 2
-        periodSeconds: 60
+          averageUtilization: 80
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -52,24 +53,18 @@ spec:
     kind: Deployment
     name: canvas-jobs
   minReplicas: 1
-  maxReplicas: 3
+  maxReplicas: 2
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 30
   metrics:
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 70
-  behavior:
-    scaleDown:
-      stabilizationWindowSeconds: 300
-      policies:
-      - type: Pods
-        value: 1
-        periodSeconds: 120
-    scaleUp:
-      stabilizationWindowSeconds: 30
-      policies:
-      - type: Pods
-        value: 2
-        periodSeconds: 60
+          averageUtilization: 80

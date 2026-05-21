@@ -1,9 +1,15 @@
 testing/testing.env
 testing/results-publish-repo/
-.claude/settings.local.json
-.claude/PROJECT_CONTEXT.md
-.claude/DEPLOYMENT_CHALLENGES.md
-.claude/EXPERIMENT_NARRATIVE.md
+
+# Claude Code + editor local files — not for the public repo
+.claude/
+.vscode/
 
 # Thesis — local only, synced to Overleaf separately
 thesis/
+
+# Python artefacts
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/

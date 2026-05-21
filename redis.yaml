@@ -16,6 +16,20 @@ spec:
       containers:
       - name: redis
         image: redis:alpine
+        # Configure an explicit memory cap so the saturation invariant
+        # "Redis memory < 80 % of maxmemory" can be evaluated as a
+        # percentage rather than as an absolute number. 256 MiB is more
+        # than 10× the highest observed peak (22 MB across Stages 1-2),
+        # so this cap does not change runtime behaviour for the existing
+        # workload — no key would have been evicted retroactively had the
+        # cap been in place. allkeys-lru chosen so that, if the cap were
+        # ever reached in a future stress test, Redis would evict the
+        # least-recently-used keys rather than refusing writes (noeviction).
+        args:
+          - "--maxmemory"
+          - "256mb"
+          - "--maxmemory-policy"
+          - "allkeys-lru"
         ports:
         - containerPort: 6379
 ---

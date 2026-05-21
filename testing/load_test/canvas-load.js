@@ -28,7 +28,21 @@ const profilePresets = {
       { duration: "2m", target: 0 },
     ],
   },
-  "long-stress": {
+  // staircase — ramp-and-hold load profile. Three discrete VU levels with
+  // 5-min holds, giving HPA stable steady-state windows to converge on each
+  // step. The shape (low → mid → high → ramp-down) lets us observe scale-out
+  // latency and the cooldown stabilization-window behaviour separately. Total
+  // ~23 min. "long-stress" is kept as a backward-compatible alias so old
+  // experiment manifests still resolve.
+  staircase: {
+    // ORIGINAL staircase — 3 levels (10 / 30 / 60 VUs), 5-min holds, total
+    // ~23 min. Designed before Stage 2 breakpoint data was available; its
+    // ceiling of 60 VUs assumed the system saturated around that load.
+    // Stage 2 200-VU breakpoint testing showed the actual saturation
+    // thresholds are higher (peak RPS @ 70 VUs, SLO breach @ 145 VUs),
+    // so this profile is now retained for backward compatibility with
+    // Stage 1 reproducibility but does not stress the cluster's full
+    // capacity envelope.
     stages: [
       { duration: "2m", target: 10 },
       { duration: "5m", target: 10 },
@@ -39,25 +53,89 @@ const profilePresets = {
       { duration: "2m", target: 0 },
     ],
   },
-  breakpoint: {
+  "staircase-tuned": {
+    // TUNED staircase — 4 levels bracketing the throughput saturation
+    // knee identified in Stage 2 (peak RPS at VU≈70 / minute 7 of the
+    // breakpoint test). Caps at 70 VUs — exactly the saturation point —
+    // because beyond this λ has already plateaued, and pushing further
+    // adds no new HPA-specific information (the cluster is at
+    // maxReplicas with Little's-Law-driven W growth, which Stage 2
+    // already characterised in detail).
+    //   L1 = 10 VUs  — idle baseline; HPA expected at minReplicas (1)
+    //   L2 = 30 VUs  — mild load; HPA scale-up zone (per-pod CPU
+    //                  approaches 80 % target → fires to ~3 pods)
+    //   L3 = 60 VUs  — just below throughput knee
+    //   L4 = 70 VUs  — at the throughput saturation knee (Stage 2 peak)
+    // 5-min holds at each level (≥ HPA stabilizationWindow default of
+    // 300 s) so HPA has at least one full evaluation cycle of clean
+    // metrics at each plateau.
+    //
+    // SCALE-DOWN OBSERVATION TAIL: after L4 the load is ramped DOWN
+    // (5 min linear 70→10) and then held at 10 VUs for 5 min. The HPA
+    // is tuned with stabilizationWindowSeconds=60 + 1-pod/30s
+    // scaleDown policy (see deployment/hpa-naive.yaml), so the
+    // 3 → 2 → 1 cooldown can finish within ~2 min of idle hold. The
+    // 5-min slow descent still exposes the HPA scale-down gradient
+    // against falling CPU; the 5-min idle hold confirms the system
+    // returns cleanly to minReplicas.
+    // Total: 38 min (4 ramps × 2 min + 4 holds × 5 min + 5 min slow
+    // ramp-down + 5 min idle observation).
     stages: [
       { duration: "2m", target: 10 },
-      { duration: "2m", target: 20 },
+      { duration: "5m", target: 10 },
       { duration: "2m", target: 30 },
+      { duration: "5m", target: 30 },
+      { duration: "2m", target: 60 },
+      { duration: "5m", target: 60 },
+      { duration: "2m", target: 70 },
+      { duration: "5m", target: 70 },
+      { duration: "5m", target: 10 },
+      { duration: "5m", target: 10 },
+    ],
+  },
+  breakpoint: {
+    // Reaches 200 VUs to push past the throughput knee observed in
+    // Stage 2 (capped-at-100 run01 showed only graceful degradation).
+    // Coarser steps below 100 because that region is already known
+    // healthy; finer steps above (130, 160, 200) so the saturation
+    // knee has more sample points. Kept in sync with the STAGES_JSON
+    // default in testing/run-load-test.sh — see that file for the
+    // rationale. 9 stages × 2 min = 18 min total.
+    stages: [
+      { duration: "2m", target: 20 },
       { duration: "2m", target: 40 },
-      { duration: "2m", target: 50 },
       { duration: "2m", target: 60 },
       { duration: "2m", target: 80 },
       { duration: "2m", target: 100 },
+      { duration: "2m", target: 130 },
+      { duration: "2m", target: 160 },
+      { duration: "2m", target: 200 },
       { duration: "2m", target: 0 },
     ],
   },
   soak: { vus: 15, duration: "30m" },
 };
 
+// Backward-compat alias map: old TEST_TYPE values mapped to their new names.
+// Lets pre-existing scripts and experiment manifests keep working unchanged.
+const profileAliases = {
+  "long-stress": "staircase",
+};
+
 function buildOptions() {
-  const preset = profilePresets[profileName] || profilePresets.load;
-  const options = { thresholds: defaultThresholds, setupTimeout: "120s" };
+  const resolvedName = profileAliases[profileName] || profileName;
+  const preset = profilePresets[resolvedName] || profilePresets.load;
+  const options = {
+    thresholds: defaultThresholds,
+    setupTimeout: "120s",
+    // Include p(99) so it appears in k6's end-of-test summary text. The
+    // summary parser in plot_prometheus.py reads this for avg_p99_ms.
+    // Without this, p99 falls back to averaging Prometheus windowed values,
+    // which produces an apples-to-oranges comparison with p95 (true
+    // population statistic) and can yield p99 < p95 for workloads with rare
+    // tail spikes (cold starts, occasional GC pauses, etc.).
+    summaryTrendStats: ["avg", "min", "med", "max", "p(90)", "p(95)", "p(99)"],
+  };
 
   if (__ENV.STAGES_JSON) {
     try {

@@ -25,9 +25,12 @@ import numpy as np
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-KNOWN_SCENARIOS = {"smoke", "load", "stress", "long-stress", "soak", "breakpoint"}
+# `long-stress` is kept alongside `staircase` so manifests written before the
+# rename still parse. New runs should record `staircase`.
+KNOWN_SCENARIOS = {"smoke", "load", "stress", "staircase", "staircase-tuned",
+                   "long-stress", "soak", "breakpoint"}
 
-SCENARIO_ORDER = ["smoke", "load", "stress", "long-stress", "soak", "breakpoint"]
+SCENARIO_ORDER = ["smoke", "load", "stress", "staircase", "long-stress", "soak", "breakpoint"]
 
 MODE_COLORS = {
     "baseline":  "#1f77b4",   # blue
@@ -40,13 +43,19 @@ DEFAULT_COLOR = "#8c564b"
 
 # (display label, y-axis unit, lower-is-better)
 METRIC_META = {
-    "avg_throughput_rps":     ("Throughput",       "req/s",   False),
-    "avg_error_rate_percent": ("Error Rate",        "%",       True),
-    "avg_p50_ms":             ("p50 Latency",       "ms",      True),
-    "avg_p95_ms":             ("p95 Latency",       "ms",      True),
-    "avg_p99_ms":             ("p99 Latency",       "ms",      True),
-    "max_web_restart_total":  ("Web Pod Restarts",  "count",   True),
-    "avg_web_memory_mb":      ("Avg Web Memory",    "MB",      True),
+    "avg_throughput_rps":      ("Throughput",          "req/s",  False),
+    "avg_error_rate_percent":  ("Error Rate (k6)",     "%",      True),
+    # Error rate excluding designed 403/429 load-shedding — the figure that
+    # answers "did the system actually fail". See parse_k6_error_breakdown
+    # in plot_prometheus.py. Older runs whose summary CSV predates that
+    # change simply won't have the column; stats() returns n=0 for them.
+    "real_error_rate_percent": ("Real Error Rate",     "%",      True),
+    "throttle_rate_percent":   ("Throttle (403) Rate", "%",      True),
+    "avg_p50_ms":              ("p50 Latency",         "ms",     True),
+    "avg_p95_ms":              ("p95 Latency",         "ms",     True),
+    "avg_p99_ms":              ("p99 Latency",         "ms",     True),
+    "max_web_restart_total":   ("Web Pod Restarts",    "count",  True),
+    "avg_web_memory_mb":       ("Avg Web Memory",      "MB",     True),
 }
 
 # Subset shown in the console table and bar summary
@@ -78,32 +87,50 @@ def load_summary_csv(path: Path) -> dict:
 
 def parse_run_dir(name: str, experiment: str):
     """
-    Parse a run directory name into (mode, scenario, run_number).
+    Parse a run directory name into (mode, run_number).
 
-    Expected pattern: {experiment}-{mode}-{scenario}-run{nn}
-    where scenario may contain hyphens (e.g. long-stress).
+    Accepts every folder shape run-load-test.sh has produced, all of them
+    optionally suffixed with the -YYYYMMDD-HHMMSS timestamp it appends:
 
-    Returns None if the name doesn't match.
+        {experiment}-{mode}-{scenario}-run{nn}-{ts}   (old multi-segment)
+        {experiment}-{scenario}-run{nn}-{ts}          (mode omitted)
+        {experiment}-run{nn}-{ts}                     (mode+scenario omitted)
+
+    The scenario is NO LONGER required in the folder name — discover_runs()
+    resolves it from the summary_*.csv that is actually present in the
+    folder. `mode` is whatever hyphen-segment(s) sit between the experiment
+    prefix and `run{nn}` once any known scenario suffix is stripped; it may
+    be empty (returned as "").
+
+    Returns (mode, run_number), or None if the name doesn't match.
     """
     prefix = experiment + "-"
     if not name.startswith(prefix):
         return None
-    remainder = name[len(prefix):]          # e.g. "baseline-long-stress-run01"
+    remainder = name[len(prefix):]          # e.g. "run01-20260514-020236"
 
-    m = re.match(r"^(.+)-run(\d+)$", remainder)
+    # Strip the trailing -YYYYMMDD-HHMMSS timestamp run-load-test.sh appends.
+    remainder = re.sub(r"-\d{8}-\d{6}$", "", remainder)
+
+    # `run{nn}` may be the whole string ("run01") or hyphen-suffixed onto a
+    # lead segment ("vpa-run01", "baseline-long-stress-run01").
+    m = re.match(r"^(.*?)-?run(\d+)$", remainder)
     if not m:
         return None
-    mode_scenario_str = m.group(1)           # e.g. "baseline-long-stress"
+    lead = m.group(1)                        # "", "vpa", "baseline-long-stress", ...
     run_number = int(m.group(2))
 
-    # Match scenario suffix (longest first so "long-stress" beats "stress")
+    # Strip a known scenario suffix from `lead`; whatever remains is the mode.
+    mode = lead
     for scenario in sorted(KNOWN_SCENARIOS, key=len, reverse=True):
-        if mode_scenario_str.endswith("-" + scenario):
-            mode = mode_scenario_str[: -(len(scenario) + 1)]
-            if mode:
-                return mode, scenario, run_number
+        if lead == scenario:
+            mode = ""
+            break
+        if lead.endswith("-" + scenario):
+            mode = lead[: -(len(scenario) + 1)]
+            break
 
-    return None
+    return mode, run_number
 
 
 def discover_runs(results_dir: Path, experiment: str) -> dict:
@@ -120,12 +147,21 @@ def discover_runs(results_dir: Path, experiment: str) -> dict:
         if parsed is None:
             continue
 
-        mode, scenario, run_number = parsed
-        slug = scenario.replace("-", "_")
-        summary_path = d / f"summary_{slug}.csv"
-        if not summary_path.exists():
-            print(f"  [skip] No summary_{slug}.csv in {d.name}", file=sys.stderr)
+        mode, run_number = parsed
+
+        # Resolve the scenario from the summary CSV actually present in the
+        # folder rather than from the directory name — the name no longer
+        # carries the scenario for current-style runs (e.g. the staircase-
+        # tuned profile lands in stage3-hpa-run01-<ts>/summary_staircase_tuned.csv).
+        summaries = sorted(d.glob("summary_*.csv"))
+        if not summaries:
+            print(f"  [skip] No summary_*.csv in {d.name}", file=sys.stderr)
             continue
+        summary_path = summaries[0]
+        scenario = summary_path.stem[len("summary_"):].replace("_", "-")
+
+        # Empty mode → "default" so the group key is a stable, printable tuple.
+        mode = mode or "default"
 
         row = load_summary_csv(summary_path)
         row["_run_number"] = run_number
@@ -259,10 +295,37 @@ def print_per_run_table(groups: dict):
     print()
 
 
-# ── Box plots ─────────────────────────────────────────────────────────────────
+# ── Per-metric run plots ──────────────────────────────────────────────────────
+
+# A box plot summarises a distribution through quartiles. With only a handful
+# of runs that is meaningless: the IQR of 3 points just re-traces the 3 points
+# with a box that *looks* like a distribution but carries no more information
+# than the raw values — and misleads a reader into thinking it does. So a real
+# box plot is only drawn when there are enough runs for quartiles to mean
+# something; below that threshold we render a strip plot (the individual run
+# values as points) with a mean marker and a mean ± 1 SD error bar.
+BOXPLOT_MIN_N = 5
+
+
+def clean_stale_metric_plots(output_dir: Path, drop_metric_plots: bool):
+    """Remove stale per-metric plot files left by earlier runs of this script.
+
+    Always drops the old boxplot_*.png name (renamed to metric_*.png). When
+    drop_metric_plots is set (--no-boxplots / --no-plots — i.e. no per-metric
+    plots will be regenerated this run) it also drops metric_*.png so the
+    output dir doesn't carry orphans. Lives outside plot_boxplots() so the
+    cleanup still happens when plot_boxplots is skipped.
+    """
+    for stale in output_dir.glob("boxplot_*.png"):
+        stale.unlink()
+    if drop_metric_plots:
+        for stale in output_dir.glob("metric_*.png"):
+            stale.unlink()
+
 
 def plot_boxplots(groups: dict, output_dir: Path):
-    """One PNG per metric — box + individual point overlay."""
+    """One PNG per metric — box plot when n >= BOXPLOT_MIN_N, otherwise a
+    strip plot of the individual runs with mean ± 1 SD."""
     all_metrics = list(METRIC_META.keys())
 
     for metric_key in all_metrics:
@@ -284,33 +347,63 @@ def plot_boxplots(groups: dict, output_dir: Path):
         if not plot_data:
             continue
 
+        max_n = max(len(v) for v in plot_data)
+        use_box = max_n >= BOXPLOT_MIN_N
+
         fig, ax = plt.subplots(figsize=(max(6, len(plot_data) * 2.0), 5))
-
-        bp = ax.boxplot(
-            plot_data, patch_artist=True, widths=0.55,
-            showfliers=False,
-            medianprops={"color": "black", "linewidth": 2.0},
-            whiskerprops={"linewidth": 1.2},
-            capprops={"linewidth": 1.5},
-        )
-        for patch, color in zip(bp["boxes"], colors):
-            patch.set_facecolor(color)
-            patch.set_alpha(0.65)
-
-        # Overlay individual data points (jitter for clarity)
         rng = np.random.default_rng(seed=42)
-        for i, (values, color) in enumerate(zip(plot_data, colors), start=1):
-            jitter = rng.uniform(-0.08, 0.08, size=len(values))
-            ax.scatter(
-                np.array([i] * len(values)) + jitter, values,
-                color=color, s=45, zorder=5,
-                edgecolors="black", linewidths=0.6, alpha=0.9,
+
+        if use_box:
+            bp = ax.boxplot(
+                plot_data, patch_artist=True, widths=0.55,
+                showfliers=False,
+                medianprops={"color": "black", "linewidth": 2.0},
+                whiskerprops={"linewidth": 1.2},
+                capprops={"linewidth": 1.5},
             )
+            for patch, color in zip(bp["boxes"], colors):
+                patch.set_facecolor(color)
+                patch.set_alpha(0.65)
+            for i, (values, color) in enumerate(zip(plot_data, colors), start=1):
+                jitter = rng.uniform(-0.08, 0.08, size=len(values))
+                ax.scatter(
+                    np.array([i] * len(values)) + jitter, values,
+                    color=color, s=45, zorder=5,
+                    edgecolors="black", linewidths=0.6, alpha=0.9,
+                )
+            subtitle = "Distribution Across Runs"
+        else:
+            # Strip plot: individual run values + mean marker + mean ± 1 SD bar.
+            for i, (values, color) in enumerate(zip(plot_data, colors), start=1):
+                jitter = rng.uniform(-0.10, 0.10, size=len(values))
+                ax.scatter(
+                    np.array([i] * len(values)) + jitter, values,
+                    color=color, s=70, zorder=5,
+                    edgecolors="black", linewidths=0.7, alpha=0.9,
+                    label="individual runs" if i == 1 else None,
+                )
+                m = sum(values) / len(values)
+                if len(values) >= 2:
+                    sd = math.sqrt(
+                        sum((v - m) ** 2 for v in values) / (len(values) - 1))
+                else:
+                    sd = 0.0
+                ax.errorbar(
+                    i, m, yerr=sd, fmt="none", ecolor="black",
+                    elinewidth=1.5, capsize=6, capthick=1.5, zorder=4,
+                )
+                ax.plot(
+                    [i - 0.22, i + 0.22], [m, m], color="black",
+                    linewidth=2.5, zorder=6,
+                    label="mean ± 1 SD" if i == 1 else None,
+                )
+            subtitle = f"Individual Runs (n={max_n}) — mean ± 1 SD"
+            ax.legend(fontsize=8, loc="best")
 
         ax.set_xticks(range(1, len(tick_labels) + 1))
         ax.set_xticklabels(tick_labels, fontsize=9)
         ax.set_ylabel(f"{label} ({unit})", fontsize=10)
-        ax.set_title(f"{label} — Distribution Across Runs", fontsize=11)
+        ax.set_title(f"{label} — {subtitle}", fontsize=11)
         ax.grid(axis="y", linestyle="--", alpha=0.35)
 
         arrow = "↓ better" if lower_better else "↑ better"
@@ -318,7 +411,7 @@ def plot_boxplots(groups: dict, output_dir: Path):
                 fontsize=8, ha="right", va="top", color="gray")
 
         fig.tight_layout()
-        out = output_dir / f"boxplot_{metric_key}.png"
+        out = output_dir / f"metric_{metric_key}.png"
         fig.savefig(out, dpi=150)
         plt.close(fig)
         print(f"  Saved: {out.name}")
@@ -442,7 +535,12 @@ def main():
                         help="Output directory for charts/CSV "
                              "(default: <results-dir>/analysis-<experiment>)")
     parser.add_argument("--no-plots", action="store_true",
-                        help="Skip chart generation (CSV + console only)")
+                        help="Skip ALL chart generation (CSV + console only)")
+    parser.add_argument("--no-boxplots", action="store_true",
+                        help="Skip only the per-metric box/strip plots; still "
+                             "write the aggregate stats CSV and the bar "
+                             "summary chart. Use when the mean/std table is "
+                             "all that's wanted from this script.")
     args = parser.parse_args()
 
     results_dir = Path(args.results_dir).resolve()
@@ -483,9 +581,17 @@ def main():
     print("Writing aggregate CSV...")
     write_aggregate_csv(groups, output_dir / f"aggregate_stats_{args.experiment}.csv")
 
+    # Always clear stale per-metric plot files first — runs even when the
+    # per-metric plots are skipped, so --no-boxplots doesn't leave orphans.
+    clean_stale_metric_plots(output_dir,
+                             drop_metric_plots=args.no_boxplots or args.no_plots)
+
     if not args.no_plots:
-        print("\nGenerating box plots (one per metric)...")
-        plot_boxplots(groups, output_dir)
+        if args.no_boxplots:
+            print("\nSkipping per-metric box/strip plots (--no-boxplots).")
+        else:
+            print("\nGenerating per-metric plots...")
+            plot_boxplots(groups, output_dir)
 
         print("\nGenerating bar summary chart...")
         plot_bar_summary(groups, output_dir, args.experiment)

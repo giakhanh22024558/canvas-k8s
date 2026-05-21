@@ -83,7 +83,10 @@ if [[ "$PUSH_GIT" == "true" ]]; then
   echo "Pushing analysis output to git..."
   cd "$ROOT_DIR"
   git pull origin "$BRANCH" --rebase || true
-  git add "testing/results/analysis-${EXPERIMENT_NAME}/"
+  # `git add -A` (not plain `git add`) so files the new code no longer
+  # produces — e.g. the boxplot_*.png renamed to metric_*.png — get staged
+  # as deletions instead of lingering as orphans in the repo.
+  git add -A "testing/results/analysis-${EXPERIMENT_NAME}/"
   if git diff --cached --quiet; then
     echo "Nothing new to commit."
   else
