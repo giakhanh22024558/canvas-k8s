@@ -189,6 +189,7 @@ Important scripts:
 
 - `testing/setup-env.sh`
 - `testing/apply-monitoring.sh`
+- `testing/collect-k8s-snapshots.sh`
 - `testing/capture-cluster-env.sh`
 - `testing/reset-test-env.sh`
 - `testing/run-seed-data.sh`
