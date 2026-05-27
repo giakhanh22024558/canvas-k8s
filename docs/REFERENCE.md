@@ -189,7 +189,6 @@ Important scripts:
 
 - `testing/setup-env.sh`
 - `testing/apply-monitoring.sh`
-- `testing/collect-k8s-snapshots.sh`
 - `testing/capture-cluster-env.sh`
 - `testing/reset-test-env.sh`
 - `testing/run-seed-data.sh`
@@ -901,21 +900,7 @@ TEST_ID=stage5-hpa-tuned-hpa-long-stress-run01 bash testing/publish-results.sh
 
 ## Cross-run aggregate analysis
 
-After a stage's runs complete, two scripts produce cross-run views:
-
-### `testing/aggregate-results.sh` — statistics + box plots
-
-Computes mean / std / min / max / median across all runs of an experiment and writes:
-
-- `analysis-<exp>/aggregate_stats_<exp>.csv`
-- `analysis-<exp>/boxplot_<metric>.png` (one per metric)
-- `analysis-<exp>/barplot_summary_<exp>.png`
-
-Box plots use `showfliers=False` so the scatter overlay (one dot per run) is not double-counted.
-
-```bash
-EXPERIMENT_NAME=stage5-hpa-tuned PUSH_GIT=true bash testing/aggregate-results.sh
-```
+After a stage's runs complete, the cross-run view is produced by:
 
 ### `testing/aggregate-timeseries.sh` — mean ± std time-series charts
 
