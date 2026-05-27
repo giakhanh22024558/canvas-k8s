@@ -45,10 +45,6 @@ DEFAULT_COLOR = "#8c564b"
 METRIC_META = {
     "avg_throughput_rps":      ("Throughput",          "req/s",  False),
     "avg_error_rate_percent":  ("Error Rate (k6)",     "%",      True),
-    # Error rate excluding designed 403/429 load-shedding — the figure that
-    # answers "did the system actually fail". See parse_k6_error_breakdown
-    # in plot_prometheus.py. Older runs whose summary CSV predates that
-    # change simply won't have the column; stats() returns n=0 for them.
     "real_error_rate_percent": ("Real Error Rate",     "%",      True),
     "throttle_rate_percent":   ("Throttle (403) Rate", "%",      True),
     "avg_p50_ms":              ("p50 Latency",         "ms",     True),
@@ -149,10 +145,6 @@ def discover_runs(results_dir: Path, experiment: str) -> dict:
 
         mode, run_number = parsed
 
-        # Resolve the scenario from the summary CSV actually present in the
-        # folder rather than from the directory name — the name no longer
-        # carries the scenario for current-style runs (e.g. the staircase-
-        # tuned profile lands in stage3-hpa-run01-<ts>/summary_staircase_tuned.csv).
         summaries = sorted(d.glob("summary_*.csv"))
         if not summaries:
             print(f"  [skip] No summary_*.csv in {d.name}", file=sys.stderr)
@@ -297,13 +289,6 @@ def print_per_run_table(groups: dict):
 
 # ── Per-metric run plots ──────────────────────────────────────────────────────
 
-# A box plot summarises a distribution through quartiles. With only a handful
-# of runs that is meaningless: the IQR of 3 points just re-traces the 3 points
-# with a box that *looks* like a distribution but carries no more information
-# than the raw values — and misleads a reader into thinking it does. So a real
-# box plot is only drawn when there are enough runs for quartiles to mean
-# something; below that threshold we render a strip plot (the individual run
-# values as points) with a mean marker and a mean ± 1 SD error bar.
 BOXPLOT_MIN_N = 5
 
 

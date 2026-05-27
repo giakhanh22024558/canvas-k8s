@@ -1,14 +1,4 @@
 #!/bin/bash
-# clear-results.sh — safely remove test result folders
-#
-# Usage:
-#   bash testing/clear-results.sh                     # interactive — pick what to delete
-#   bash testing/clear-results.sh --all               # delete every run
-#   bash testing/clear-results.sh --type breakpoint   # delete all runs of a test type
-#   bash testing/clear-results.sh --id canvas-20260420-164022  # delete one specific run
-#   bash testing/clear-results.sh --keep stage1       # delete everything whose folder name
-#                                                       does NOT contain "stage1"
-#   bash testing/clear-results.sh --dry-run --all     # preview without deleting
 
 set -euo pipefail
 

@@ -36,11 +36,6 @@ from matplotlib.ticker import MultipleLocator, MaxNLocator
 # canonical implementation of "3Gi → 3072 MiB", "4400Mi → 4400 MiB", etc.
 from plot_prometheus import parse_memory_limit_mb
 
-# Silence "All-NaN slice encountered" / "Mean of empty slice" warnings from
-# nanmedian / nanmean — these fire at grid bins where every run has NaN
-# (e.g. the tail of the time grid past a shorter run's end). The resulting
-# NaN values are handled correctly by matplotlib (line gaps where no data),
-# so the warning text is pure noise.
 warnings.filterwarnings("ignore", message="All-NaN slice encountered",
                         category=RuntimeWarning)
 warnings.filterwarnings("ignore", message="Mean of empty slice",
@@ -251,11 +246,6 @@ def plot_metric(ax, grid, agg, label, color, scale=1.0):
     )
 
 
-# Backwards-compatible alias for multi-metric overlay call sites
-# (latency p50/p95/p99, memory web vs jobs). The same median-line +
-# markers rendering applies; each metric is drawn in its own colour and
-# the panels become a layered set of single curves rather than overlaid
-# bands.
 def plot_band(ax, grid, agg, label, color, show_band=True, scale=1.0):
     """Alias for plot_metric. `show_band` retained for call-site
     compatibility but is now ignored."""
@@ -335,10 +325,6 @@ def derive_success_rps(total_series, error_series):
     for ts, total in total_series:
         err_pct = err_lookup.get(ts)
         if err_pct is None:
-            # No error-rate sample at this timestamp — Prometheus drops
-            # the error-rate series when there are no failures (denominator
-            # of the ratio query has no matching members). Treat as 0%
-            # error, i.e. every request at this tick was successful.
             success = total
         else:
             success = total * max(0.0, 1.0 - err_pct / 100.0)
@@ -414,22 +400,6 @@ def q_jobs_memory_avg_mb():
 
 
 def q_web_cpu_percent_of_request():
-    # try_queries() takes the first query that returns data.
-    #
-    # Primary: the CPU utilisation % the HPA controller actually observed,
-    # straight from its status.currentMetrics. kube-state-metrics exposes it
-    # as ..._status_target_metric with metric_target_type="utilization" — the
-    # name is misleading (it is the *current* observed value, not the spec
-    # target). This is exactly what the controller acted on, with no rate-
-    # window or aggregation interpretation gap, so a scale-out event lines up
-    # with the line crossing the target threshold. Empty for the non-HPA
-    # stages (no HPA object), which fall through to the cAdvisor query.
-    #
-    # Fallback: cAdvisor reconstruction — sum(usage)/sum(request), the same
-    # formula the controller uses. 1-minute rate window (≈ the controller's
-    # sampling horizon); the previous 2-minute window damped the transients
-    # HPA reacts to below the target line, hiding the very phenomenon the
-    # chart exists to show.
     return [
         'kube_horizontalpodautoscaler_status_target_metric{namespace="canvas",horizontalpodautoscaler="canvas-web",metric_target_type="utilization"}',
         '100 * sum(rate(container_cpu_usage_seconds_total{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"}[1m])) / sum(kube_pod_container_resource_requests{namespace="canvas",resource="cpu",pod=~"canvas-web-.*",container!="",container!="POD"})',
@@ -654,12 +624,6 @@ def plot_throughput_error(grid, tput, tput_success, err, vus,
     fig, axes = plt.subplots(2, 1, figsize=(11, 9), sharex=True)
     ax_rps, ax_err = axes
 
-    # Panel 1 — stacked area: successful (bottom) + failed (top).
-    # The stack is derived from median(total) × median(error_rate) so
-    # this panel and the error-rate panel below are visually consistent
-    # tick-by-tick. The tput_success series is kept in the function
-    # signature (and used by callers that may want it for tables) but
-    # is no longer plotted here.
     overlay_vus_background(ax_rps, grid, vus)
     _plot_stacked_rps(ax_rps, grid, tput, err)
     ax_rps.set_ylabel("Requests / sec")
@@ -685,15 +649,6 @@ def plot_throughput_error(grid, tput, tput_success, err, vus,
     apply_minute_ticks(ax_err)
     fig.tight_layout()
 
-    # ── Saturation markers on aggregate chart (breakpoint experiments) ──────
-    # Computed from the median curves rather than any single run, so the
-    # marker positions reflect the consensus saturation behaviour. Same
-    # visual treatment as per-run plot_prometheus.plot_throughput_error:
-    #   - Orange dashed line: throughput-saturation onset (median peak RPS)
-    #   - Red dashed line:    QoS saturation (median P95 first ≥ 3 s)
-    #   - Red-tinted shading: from throughput-saturation to end of x-axis
-    # Pre-peak region is intentionally left unshaded — ramp-up adaptation
-    # errors are concurrency-growth artifacts, not saturation symptoms.
     if draw_saturation_markers:
         median_tput = _median_curve(tput)
         median_p95 = _median_curve(p95) if p95 is not None else None
@@ -751,11 +706,6 @@ def plot_latency(grid, p50, p95, p99, vus, output, experiment, n_runs):
     plot_band(ax, grid, p99, "p99",  "#d62728", scale=1000)
     ax.set_xlabel("Minutes from test start")
     ax.set_ylabel("Latency (ms)")
-    # Linear scale with auto-selected round-number ticks. A log scale would
-    # compress the typical 60–300 ms band against the bottom whenever a
-    # single tail spike pushes the upper bound; linear keeps the axis
-    # evenly divided and makes p50/p95/p99 comparable at a glance for
-    # readers who are not used to logarithmic axes.
     ax.set_ylim(bottom=0)
     ax.grid(True, alpha=0.3)
     ax.legend(loc="upper left")
@@ -771,11 +721,6 @@ def plot_cpu_replicas(grid, replicas, cpu_pct, vus, output, experiment, n_runs,
                       hpa_target_pct=None, jobs_replicas=None):
     fig, ax1 = plt.subplots(figsize=(11, 5))
     plot_band(ax1, grid, replicas, "Web replicas", "#1f77b4")
-    # Jobs replicas share the same integer replica axis. They are plotted here
-    # deliberately AGAINST the web CPU% line: web replicas track web CPU%
-    # closely, jobs replicas do not — that visible mismatch is the evidence
-    # that CPU is the right HPA signal for the synchronous web tier but the
-    # wrong one for the queue-driven jobs tier.
     if jobs_replicas is not None:
         plot_band(ax1, grid, jobs_replicas, "Jobs replicas", "#ff7f0e")
     ax1.set_xlabel("Minutes from test start")
@@ -786,16 +731,7 @@ def plot_cpu_replicas(grid, replicas, cpu_pct, vus, output, experiment, n_runs,
     ax1.legend(loc="upper left")
 
     ax2 = ax1.twinx()
-    # The CPU% series is the WEB tier's HPA signal (kube_horizontalpod-
-    # autoscaler_status_target_metric for canvas-web). It is paired with the
-    # web replica line; the jobs replica line is intentionally NOT explained
-    # by it.
     plot_band(ax2, grid, cpu_pct, "Web CPU % of request", "#d62728")
-    # HPA scale-out threshold line — only drawn when the runs actually had an
-    # HPA, and at the threshold they were really configured with (read from
-    # environment.env, not hard-coded). Previously this was a fixed 70% line,
-    # which mislabelled Stage 3 (target 80%) and drew a meaningless HPA line
-    # on the non-HPA Stage 1/2 charts.
     if hpa_target_pct is not None:
         ax2.axhline(hpa_target_pct, color="#d62728", linestyle="--",
                     linewidth=1, alpha=0.5,
@@ -1014,11 +950,6 @@ def main():
     parser.add_argument("--results-dir", default="testing/results")
     parser.add_argument("--prometheus-url", default="http://127.0.0.1:30090")
     parser.add_argument("--output-dir", default=None)
-    # Saturation marker toggle for breakpoint-style experiments. Off by
-    # default because aggregate charts are commonly viewed for all
-    # experiment types (smoke / load / staircase / soak / breakpoint),
-    # and saturation markers only make sense for breakpoint. Enable via
-    # --saturation-markers flag or SATURATION_MARKERS=on env var.
     parser.add_argument("--saturation-markers", action="store_true",
                         default=(os.environ.get("SATURATION_MARKERS", "off").lower() == "on"),
                         help="Draw throughput-saturation and SLO-breach "
@@ -1112,10 +1043,6 @@ def main():
         metrics["jobs_age"].append(q_age)
         metrics["jobs_per_min"].append(q_jpm)
 
-    # HPA scale-out threshold for the CPU% chart's reference line. Read from
-    # each run's environment.env snapshot rather than hard-coded: Stage 3 uses
-    # 80%, the non-HPA stages (1, 2) leave it empty so no line is drawn. If the
-    # runs disagree, fall back to None and skip the line rather than mislead.
     hpa_targets = set()
     for r in runs:
         env = load_env_file(r["dir"] / "environment.env")
@@ -1127,10 +1054,6 @@ def main():
                 pass
     hpa_target_pct = hpa_targets.pop() if len(hpa_targets) == 1 else None
 
-    # Per-pod memory limits for the memory-chart reference lines. Same
-    # protocol as the HPA target: read from environment.env per run; if
-    # all runs in the experiment agree, draw the line — if they disagree
-    # (mixed VPA / unscaled), fall back to None and skip.
     web_limits, jobs_limits = set(), set()
     for r in runs:
         env = load_env_file(r["dir"] / "environment.env")

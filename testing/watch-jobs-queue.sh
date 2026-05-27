@@ -1,14 +1,4 @@
 #!/bin/bash
-# watch-jobs-queue.sh — Real-time inspector for the Canvas delayed_jobs table.
-# Run on the SUT in a separate terminal during a load test to confirm whether
-# submissions actually create background jobs (the 5s collect-jobs-metrics
-# poller might miss short-lived jobs between samples).
-#
-# Usage:
-#   bash testing/watch-jobs-queue.sh           # 1s polling, 10 most recent jobs
-#   INTERVAL=2 LIMIT=20 bash testing/watch-jobs-queue.sh
-#
-# Stop with Ctrl+C.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

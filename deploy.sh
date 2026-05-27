@@ -88,11 +88,6 @@ echo "Using jobs deployment: $JOBS_YAML (VPA resources)"
 
 kubectl apply -f "$WEB_YAML"
 
-# canvas-jobs rollout can deadlock on a single node when old pods + new pod
-# exceed available memory (old pods stay Running while new pod is Pending).
-# Fix: scale to 0 first to clear all old pods, then apply and scale back up.
-# This is safe because jobs pods are background workers — brief downtime during
-# a redeploy is acceptable and preferable to a stuck rollout.
 jobs_desired=$(grep '^\s*replicas:' "$JOBS_YAML" | awk '{print $2}' | head -1)
 jobs_desired="${jobs_desired:-1}"
 current_jobs=$(kubectl get deployment canvas-jobs -n canvas -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "0")
@@ -123,10 +118,6 @@ case "$SCALING_MODE" in
   prescaled)
     # Remove HPA so Kubernetes cannot override the replica counts
     kubectl delete -f deployment/hpa.yaml --ignore-not-found
-    # Defaults: web=5 (max replicas for HPA comparison), jobs=3 (matches HPA
-    # max so prescaled-vs-HPA stays apples-to-apples on total pod count).
-    # Override via env vars when running Stage 2 breakpoint with max-pack
-    # density (e.g. PRESCALED_WEB_REPLICAS=8 PRESCALED_JOBS_REPLICAS=3).
     web_replicas="${PRESCALED_WEB_REPLICAS:-5}"
     jobs_replicas="${PRESCALED_JOBS_REPLICAS:-3}"
     kubectl scale deployment/canvas-web  --replicas="$web_replicas" -n canvas

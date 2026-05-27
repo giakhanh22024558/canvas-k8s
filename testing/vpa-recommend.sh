@@ -1,15 +1,4 @@
 #!/bin/bash
-# vpa-recommend.sh — VPA setup and recommendation reader for Canvas LMS
-#
-# Usage:
-#   bash testing/vpa-recommend.sh setup   # install VPA recommender + apply manifests
-#   bash testing/vpa-recommend.sh         # read current recommendations (default)
-#
-# Workflow:
-#   1. bash testing/vpa-recommend.sh setup
-#   2. TEST_TYPE=long-stress bash testing/run-load-test.sh
-#   3. bash testing/vpa-recommend.sh
-#      → shows data-driven request/limit values to put in deployment-web.yaml
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

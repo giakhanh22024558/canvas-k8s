@@ -1,32 +1,4 @@
 #!/bin/bash
-# capture-cluster-env.sh — Capture a comprehensive pre-test snapshot of the
-# cluster state into both a machine-readable env file and a human-readable
-# bundle of kubectl outputs. The snapshot is the ground-truth reference for
-# verifying a run was valid after the fact.
-#
-# Captured into <output-dir>/environment.env (key=value):
-#   - git commit, node count, captured_at timestamp
-#   - Resource requests + limits (CPU/memory) for canvas-web and canvas-jobs
-#     read both from the deployment SPEC and from the LIVE pod (so any
-#     post-spec patch via `kubectl set resources` is visible)
-#   - HPA min/max for web/jobs (or "—" if no HPA)
-#   - VPA recommendation target (cpu, memory) for web/jobs if a VPA exists
-#   - Replica counts: spec, ready, current pods
-#   - Baseline restart counter for web/jobs (so post-run delta = in-test events)
-#   - Cooldown / seed / base URL knobs from the calling environment
-#
-# Additionally writes <output-dir>/cluster-snapshot.txt with human-readable:
-#   - `kubectl get pods -o wide` for the canvas namespace
-#   - `kubectl describe deployment` summary
-#   - `kubectl get hpa -o yaml` if HPA present
-#   - `kubectl get vpa -o yaml` if VPA present
-#   - Last 50 events on the canvas namespace
-#
-# Usage:
-#   bash testing/capture-cluster-env.sh <output-dir-or-file>
-#
-# Backward-compat: if <output-dir-or-file> ends in .env, treat it as the
-# environment.env path and place cluster-snapshot.txt in the same parent.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

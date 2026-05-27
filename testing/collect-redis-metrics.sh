@@ -1,23 +1,4 @@
 #!/bin/bash
-# collect-redis-metrics.sh — Log Redis CPU/memory, hit ratio, ops/sec, and
-# eviction counters every 5s for "cache is not the bottleneck" validation.
-#
-# Usage (run on SUT, in parallel with run-load-test.sh on load gen):
-#   bash testing/collect-redis-metrics.sh <output.csv>
-#
-# CSV schema:
-#   timestamp                       — ISO8601 UTC
-#   redis_cpu_millicores            — kubectl top pod
-#   redis_memory_used_mb            — INFO memory.used_memory / 1024^2
-#   redis_memory_max_mb             — INFO memory.maxmemory / 1024^2 (0 = unbounded)
-#   connected_clients               — INFO clients.connected_clients
-#   blocked_clients                 — INFO clients.blocked_clients
-#   ops_per_sec                     — INFO stats.instantaneous_ops_per_sec
-#   keyspace_hits_cumulative        — monotonic counter; diff post-hoc for hit rate
-#   keyspace_misses_cumulative      — monotonic counter
-#   evicted_keys_cumulative         — monotonic counter; nonzero = maxmemory hit
-#
-# Stop with Ctrl+C; the CSV stays valid (one row per scrape).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

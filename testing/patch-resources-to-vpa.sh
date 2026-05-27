@@ -1,16 +1,4 @@
 #!/bin/bash
-# patch-resources-to-vpa.sh — Apply the VPA-recommended resource values to
-# the canvas-web and canvas-jobs deployment YAMLs. Counterpart of
-# patch-resources-to-naive.sh: run this after Stage 1 has produced a stable
-# VPA recommendation, before starting Stage 2 (Breakpoint) or Stage 3/4 (HPA).
-#
-# Defaults match the m6a.2xlarge VPA pass on 2026-05-09 (1 web + 1 jobs pods,
-# staircase profile, naive resources). Override via env vars when re-running.
-#
-#   bash testing/patch-resources-to-vpa.sh
-#
-# Reverse with:
-#   bash testing/patch-resources-to-naive.sh   # back to naive
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

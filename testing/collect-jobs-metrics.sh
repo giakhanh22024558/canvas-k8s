@@ -1,22 +1,4 @@
 #!/bin/bash
-# collect-jobs-metrics.sh — Log Canvas delayed_jobs queue depth, age, and
-# throughput every 5s to a CSV for jobs-tier autoscaling analysis.
-#
-# Usage (run on SUT, in parallel with run-load-test.sh on load gen):
-#   bash testing/collect-jobs-metrics.sh <output.csv>
-#
-# CSV schema:
-#   timestamp                   — ISO8601 UTC
-#   pending                     — jobs queued, not yet picked up by a worker
-#   running                     — jobs currently being processed (locked_at NOT NULL)
-#   failed                      — jobs in failed state
-#   oldest_pending_age_sec      — age of oldest queued job (latency-to-start proxy)
-#   total_processed_cumulative  — pg_stat_user_tables.n_tup_del for delayed_jobs
-#                                 (delayed_job deletes rows on success). Use diff
-#                                 between consecutive rows × (60/INTERVAL) to get
-#                                 jobs-per-minute throughput in post-processing.
-#
-# Stop with Ctrl+C; the CSV stays valid (one row per scrape).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -39,10 +21,6 @@ mkdir -p "$(dirname "$OUTPUT_FILE")"
 
 echo "timestamp,pending,running,failed,oldest_pending_age_sec,total_processed_cumulative" > "$OUTPUT_FILE"
 
-# Single SQL round-trip per scrape. COALESCE on min(run_at) handles empty queue
-# (returns 0 instead of NULL). n_tup_del is the cumulative count of deleted
-# rows since stats reset — delayed_job removes rows on success, so this is a
-# monotonic counter we can diff post-hoc to get throughput.
 SQL="SELECT
   count(*) FILTER (WHERE locked_at IS NULL AND failed_at IS NULL) AS pending,
   count(*) FILTER (WHERE locked_at IS NOT NULL AND failed_at IS NULL) AS running,
@@ -60,19 +38,10 @@ echo "Stop with Ctrl+C."
 while true; do
   ts="$(date -Is)"
 
-  # `timeout 4` caps a single scrape below the 5s interval. A bare
-  # `kubectl exec` can hang for minutes when the SUT node is CPU-saturated
-  # (kubelet slow to attach), which both stalls the loop AND — with the old
-  # `:-0` fallback below — silently backfilled fake zeros. That combination
-  # produced the false ~4-minute "empty queue" plateau in stage3-hpa-run01.
   row="$(timeout 4 kubectl exec -n "$NAMESPACE" deployment/postgres -- \
     psql -U "$DB_USER" -d "$DB_NAME" -t -A -F ',' -c "$SQL" 2>/dev/null | head -1 || true)"
 
   if [[ -z "$row" ]]; then
-    # Scrape failed or timed out — emit EMPTY fields, not zeros. The chart
-    # pipeline reads empty CSV cells as NaN and renders a gap, which is the
-    # truthful representation of "we don't know" rather than a fabricated
-    # "queue drained to 0, throughput 0" sample.
     echo "${ts},,,,," >> "$OUTPUT_FILE"
   else
     echo "${ts},${row}" >> "$OUTPUT_FILE"

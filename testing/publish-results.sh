@@ -10,11 +10,6 @@ RESULTS_DIR="${RESULTS_DIR:-$SCRIPT_DIR/results}"
 STEP="${STEP:-15s}"
 TEST_ID="${TEST_ID:-}"
 
-# --- Optional: pull raw k6 results from a remote load generator ----------------
-# When k6 runs on a separate EC2 instance (recommended for clean SUT isolation),
-# the raw run folders live on the load gen, not the SUT. Set LOADGEN_SSH_HOST in
-# testing.env (e.g. "ubuntu@172.31.6.227") to auto-rsync them here before charts
-# are generated. Leave unset to skip (single-host setup).
 LOADGEN_SSH_HOST="${LOADGEN_SSH_HOST:-}"
 LOADGEN_RESULTS_DIR="${LOADGEN_RESULTS_DIR:-/home/ubuntu/canvas-k8s/testing/results}"
 LOADGEN_SSH_KEY="${LOADGEN_SSH_KEY:-}"
@@ -47,15 +42,6 @@ if [[ -n "$LOADGEN_SSH_HOST" ]]; then
 fi
 
 if [[ -z "$TEST_ID" ]]; then
-  # Only consider timestamped run folders (canvas-YYYYMMDD-HHMMSS).
-  # Plain `sort` works here because the date+time format is lexicographically
-  # ordered — the most recent run always sorts last.
-  # Non-timestamped folders like grafana-stress-check are excluded.
-  # Match any folder whose name ends in -YYYYMMDD-HHMMSS (timestamp suffix
-  # added by run-load-test.sh, regardless of EXPERIMENT_NAME prefix). Plain
-  # `sort` is correct because the timestamp suffix sorts lexicographically;
-  # the most recent run sorts last. Excludes analysis-* and the legacy
-  # canvas-* prefix is just one of many possible prefixes now.
   RUN_DIR="$(find "$RESULTS_DIR" -mindepth 1 -maxdepth 1 -type d \
               -regextype posix-extended -regex '.*-[0-9]{8}-[0-9]{6}$' \
               | sort | tail -n 1)"
@@ -108,18 +94,9 @@ rm -f "$RUN_DIR"/summary_comparison.csv
 
 echo "Generating charts..."
 
-# Folders renamed for readability (e.g. stage1-baseline-vpa-run01-...) keep the
-# original test_id (canvas-<ts>) inside metadata.env so Prometheus selectors
-# continue to match the k6-pushed series. When the folder name differs from
-# the in-metadata test_id, pass --run-dir so plot_prometheus.py reads from
-# the renamed folder while still querying Prometheus with the original label.
 METADATA_TESTID="$(grep '^test_id=' "$RUN_DIR/metadata.env" 2>/dev/null | cut -d= -f2 || true)"
 PROM_TESTID="${METADATA_TESTID:-$TEST_ID}"
 
-# Optional memory-limit override for the memory chart's reference line.
-# Set WEB_MEMORY_LIMIT / JOBS_MEMORY_LIMIT (e.g. "1Gi", "8Gi") when
-# re-rendering historical runs where the manifest at run time differed
-# from the manifest currently checked out.
 WEB_MEMORY_LIMIT="${WEB_MEMORY_LIMIT:-}"
 JOBS_MEMORY_LIMIT="${JOBS_MEMORY_LIMIT:-}"
 
@@ -135,10 +112,6 @@ JOBS_MEMORY_LIMIT="${JOBS_MEMORY_LIMIT:-}"
 
 echo "Charts generated in $RUN_DIR"
 
-# Use `git add -A` (not plain `git add`) so chart files that no longer
-# exist on disk (e.g. breakpoint_saturation_*.png after that chart was
-# deprecated) get staged as deletions. Plain `git add` only stages
-# additions/modifications and would leave stale files lingering in git.
 git add -A "testing/results/$TEST_ID/"
 
 if git diff --cached --quiet; then

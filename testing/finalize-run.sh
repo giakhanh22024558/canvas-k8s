@@ -1,23 +1,4 @@
 #!/bin/bash
-# finalize-run.sh — Single-command post-test cleanup on the SUT.
-#
-# After k6 finishes on the load gen, this script:
-#   1. Stops the on-SUT collector batch (jobs queue + Postgres + Redis +
-#      k8s-snapshots) started by start-collectors.sh.
-#   2. Identifies the latest /tmp/collectors-* dir and the latest run folder
-#      under testing/results/canvas-* (or uses an explicit TEST_ID).
-#   3. Copies the four collector CSVs into the run folder so the chart
-#      pipeline picks them up.
-#   4. Runs publish-results.sh which rsyncs raw k6 data from the load gen,
-#      generates charts, and commits + pushes to origin.
-#
-# Usage:
-#   bash testing/finalize-run.sh                          # latest run, latest collectors
-#   TEST_ID=canvas-... bash testing/finalize-run.sh       # specific run
-#
-# Designed to be invoked by run-load-test.sh on the load gen via SSH so the
-# whole start-collectors → k6 → stop+publish pipeline becomes a single
-# command on the load gen.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

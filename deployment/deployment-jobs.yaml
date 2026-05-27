@@ -31,12 +31,11 @@ spec:
               value: "1"
           resources:
             requests:
-              cpu: 325m       # VPA-derived (patch-resources-to-vpa.sh, live run)
-              memory: 4Gi     # VPA upper bound — matches live cluster state
+              cpu: 325m
+              memory: 4Gi
             limits:
-              cpu: "2"        # Raised from VPA recommendation; prevents throttling
-                              # on bursty DelayedJob processing.
-              memory: 4Gi     # VPA upper bound
+              cpu: "2"
+              memory: 4Gi
           command:
             - sh
             - -c

@@ -5,15 +5,6 @@ TESTING_ENV_FILE="${TESTING_ENV_FILE:-$TESTING_DIR/testing.env}"
 K3S_KUBECONFIG="${K3S_KUBECONFIG:-/etc/rancher/k3s/k3s.yaml}"
 
 load_testing_env() {
-  # Read KEY=VALUE pairs from testing.env and export them ONLY when the
-  # variable is not already set in the caller's environment. This makes the
-  # file behave as a defaults file: command-line overrides like
-  #   TEST_TYPE=staircase bash testing/run-load-test.sh
-  # win over the saved default in testing.env.
-  #
-  # The previous `set -a; source ...; set +a` pattern unconditionally
-  # overwrote the caller's vars, which silently flipped TEST_TYPE back to
-  # whatever was saved when setup-env.sh was last run.
   if [[ ! -f "$TESTING_ENV_FILE" ]]; then
     return 0
   fi

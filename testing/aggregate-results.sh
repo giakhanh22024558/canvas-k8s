@@ -1,16 +1,4 @@
 #!/bin/bash
-# aggregate-results.sh — Gather, calculate statistics, and plot charts for an
-# experiment across all runs.
-#
-# Usage:
-#   EXPERIMENT_NAME=stage1-baseline bash testing/aggregate-results.sh
-#
-# Options (environment variables):
-#   EXPERIMENT_NAME   Experiment prefix, e.g. stage1-baseline (required)
-#   RESULTS_DIR       Root results directory (default: testing/results)
-#   OUTPUT_DIR        Where to write charts/CSV (default: RESULTS_DIR/analysis-EXPERIMENT_NAME)
-#   NO_PLOTS          Set to "true" to skip chart generation (CSV + console only)
-#   PUSH_GIT          Set to "true" to git-add and push the analysis output (default: false)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
