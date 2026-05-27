@@ -1,14 +1,4 @@
 #!/bin/bash
-# patch-resources-to-naive.sh — Reset canvas-web and canvas-jobs deployment
-# YAML resource blocks to the pre-VPA "naive engineer default" values used
-# in Stage 1 of the thesis. Backs up existing YAMLs to /tmp/ first.
-#
-# Reverse with:
-#   cp /tmp/deployment-web.bak.yaml deployment/deployment-web.yaml
-#   cp /tmp/deployment-jobs.bak.yaml deployment/deployment-jobs.yaml
-#
-# Usage:
-#   bash testing/patch-resources-to-naive.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,10 +11,6 @@ cp "$WEB"  "/tmp/deployment-web.bak.${ts}.yaml"
 cp "$JOBS" "/tmp/deployment-jobs.bak.${ts}.yaml"
 echo "Backups → /tmp/deployment-{web,jobs}.bak.${ts}.yaml"
 
-# Use Python to rewrite the resources block — sed across multi-line blocks
-# with embedded comments is fragile. Python regex with re.DOTALL is robust:
-# we match `resources:` plus everything up to the next sibling key
-# (`command:` for both deployments) and replace with a clean block.
 python3 <<'PY'
 import re, pathlib, sys
 

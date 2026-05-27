@@ -1,15 +1,4 @@
 #!/bin/bash
-# vpa-recommend.sh — VPA setup and recommendation reader for Canvas LMS
-#
-# Usage:
-#   bash testing/vpa-recommend.sh setup   # install VPA recommender + apply manifests
-#   bash testing/vpa-recommend.sh         # read current recommendations (default)
-#
-# Workflow:
-#   1. bash testing/vpa-recommend.sh setup
-#   2. TEST_TYPE=long-stress bash testing/run-load-test.sh
-#   3. bash testing/vpa-recommend.sh
-#      → shows data-driven request/limit values to put in deployment-web.yaml
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -17,7 +6,6 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 NAMESPACE="${NAMESPACE:-canvas}"
 COMMAND="${1:-read}"
 
-# ── helpers ────────────────────────────────────────────────────────────────────
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 
@@ -32,7 +20,6 @@ vpa_crds_installed() {
 
 hr() { printf '%0.s─' {1..60}; echo; }
 
-# ── setup ──────────────────────────────────────────────────────────────────────
 
 cmd_setup() {
   echo "=== VPA Setup ==="
@@ -51,8 +38,6 @@ cmd_setup() {
     helm repo add fairwinds-stable https://charts.fairwinds.com/stable 2>/dev/null || true
     helm repo update --fail-on-repo-update-fail 2>/dev/null || helm repo update
 
-    # Install recommender only — admission controller and updater are not
-    # needed for updateMode=Off (observe-only).
     helm install vpa fairwinds-stable/vpa \
       --namespace kube-system \
       --set admissionController.enabled=false \
@@ -74,12 +59,8 @@ cmd_setup() {
   echo "  2. Read results:      bash testing/vpa-recommend.sh"
 }
 
-# ── read recommendations ───────────────────────────────────────────────────────
 
 extract_json() {
-  # Usage: extract_json <vpa-name> <containerIndex> <bound> <resource>
-  # bound: lowerBound | target | upperBound
-  # Memory values from VPA are raw bytes — convert to human-readable Mi/Gi.
   local vpa="$1" idx="$2" bound="$3" res="$4"
   kubectl get vpa "$vpa" -n "$NAMESPACE" -o json 2>/dev/null \
     | python3 -c "
@@ -88,7 +69,6 @@ try:
     data = json.load(sys.stdin)
     recs = data['status']['recommendation']['containerRecommendations']
     val = recs[$idx]['$bound'].get('$res', '?')
-    # Convert raw byte integers to human-readable Mi/Gi
     if '$res' == 'memory' and isinstance(val, str) and re.match(r'^\d+$', val):
         b = int(val)
         mib = b / (1024 * 1024)
@@ -104,7 +84,6 @@ except Exception:
 }
 
 current_resource() {
-  # Usage: current_resource <deployment> <requests|limits> <cpu|memory>
   local dep="$1" kind="$2" res="$3"
   kubectl get deployment "$dep" -n "$NAMESPACE" \
     -o "jsonpath={.spec.template.spec.containers[0].resources.$kind.$res}" \
@@ -195,9 +174,6 @@ cmd_read() {
 }
 
 cmd_save() {
-  # Save VPA recommendations to a structured file for documentation.
-  # Usage: bash testing/vpa-recommend.sh save [output-dir]
-  #   output-dir defaults to testing/results/stage2-vpa-profile/
   local out_dir="${2:-$REPO_ROOT/testing/results/stage2-vpa-profile}"
   mkdir -p "$out_dir"
 
@@ -207,7 +183,6 @@ cmd_save() {
     die "VPA CRDs not installed. Run: bash testing/vpa-recommend.sh setup"
   fi
 
-  # ── Collect raw values ──────────────────────────────────────────────────────
   local web_lo_cpu web_tgt_cpu web_up_cpu web_lo_mem web_tgt_mem web_up_mem
   local jobs_lo_cpu jobs_tgt_cpu jobs_up_cpu jobs_lo_mem jobs_tgt_mem jobs_up_mem
   web_lo_cpu=$(extract_json  "canvas-web-vpa" 0 lowerBound cpu)
@@ -227,7 +202,6 @@ cmd_save() {
   local captured_at
   captured_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-  # ── Write machine-readable env file ────────────────────────────────────────
   cat > "$out_dir/vpa-profile.env" <<EOF
 # VPA resource recommendations captured at $captured_at
 # Source: namespace=$NAMESPACE, profiled under long-stress (naive resources)
@@ -262,7 +236,6 @@ applied_jobs_cpu_limit=180m
 applied_jobs_memory_limit=4Gi
 EOF
 
-  # ── Write human-readable summary ────────────────────────────────────────────
   {
     echo "VPA Resource Recommendations"
     echo "Captured: $captured_at"
@@ -292,7 +265,6 @@ EOF
   echo "  vpa-recommendations.txt  (human-readable summary)"
 }
 
-# ── dispatch ───────────────────────────────────────────────────────────────────
 
 require_kubectl
 

@@ -1,32 +1,4 @@
 #!/bin/bash
-# capture-cluster-env.sh — Capture a comprehensive pre-test snapshot of the
-# cluster state into both a machine-readable env file and a human-readable
-# bundle of kubectl outputs. The snapshot is the ground-truth reference for
-# verifying a run was valid after the fact.
-#
-# Captured into <output-dir>/environment.env (key=value):
-#   - git commit, node count, captured_at timestamp
-#   - Resource requests + limits (CPU/memory) for canvas-web and canvas-jobs
-#     read both from the deployment SPEC and from the LIVE pod (so any
-#     post-spec patch via `kubectl set resources` is visible)
-#   - HPA min/max for web/jobs (or "—" if no HPA)
-#   - VPA recommendation target (cpu, memory) for web/jobs if a VPA exists
-#   - Replica counts: spec, ready, current pods
-#   - Baseline restart counter for web/jobs (so post-run delta = in-test events)
-#   - Cooldown / seed / base URL knobs from the calling environment
-#
-# Additionally writes <output-dir>/cluster-snapshot.txt with human-readable:
-#   - `kubectl get pods -o wide` for the canvas namespace
-#   - `kubectl describe deployment` summary
-#   - `kubectl get hpa -o yaml` if HPA present
-#   - `kubectl get vpa -o yaml` if VPA present
-#   - Last 50 events on the canvas namespace
-#
-# Usage:
-#   bash testing/capture-cluster-env.sh <output-dir-or-file>
-#
-# Backward-compat: if <output-dir-or-file> ends in .env, treat it as the
-# environment.env path and place cluster-snapshot.txt in the same parent.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -42,7 +14,6 @@ if [[ -z "$OUTPUT_ARG" ]]; then
   exit 1
 fi
 
-# Resolve env-file path + snapshot dir
 if [[ "$OUTPUT_ARG" == *.env ]]; then
   ENV_FILE="$OUTPUT_ARG"
   SNAP_DIR="$(dirname "$OUTPUT_ARG")"
@@ -53,22 +24,17 @@ fi
 mkdir -p "$SNAP_DIR"
 SNAP_TXT="$SNAP_DIR/cluster-snapshot.txt"
 
-# ── helpers ───────────────────────────────────────────────────────────────────
 
 kget() {
   kubectl get "$@" -n "$NAMESPACE" 2>/dev/null || true
 }
 
 jp_spec() {
-  # jsonpath from deployment spec
   local kind="$1" name="$2" path="$3"
   kubectl get "$kind" "$name" -n "$NAMESPACE" -o "jsonpath=$path" 2>/dev/null || true
 }
 
 jp_pod() {
-  # Read the first live pod's container resource for the deployment selector.
-  # Reflects post-spec patches (kubectl set resources, VPA Auto, etc.) that
-  # the deployment.spec snapshot may not show.
   local label="$1" path="$2"
   local pod
   pod="$(kubectl get pods -n "$NAMESPACE" -l "app=$label" --field-selector=status.phase=Running --no-headers 2>/dev/null | head -1 | awk '{print $1}')"
@@ -77,7 +43,6 @@ jp_pod() {
 }
 
 vpa_target() {
-  # Returns recommendation target for given container name; empty if no VPA.
   local container="$1" field="$2"
   kubectl get vpa -n "$NAMESPACE" -o json 2>/dev/null \
     | python3 -c "
@@ -93,19 +58,16 @@ for item in data.get('items', []):
 }
 
 restart_baseline() {
-  # Sum of restartCount across all running pods of a deployment.
   local label="$1"
   kubectl get pods -n "$NAMESPACE" -l "app=$label" \
     -o jsonpath='{range .items[*]}{range .status.containerStatuses[*]}{.restartCount}{"\n"}{end}{end}' 2>/dev/null \
     | awk '{sum+=$1} END {print sum+0}'
 }
 
-# ── collect values ────────────────────────────────────────────────────────────
 
 git_commit="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 node_count="$(kubectl get nodes --no-headers 2>/dev/null | wc -l | tr -d ' ')"
 
-# Deployment spec resources
 web_cpu_req_spec="$(jp_spec deployment canvas-web '{.spec.template.spec.containers[0].resources.requests.cpu}')"
 web_cpu_lim_spec="$(jp_spec deployment canvas-web '{.spec.template.spec.containers[0].resources.limits.cpu}')"
 web_mem_req_spec="$(jp_spec deployment canvas-web '{.spec.template.spec.containers[0].resources.requests.memory}')"
@@ -115,7 +77,6 @@ jobs_cpu_lim_spec="$(jp_spec deployment canvas-jobs '{.spec.template.spec.contai
 jobs_mem_req_spec="$(jp_spec deployment canvas-jobs '{.spec.template.spec.containers[0].resources.requests.memory}')"
 jobs_mem_lim_spec="$(jp_spec deployment canvas-jobs '{.spec.template.spec.containers[0].resources.limits.memory}')"
 
-# Live pod resources (reflects kubectl set resources / VPA Auto patches)
 web_cpu_req_live="$(jp_pod canvas-web '{.spec.containers[0].resources.requests.cpu}')"
 web_cpu_lim_live="$(jp_pod canvas-web '{.spec.containers[0].resources.limits.cpu}')"
 web_mem_req_live="$(jp_pod canvas-web '{.spec.containers[0].resources.requests.memory}')"
@@ -125,13 +86,11 @@ jobs_cpu_lim_live="$(jp_pod canvas-jobs '{.spec.containers[0].resources.limits.c
 jobs_mem_req_live="$(jp_pod canvas-jobs '{.spec.containers[0].resources.requests.memory}')"
 jobs_mem_lim_live="$(jp_pod canvas-jobs '{.spec.containers[0].resources.limits.memory}')"
 
-# Replica counts
 web_replicas_spec="$(jp_spec deployment canvas-web '{.spec.replicas}')"
 web_replicas_ready="$(jp_spec deployment canvas-web '{.status.readyReplicas}')"
 jobs_replicas_spec="$(jp_spec deployment canvas-jobs '{.spec.replicas}')"
 jobs_replicas_ready="$(jp_spec deployment canvas-jobs '{.status.readyReplicas}')"
 
-# HPA settings (empty strings if no HPA)
 web_hpa_min="$(jp_spec hpa canvas-web '{.spec.minReplicas}')"
 web_hpa_max="$(jp_spec hpa canvas-web '{.spec.maxReplicas}')"
 web_hpa_target_cpu="$(jp_spec hpa canvas-web '{.spec.metrics[0].resource.target.averageUtilization}')"
@@ -139,17 +98,14 @@ jobs_hpa_min="$(jp_spec hpa canvas-jobs '{.spec.minReplicas}')"
 jobs_hpa_max="$(jp_spec hpa canvas-jobs '{.spec.maxReplicas}')"
 jobs_hpa_target_cpu="$(jp_spec hpa canvas-jobs '{.spec.metrics[0].resource.target.averageUtilization}')"
 
-# VPA targets (if VPA recommender is active)
 web_vpa_target_cpu="$(vpa_target web cpu)"
 web_vpa_target_mem="$(vpa_target web memory)"
 jobs_vpa_target_cpu="$(vpa_target jobs cpu)"
 jobs_vpa_target_mem="$(vpa_target jobs memory)"
 
-# Restart counter baseline (so post-run delta = events that happened during the test)
 web_restart_baseline="$(restart_baseline canvas-web)"
 jobs_restart_baseline="$(restart_baseline canvas-jobs)"
 
-# ── write environment.env ─────────────────────────────────────────────────────
 
 cat > "$ENV_FILE" <<EOF
 # Cluster snapshot captured immediately before load test starts.
@@ -209,7 +165,6 @@ seed_prefix=${SEED_PREFIX:-}
 base_url=${BASE_URL:-}
 EOF
 
-# ── write human-readable cluster-snapshot.txt ─────────────────────────────────
 
 {
   echo "============================================================"

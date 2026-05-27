@@ -1,9 +1,4 @@
 #!/bin/bash
-# stop-collectors.sh — Kill all background collectors started by
-# start-collectors.sh by reading the PID file it wrote.
-#
-# Usage:
-#   bash testing/stop-collectors.sh
 set -euo pipefail
 
 PID_FILE="${COLLECTORS_PID_FILE:-/tmp/collectors.pids}"

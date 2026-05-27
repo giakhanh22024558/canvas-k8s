@@ -15,7 +15,6 @@ fi
 
 "$PYTHON_BIN" -m venv "$VENV_DIR"
 
-# shellcheck disable=SC1090
 source "$VENV_DIR/bin/activate"
 pip install --upgrade pip
 pip install -r "$SCRIPT_DIR/requirements.txt"
