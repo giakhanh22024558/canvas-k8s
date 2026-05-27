@@ -1,15 +1,4 @@
 #!/usr/bin/env python3
-"""
-aggregate_analysis.py — Statistical aggregation and plotting for experiment results.
-
-Scans all run directories for an experiment, computes mean ± std dev for each
-metric group (mode × scenario), and generates box plots and bar charts.
-
-Usage:
-    python aggregate_analysis.py --experiment stage1-baseline \\
-        --results-dir testing/results --output-dir testing/results/analysis-stage1-baseline
-"""
-
 import argparse
 import csv
 import math
@@ -21,8 +10,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
-
-
 
 KNOWN_SCENARIOS = {"smoke", "load", "stress", "staircase", "staircase-tuned",
                    "long-stress", "soak", "breakpoint"}
@@ -59,10 +46,7 @@ SUMMARY_METRICS = [
     "avg_web_memory_mb",
 ]
 
-
-
 def load_summary_csv(path: Path) -> dict:
-    """Load a summary_*.csv into {metric: raw_string_value}."""
     data = {}
     with open(path, newline="", encoding="utf-8") as f:
         for row in csv.reader(f):
@@ -74,26 +58,7 @@ def load_summary_csv(path: Path) -> dict:
             data[key] = val
     return data
 
-
 def parse_run_dir(name: str, experiment: str):
-    """
-    Parse a run directory name into (mode, run_number).
-
-    Accepts every folder shape run-load-test.sh has produced, all of them
-    optionally suffixed with the -YYYYMMDD-HHMMSS timestamp it appends:
-
-        {experiment}-{mode}-{scenario}-run{nn}-{ts}   (old multi-segment)
-        {experiment}-{scenario}-run{nn}-{ts}          (mode omitted)
-        {experiment}-run{nn}-{ts}                     (mode+scenario omitted)
-
-    The scenario is NO LONGER required in the folder name — discover_runs()
-    resolves it from the summary_*.csv that is actually present in the
-    folder. `mode` is whatever hyphen-segment(s) sit between the experiment
-    prefix and `run{nn}` once any known scenario suffix is stripped; it may
-    be empty (returned as "").
-
-    Returns (mode, run_number), or None if the name doesn't match.
-    """
     prefix = experiment + "-"
     if not name.startswith(prefix):
         return None
@@ -118,12 +83,7 @@ def parse_run_dir(name: str, experiment: str):
 
     return mode, run_number
 
-
 def discover_runs(results_dir: Path, experiment: str) -> dict:
-    """
-    Scan results_dir for matching run directories.
-    Returns {(mode, scenario): [row_dict, ...]} sorted by run number.
-    """
     groups = defaultdict(list)
 
     for d in sorted(results_dir.iterdir()):
@@ -155,9 +115,7 @@ def discover_runs(results_dir: Path, experiment: str) -> dict:
 
     return dict(groups)
 
-
 def stats(values: list) -> dict:
-    """Sample statistics for a list of floats."""
     clean = [v for v in values if not math.isnan(v)]
     n = len(clean)
     if n == 0:
@@ -173,9 +131,7 @@ def stats(values: list) -> dict:
     return {"n": n, "mean": mean, "std": std,
             "min": min(clean), "max": max(clean), "median": median}
 
-
 def get_values(run_rows: list, metric: str) -> list:
-    """Extract float values for a metric from a list of run row dicts."""
     result = []
     for r in run_rows:
         try:
@@ -184,13 +140,10 @@ def get_values(run_rows: list, metric: str) -> list:
             pass
     return result
 
-
 def fmt(value, decimals=1):
     if math.isnan(value):
         return "—"
     return f"{value:.{decimals}f}"
-
-
 
 def write_aggregate_csv(groups: dict, output_path: Path):
     all_metrics = list(METRIC_META.keys())
@@ -217,8 +170,6 @@ def write_aggregate_csv(groups: dict, output_path: Path):
         writer.writerows(rows)
 
     print(f"  Saved: {output_path.name}")
-
-
 
 def print_console_table(groups: dict):
     print()
@@ -250,8 +201,6 @@ def print_console_table(groups: dict):
     print("=" * 90)
     print()
 
-
-
 def print_per_run_table(groups: dict):
     print()
     print("Per-run breakdown:")
@@ -271,30 +220,16 @@ def print_per_run_table(groups: dict):
             print(f"  run{rn:02d}    {err:>7} {p50:>8} {p95:>8} {p99:>8} {rps:>6} {rst:>9}")
     print()
 
-
-
 BOXPLOT_MIN_N = 5
 
-
 def clean_stale_metric_plots(output_dir: Path, drop_metric_plots: bool):
-    """Remove stale per-metric plot files left by earlier runs of this script.
-
-    Always drops the old boxplot_*.png name (renamed to metric_*.png). When
-    drop_metric_plots is set (--no-boxplots / --no-plots — i.e. no per-metric
-    plots will be regenerated this run) it also drops metric_*.png so the
-    output dir doesn't carry orphans. Lives outside plot_boxplots() so the
-    cleanup still happens when plot_boxplots is skipped.
-    """
     for stale in output_dir.glob("boxplot_*.png"):
         stale.unlink()
     if drop_metric_plots:
         for stale in output_dir.glob("metric_*.png"):
             stale.unlink()
 
-
 def plot_boxplots(groups: dict, output_dir: Path):
-    """One PNG per metric — box plot when n >= BOXPLOT_MIN_N, otherwise a
-    strip plot of the individual runs with mean ± 1 SD."""
     all_metrics = list(METRIC_META.keys())
 
     for metric_key in all_metrics:
@@ -384,10 +319,7 @@ def plot_boxplots(groups: dict, output_dir: Path):
         plt.close(fig)
         print(f"  Saved: {out.name}")
 
-
-
 def plot_bar_summary(groups: dict, output_dir: Path, experiment: str):
-    """Multi-panel bar chart: mean ± std for each metric."""
     metrics = SUMMARY_METRICS
     n_metrics = len(metrics)
     n_cols = 2
@@ -457,13 +389,7 @@ def plot_bar_summary(groups: dict, output_dir: Path, experiment: str):
     plt.close(fig)
     print(f"  Saved: {out.name}")
 
-
-
 def flag_outliers(groups: dict):
-    """
-    Print a warning for any run whose error rate deviates by > 2 std dev
-    from the group mean (potential outlier for thesis reporting).
-    """
     flagged = []
     for (mode, scenario), run_rows in groups.items():
         values = get_values(run_rows, "avg_error_rate_percent")
@@ -483,8 +409,6 @@ def flag_outliers(groups: dict):
         for tid, mode, sc, v, mean, std in flagged:
             print(f"   {tid}: error_rate={v:.1f}%  (group mean={mean:.1f}% ±{std:.1f})")
         print()
-
-
 
 def main():
     parser = argparse.ArgumentParser(
@@ -555,7 +479,6 @@ def main():
         plot_bar_summary(groups, output_dir, args.experiment)
 
     print(f"\nDone. All outputs in: {output_dir}\n")
-
 
 if __name__ == "__main__":
     main()

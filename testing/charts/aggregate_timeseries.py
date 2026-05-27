@@ -1,24 +1,3 @@
-"""
-aggregate_timeseries.py — Cross-run time-series charts with mean ± std bands.
-
-Produces the same chart layouts as plot_prometheus.py (per-run) but each line is
-the mean across all runs of an experiment, with a shaded band showing ±1 std.
-
-Usage:
-    python3 aggregate_timeseries.py \
-        --experiment stage5-hpa-tuned \
-        --results-dir testing/results \
-        --prometheus-url http://127.0.0.1:30090 \
-        --output-dir testing/results/analysis-stage5-hpa-tuned
-
-Charts generated:
-    timeseries_throughput_error.png  — RPS + error rate over time
-    timeseries_latency.png           — p50/p95/p99 over time
-    timeseries_cpu_replicas.png      — replica count + CPU% over time
-    timeseries_memory.png            — web/jobs memory over time
-    timeseries_hpa_cpu.png           — HPA CPU target metric over time
-"""
-
 import argparse
 import csv
 import os
@@ -39,8 +18,6 @@ warnings.filterwarnings("ignore", message="All-NaN slice encountered",
 warnings.filterwarnings("ignore", message="Mean of empty slice",
                         category=RuntimeWarning)
 
-
-
 def load_env_file(path: Path) -> dict:
     if not path.exists():
         return {}
@@ -51,13 +28,10 @@ def load_env_file(path: Path) -> dict:
             out[k.strip()] = v.strip()
     return out
 
-
 def parse_ts(value: str) -> dt.datetime:
     return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
 
-
 def query_range(base_url, query, start, end, step):
-    """Query Prometheus and return list of (timestamp, value) tuples."""
     try:
         r = requests.get(
             f"{base_url}/api/v1/query_range",
@@ -79,27 +53,17 @@ def query_range(base_url, query, start, end, step):
     return [(dt.datetime.fromtimestamp(float(t), dt.UTC), float(v))
             for t, v in data[0]["values"]]
 
-
 def try_queries(base_url, queries, start, end, step):
-    """Try queries in order; return first non-empty series."""
     for q in queries:
         s = query_range(base_url, q, start, end, step)
         if s:
             return s
     return []
 
-
-
 def to_relative(series, started_at):
-    """Convert [(ts, val), ...] → [(seconds_from_start, val), ...]."""
     return [((t - started_at).total_seconds(), v) for t, v in series]
 
-
 def resample_to_grid(rel_series, grid_seconds):
-    """Linear-interpolate a (sec, val) series onto a regular time grid.
-
-    Returns numpy array same length as grid; NaN where extrapolated.
-    """
     if not rel_series:
         return np.full(len(grid_seconds), np.nan)
     xs = np.array([p[0] for p in rel_series])
@@ -107,16 +71,7 @@ def resample_to_grid(rel_series, grid_seconds):
     out = np.interp(grid_seconds, xs, ys, left=np.nan, right=np.nan)
     return out
 
-
 def aggregate_runs(per_run_series_list, grid_seconds):
-    """Stack runs onto common grid, return (stacked_array, _, n_valid_per_bin).
-
-    Callers iterate the rows of `stacked_array` to draw each run individually
-    with a distinct colour. No aggregate statistic (mean / median / std) is
-    computed here — chart panels show raw per-run data only, which avoids
-    parametric assumptions that do not hold for metrics bounded at zero
-    (queue depth, error rate, evictions).
-    """
     rows = [resample_to_grid(s, grid_seconds) for s in per_run_series_list]
     arr = np.array(rows)
     if arr.size == 0:
@@ -125,27 +80,9 @@ def aggregate_runs(per_run_series_list, grid_seconds):
         n = np.sum(~np.isnan(arr), axis=0)
     return arr, None, n
 
-
 def detect_breakpoints(y,
                        reversal_threshold=0.015,
                        step_threshold=0.06):
-    """Return indices of 'meaningful' points on a 1-D series.
-
-    Selection rules:
-        1. The first and last non-NaN samples (endpoints).
-        2. Local extrema — interior points where the slope changes sign
-           AND at least one adjacent slope exceeds `reversal_threshold`
-           × (overall range). Catches peaks, valleys, knees.
-        3. Step changes — points where the local first-difference itself
-           exceeds `step_threshold` × (overall range). Catches large
-           jumps within a monotonic stretch (e.g. saturation onset,
-           recovery after a spike) that case (2) would miss because
-           there is no sign reversal.
-
-    The two thresholds let micro-jitter pass while still surfacing every
-    visually meaningful change. Defaults are tuned for a 15 s grid over
-    20–60-minute runs; lower the numbers for denser markers.
-    """
     y = np.asarray(y, dtype=float)
     n = len(y)
     if n == 0:
@@ -186,33 +123,14 @@ def detect_breakpoints(y,
 
     return sorted(breakpoints)
 
-
 def apply_minute_ticks(ax):
-    """Place a major x-axis tick at every minute and a minor tick every
-    30 seconds, clamp the visible time range to start at 0, AND force
-    tick labels to render on this axis even when sharex=True would
-    normally hide them on inner panels of a multi-panel figure.
-
-    Use this on every panel of a multi-panel chart so readers can read
-    the time directly under each curve instead of mentally projecting
-    down to the bottom axis."""
     ax.set_xlim(left=0)
     ax.xaxis.set_major_locator(MultipleLocator(1))
     ax.xaxis.set_minor_locator(MultipleLocator(0.5))
     ax.tick_params(axis="x", which="major", length=4, labelbottom=True)
     ax.tick_params(axis="x", which="minor", length=2)
 
-
 def plot_metric(ax, grid, agg, label, color, scale=1.0):
-    """Render one metric across N runs as a single bold median line with
-    dot markers placed only at significant break-points (endpoints and
-    direction-reversals above a 4 % range threshold).
-
-    With N=3 the median at each tick is literally the middle observed run,
-    not a parametric aggregate — it is a value that was actually measured.
-    Restricting markers to break-points keeps the curve readable on long
-    runs while still flagging peaks, valleys and inflection ticks.
-    """
     if agg is None or agg[0] is None:
         return
     arr = agg[0]
@@ -234,20 +152,10 @@ def plot_metric(ax, grid, agg, label, color, scale=1.0):
         label=f"{label} (median)",
     )
 
-
 def plot_band(ax, grid, agg, label, color, show_band=True, scale=1.0):
-    """Alias for plot_metric. `show_band` retained for call-site
-    compatibility but is now ignored."""
     plot_metric(ax, grid, agg, label, color, scale=scale)
 
-
 def overlay_vus_background(ax, grid, vus_agg, color="#999999", offset_pt=0):
-    """Draw VUs as a faint shaded area + thin dashed line on a twin y-axis
-    behind the foreground metric. VUs are identical across runs by design
-    (same k6 scenario, same ramp), so one representative line is drawn —
-    the per-bin mean across runs (NaN-safe), which equals any single run
-    when all runs agree.
-    """
     if vus_agg is None or vus_agg[0] is None:
         return None
     arr = vus_agg[0]
@@ -269,40 +177,10 @@ def overlay_vus_background(ax, grid, vus_agg, color="#999999", offset_pt=0):
         ax_v.spines["right"].set_position(("outward", offset_pt))
     return ax_v
 
-
-
 def q_throughput(testid):
-    """Total requests / sec — every HTTP call k6 fires is counted here,
-    regardless of response status. This is what k6 PUSHED into the system."""
     return [f'sum(rate(k6_http_reqs_total{{testid="{testid}"}}[1m]))']
 
-
 def derive_success_rps(total_series, error_series):
-    """Derive per-run successful RPS as total × (1 - error_rate/100) at
-    each timestamp.
-
-    Previously we queried the successful RPS directly with
-        sum(rate(k6_http_reqs_total{expected_response="true"}[1m]))
-    but during crash windows the {expected_response="true"} series can
-    cease to exist in Prometheus (no matching samples → empty result),
-    leaving NaN gaps in the successful series while the total series
-    remains populated. When the cross-run median is then taken
-    independently for total and success, asymmetric NaN distribution
-    can make median(success) > median(total) — impossible per-run, but
-    a real artefact of medians over arrays with different NaN masks.
-
-    Deriving success from total and error per-run instead guarantees:
-        - identical NaN pattern between the two series within a run
-          (success is NaN ⟺ total is NaN);
-        - 0 ≤ success ≤ total at every timestamp within each run;
-        - therefore median(success) ≤ median(total) at every grid tick.
-
-    Inputs:
-        total_series — list of (datetime, total_rps) from q_throughput
-        error_series — list of (datetime, error_pct) from q_error_rate
-    Output:
-        list of (datetime, success_rps) aligned with total_series.
-    """
     if not total_series:
         return []
     err_lookup = {ts: pct for ts, pct in error_series}
@@ -316,39 +194,19 @@ def derive_success_rps(total_series, error_series):
         out.append((ts, success))
     return out
 
-
 def q_error_rate(testid):
     return [
         f'100 * sum(rate(k6_http_reqs_total{{expected_response="false",testid="{testid}"}}[1m])) / sum(rate(k6_http_reqs_total{{testid="{testid}"}}[1m]))',
         f'100 * avg_over_time(k6_http_req_failed{{testid="{testid}"}}[2m])',
     ]
 
-
 def q_latency(testid, pct):
-    """pct: 'p50', 'p95', 'p99' → returns avg over the percentile metric."""
     return [f'avg(k6_http_req_duration_{pct}{{testid="{testid}"}})']
 
-
 def q_vus(testid):
-    """Virtual-user count gauge — k6 pushes the running VU total every 5 s."""
     return [f'max(k6_vus{{testid="{testid}"}})']
 
-
 def _q_memory_per_pod_mb(pod_regex, container, aggregator):
-    """Per-pod memory-working-set series, aggregated across pods with
-    ``aggregator`` ∈ {"max", "avg"}.
-
-    The ``unless on(id) (container_last_seen > 30)`` filter drops ghost
-    cgroups from crash-looped or recently-terminated containers; the
-    cgroup path persists in cAdvisor for 30–60 s after the kernel reaps
-    the container, which inflated naive aggregates by 2–4× at OOMKill
-    transitions in Stage 1 baseline. Two label-scheme fallbacks cover
-    older cAdvisor versions.
-
-    ``max()`` reflects the hottest pod (the one that will OOM-kill first
-    since OOM is per-pod); ``avg()`` reflects the cluster mean, which
-    smooths nicely but undercounts when one pod is under-load.
-    """
     primary = (
         f'{aggregator}(container_memory_working_set_bytes{{namespace="canvas",pod=~"{pod_regex}",container="{container}"}} '
         'unless on(id) '
@@ -365,24 +223,17 @@ def _q_memory_per_pod_mb(pod_regex, container, aggregator):
     )
     return [primary, fallback1, fallback2]
 
-
 def q_web_memory_max_mb():
-    """Hottest web pod — the OOM-risk indicator."""
     return _q_memory_per_pod_mb("canvas-web-.*", "web", "max")
 
-
 def q_web_memory_avg_mb():
-    """Per-pod mean across the web fleet — smooths spawn-time RSS dips."""
     return _q_memory_per_pod_mb("canvas-web-.*", "web", "avg")
-
 
 def q_jobs_memory_max_mb():
     return _q_memory_per_pod_mb("canvas-jobs-.*", "jobs", "max")
 
-
 def q_jobs_memory_avg_mb():
     return _q_memory_per_pod_mb("canvas-jobs-.*", "jobs", "avg")
-
 
 def q_web_cpu_percent_of_request():
     return [
@@ -390,10 +241,7 @@ def q_web_cpu_percent_of_request():
         '100 * sum(rate(container_cpu_usage_seconds_total{namespace="canvas",pod=~"canvas-web-.*",container!="",container!="POD"}[1m])) / sum(kube_pod_container_resource_requests{namespace="canvas",resource="cpu",pod=~"canvas-web-.*",container!="",container!="POD"})',
     ]
 
-
-
 def read_snapshots_csv(path: Path, started_at, column):
-    """Return [(seconds_from_start, value)] from a column in k8s-snapshots.csv."""
     if not path.exists():
         return []
     out = []
@@ -411,13 +259,7 @@ def read_snapshots_csv(path: Path, started_at, column):
                 continue
     return out
 
-
 def read_jobs_queue_csv(path: Path, started_at):
-    """Return three series — pending, oldest_age, jobs_per_minute — each as
-    [(seconds_from_start, value)]. Throughput is derived from the cumulative
-    n_tup_del counter via diff, identical logic to load_jobs_queue() in
-    plot_prometheus.py.
-    """
     pending, age, jpm = [], [], []
     if not path.exists():
         return pending, age, jpm
@@ -462,30 +304,7 @@ def read_jobs_queue_csv(path: Path, started_at):
             last_nonzero = r["cum"]
     return pending, age, jpm
 
-
-
 def _plot_stacked_rps(ax, grid, tput, err):
-    """Render the RPS panel as a stacked area chart.
-
-    Layout (bottom-up):
-        - Green filled band [0, success_band]                  — successful RPS
-        - Red filled band   [success_band, total_band]         — failed RPS
-        - Thin dark marker line on top at total_band           — chart top edge
-          with break-point markers consistent with other charts
-
-    The bands are derived from the SAME median(error_rate) used by the
-    panel below, so the two panels are visually consistent at every
-    tick by construction:
-
-        failed_band  = median(total) × median(error_rate) / 100
-        success_band = median(total) − failed_band
-
-    Aggregating with two independent medians (median(total) and
-    median(success)) would not preserve this consistency because median
-    does not distribute over multiplication — at ticks where a subset of
-    runs is in a crash cycle, median(error) on the bottom panel and the
-    implied error from the RPS stack would disagree.
-    """
     if (tput is None or tput[0] is None
             or err is None or err[0] is None):
         return
@@ -520,28 +339,15 @@ def _plot_stacked_rps(ax, grid, tput, err):
         label="Total RPS (median)",
     )
 
-
 def _median_curve(agg):
-    """Return 1-D median across runs for a stacked (n_runs, n_bins) array.
-    Returns None when input is missing.
-    """
     if agg is None or agg[0] is None:
         return None
     with np.errstate(all="ignore"):
         return np.nanmedian(agg[0], axis=0)
 
-
 def _find_throughput_saturation_grid_idx(grid_seconds, median_tput,
                                          peak_tolerance=0.05,
                                          future_overshoot=0.02):
-    """First grid index where median throughput reaches its peak AND
-    stops growing. Mirror of the per-run helper in plot_prometheus.py
-    but operates on a 1-D numpy array indexed by `grid_seconds`.
-
-    See plot_prometheus._find_throughput_saturation_minute for the
-    rationale on peak_tolerance and future_overshoot. Returns None
-    when no valid sample meets the criteria.
-    """
     if median_tput is None or len(median_tput) == 0:
         return None
     valid_mask = np.isfinite(median_tput)
@@ -561,12 +367,7 @@ def _find_throughput_saturation_grid_idx(grid_seconds, median_tput,
             return i
     return None
 
-
 def _find_slo_breach_grid_idx(median_p95, threshold_seconds=3.0):
-    """First grid index where median windowed P95 latency crosses
-    `threshold_seconds`. Returns None when threshold is never crossed
-    or when input is missing — both are valid "no marker" outcomes.
-    """
     if median_p95 is None or len(median_p95) == 0:
         return None
     for i, v in enumerate(median_p95):
@@ -574,26 +375,10 @@ def _find_slo_breach_grid_idx(median_p95, threshold_seconds=3.0):
             return i
     return None
 
-
 def plot_throughput_error(grid, tput, tput_success, err, vus,
                           output, experiment, n_runs,
                           p95=None,
                           draw_saturation_markers=False):
-    """Two-panel load-response chart sharing a time axis:
-        Panel 1 (top)    — RPS shown as a stacked area chart:
-                           bottom band = median successful RPS (green),
-                           top band    = median failed RPS (red).
-                           Total height = total RPS. When error rate is
-                           low the red band is a thin strip; during a
-                           crash window the green band collapses and red
-                           fills the panel. A thin marker line traces
-                           the top edge so the breakpoint markers from
-                           the other charts remain consistent.
-        Panel 2 (bottom) — Error rate (%) line.
-
-    The VU profile is drawn on each panel as a faint shaded area on a
-    twin y-axis (identical across runs by design).
-    """
     fig, axes = plt.subplots(2, 1, figsize=(11, 9), sharex=True)
     ax_rps, ax_err = axes
 
@@ -664,7 +449,6 @@ def plot_throughput_error(grid, tput, tput_success, err, vus,
     plt.close(fig)
     print(f"  → {output}")
 
-
 def plot_latency(grid, p50, p95, p99, vus, output, experiment, n_runs):
     fig, ax = plt.subplots(figsize=(11, 5))
     overlay_vus_background(ax, grid, vus)
@@ -682,7 +466,6 @@ def plot_latency(grid, p50, p95, p99, vus, output, experiment, n_runs):
     fig.savefig(output, dpi=130)
     plt.close(fig)
     print(f"  → {output}")
-
 
 def plot_cpu_replicas(grid, replicas, cpu_pct, vus, output, experiment, n_runs,
                       hpa_target_pct=None, jobs_replicas=None):
@@ -716,14 +499,8 @@ def plot_cpu_replicas(grid, replicas, cpu_pct, vus, output, experiment, n_runs,
     plt.close(fig)
     print(f"  → {output}")
 
-
 def plot_replicas_vs_vus(grid, web_replicas, jobs_replicas, vus,
                          output, experiment, n_runs):
-    """Elasticity profile — web AND jobs replica counts (median ± 1σ band
-    across runs) plotted against the VU profile. The cross-run aggregate
-    of the per-run replicas_vs_vus chart: shows whether the scaling
-    trajectory is reproducible across the n runs. Both replica series share
-    one integer y-axis (counts are small); VUs are the faint background."""
     fig, ax1 = plt.subplots(figsize=(11, 5))
     plot_band(ax1, grid, web_replicas, "Web replicas", "#1f77b4")
     plot_band(ax1, grid, jobs_replicas, "Jobs replicas", "#ff7f0e")
@@ -744,14 +521,8 @@ def plot_replicas_vs_vus(grid, web_replicas, jobs_replicas, vus,
     plt.close(fig)
     print(f"  → {output}")
 
-
 def plot_jobs_queue(grid, queue_depth, job_age, jobs_per_min, vus,
                     output, experiment, n_runs):
-    """Three-panel jobs-tier chart: queue depth, oldest pending age, jobs
-    per minute. Each panel renders one coloured line per run and overlays
-    the VU profile as a faint shaded area on a twin axis (identical input
-    across runs). Skipped silently if no run has jobs-queue.csv data.
-    """
     has_data = any(agg is not None and agg[0] is not None
                    for agg in (queue_depth, job_age, jobs_per_min))
     if not has_data:
@@ -794,11 +565,7 @@ def plot_jobs_queue(grid, queue_depth, job_age, jobs_per_min, vus,
     plt.close(fig)
     print(f"  → {output}")
 
-
 def _plot_memory_line(ax, grid, agg, label, color, linestyle="-"):
-    """Per-pod memory line (median across runs). Same break-point marker
-    treatment as plot_metric, but linestyle is overridable so the dashed
-    avg line sits visually under the solid max line of the same colour."""
     if agg is None or agg[0] is None:
         return
     arr = agg[0]
@@ -816,27 +583,9 @@ def _plot_memory_line(ax, grid, agg, label, color, linestyle="-"):
         label=label,
     )
 
-
 def plot_memory(grid, web_mem_max, web_mem_avg, jobs_mem_max, jobs_mem_avg,
                 vus, output, experiment, n_runs,
                 web_limit_mb=None, jobs_limit_mb=None):
-    """Per-pod memory chart — 4 lines, all in MiB:
-
-      • Web max  (solid blue)   — the hottest web pod  ← OOM-risk signal
-      • Web avg  (dashed blue)  — mean across web pods (load distribution)
-      • Jobs max (solid orange) — hottest jobs pod
-      • Jobs avg (dashed orange)
-
-    A wide gap between max and avg of the same colour reveals load
-    imbalance across pods (e.g. sticky sessions, LB skew). When max
-    approaches the horizontal limit reference line, OOMKill is imminent
-    on that one pod regardless of how the rest of the fleet looks.
-
-    sum() across pods was avoided deliberately: with HPA scaling 1→3
-    pods during a run, a sum line jumps at scale-out events even when
-    no individual pod's RSS changed, conflating "scaled out" with
-    "memory grew". Per-pod aggregation matches how OOMKill actually
-    fires (per-pod, not per-tier total)."""
     fig, ax = plt.subplots(figsize=(11, 5))
     overlay_vus_background(ax, grid, vus)
 
@@ -866,20 +615,7 @@ def plot_memory(grid, web_mem_max, web_mem_avg, jobs_mem_max, jobs_mem_avg,
     plt.close(fig)
     print(f"  → {output}")
 
-
-
 def discover_runs(results_dir: Path, experiment: str):
-    """Find all run subdirectories for an experiment that carry a valid
-    metadata.env.
-
-    A folder qualifies when it (a) starts with `<experiment>-` and (b) has a
-    `run<NN>` segment, optionally followed by the `-YYYYMMDD-HHMMSS` timestamp
-    run-load-test.sh appends. The run<NN> requirement keeps this consistent
-    with aggregate_analysis.parse_run_dir: a folder that merely shares the
-    prefix but is not part of the numbered run series — e.g. an ablation run
-    renamed to `<experiment>-throttleoff-<ts>` — must NOT be averaged into the
-    mean ± std bands, or the time-series and the stats table would disagree
-    on n."""
     runs = []
     for d in sorted(results_dir.iterdir()):
         if not d.is_dir():
@@ -898,7 +634,6 @@ def discover_runs(results_dir: Path, experiment: str):
             "ended_at":   parse_ts(meta["ended_at"]),
         })
     return runs
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -1056,7 +791,6 @@ def main():
                     args.experiment, n)
 
     print(f"\nDone. Charts written to {output_dir}/timeseries_*.png")
-
 
 if __name__ == "__main__":
     main()

@@ -10,13 +10,11 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import requests
 
-
 def slugify(value):
     cleaned = "".join(ch.lower() if ch.isalnum() else "_" for ch in value)
     while "__" in cleaned:
         cleaned = cleaned.replace("__", "_")
     return cleaned.strip("_") or "run"
-
 
 def load_env_file(path):
     values = {}
@@ -30,40 +28,19 @@ def load_env_file(path):
         values[key.strip()] = value.strip()
     return values
 
-
 def parse_timestamp(value):
     return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
 
-
 def parse_numeric(value):
-    """Empty CSV cell → NaN, not 0.0.
-
-    The on-SUT collectors emit empty fields when a scrape fails (kubectl
-    exec timeout, DB/Redis unreachable). Mapping an empty cell to 0.0
-    fabricates a real-looking sample — exactly what produced the false
-    ~4-minute "empty queue, zero throughput" plateau in stage3-hpa-run01,
-    where collect-jobs-metrics.sh had backfilled 0,0,0,0,0 on failure.
-    NaN instead: matplotlib renders it as a gap, and _finite() strips it
-    out of scalar reductions so it cannot poison a max/min/sum.
-    """
     if value in (None, ""):
         return float("nan")
     return float(value)
 
-
 def _isnan(value):
     return isinstance(value, float) and math.isnan(value)
 
-
 def _finite(values):
-    """Drop NaN/None from an iterable before min/max/sum aggregation.
-
-    Required because collector CSVs now carry NaN cells for failed scrapes;
-    an unfiltered NaN poisons the aggregate (and `int(nan)` raises
-    ValueError). Pair with `default=`/`if seq` guards for the empty case.
-    """
     return [v for v in values if v is not None and not _isnan(v)]
-
 
 def parse_duration_to_seconds(value):
     if not value:
@@ -87,7 +64,6 @@ def parse_duration_to_seconds(value):
         elif unit == "h":
             total += number * 3600.0
     return total
-
 
 def parse_k6_summary_metrics(path):
     if not path.exists():
@@ -139,41 +115,7 @@ def parse_k6_summary_metrics(path):
 
     return metrics
 
-
 def parse_k6_error_breakdown(text):
-    """Decompose k6's logged per-request errors into throttle / server / infra
-    / other buckets — pure post-processing, no test re-run needed.
-
-    canvas-load.js logs every failed request via console.error; k6 tees those
-    lines into k6-summary.txt, e.g.:
-        ... level=error msg="[submission] POST ... returned 500. Body
-            preview: {...internal_server_error...}" source=console
-        ... level=error msg="[quizzes] GET ... returned 403. Body
-            preview: 403 Forbidden (Rate Limit Exceeded) " source=console
-        ... level=error msg="[courses] GET ... returned 0. Body
-            preview: " source=console        <- no HTTP response at all
-
-    Buckets:
-      throttle     — 403/429 load-shedding by Canvas::RequestThrottle. A
-                     *designed* protective response, NOT a system failure.
-      server_5xx   — 5xx: genuine application/server failures (pod alive,
-                     app-level error — e.g. the PG-adapter exceptions seen
-                     in Stage 2/3).
-      infra        — transport-level failure: k6 status 0 (no HTTP response
-                     received — connection refused / timeout / EOF / pod
-                     down), or an explicit timeout/connection keyword. This
-                     is the OOMKill / pod-death class that dominates Stage 1.
-      other        — anything else (e.g. a non-throttle 4xx) — kept visible
-                     so nothing is silently dropped.
-
-    Returns counts plus real_error_* (= everything that is NOT throttle).
-    real_error_rate_percent / throttle_rate_percent are over total http_reqs.
-
-    Caveat: this counts console.error lines, whose tally can differ slightly
-    from k6's own http_req_failed metric (different definition of "failed").
-    The headline error_rate_percent from k6 is left untouched; this is a
-    decomposition *of the logged error lines*, reported alongside it.
-    """
     err_lines = [ln for ln in text.splitlines() if "level=error" in ln]
 
     throttle = server_5xx = infra = other = 0
@@ -215,7 +157,6 @@ def parse_k6_error_breakdown(text):
 
     return out
 
-
 def query_range(base_url, query, start, end, step):
     response = requests.get(
         f"{base_url}/api/v1/query_range",
@@ -231,7 +172,6 @@ def query_range(base_url, query, start, end, step):
     payload = response.json()
     return payload["data"]["result"]
 
-
 def parse_series(result):
     series = []
     for item in result:
@@ -240,26 +180,11 @@ def parse_series(result):
         series.append((label, values))
     return series
 
-
 def select_first_series(result):
     series = parse_series(result)
     return series[0][1] if series else []
 
-
 def _parse_per_pod_series(result, scale=1.0):
-    """Build a dict {pod_name: [(timestamp, scaled_value), ...]} from a
-    Prometheus query that returns one series per pod (no aggregation).
-
-    During a container restart the same pod name may appear with two
-    different cgroup `id` labels briefly. Upstream filters usually trim
-    the dead one, but as belt-and-braces we keep only the highest sample
-    per (pod, timestamp) so a transient overlap cannot create a phantom
-    doubled line.
-
-    `scale` lets callers convert units inline — memory passes
-    1 / 1 048 576 to land in MiB; CPU passes 1.0 because the rate()
-    output is already in cores.
-    """
     series = parse_series(result)
     pod_to_samples = {}
     for label, values in series:
@@ -275,24 +200,13 @@ def _parse_per_pod_series(result, scale=1.0):
         for pod, samples in pod_to_samples.items()
     }
 
-
 def _parse_per_pod_memory(result):
-    """Per-pod memory in MiB (binary, displayed as 'MB' on charts)."""
     return _parse_per_pod_series(result, scale=1.0 / 1048576.0)
 
-
 def _parse_per_pod_cpu(result):
-    """Per-pod CPU cores (rate(seconds_total[1m]) is already in cores)."""
     return _parse_per_pod_series(result, scale=1.0)
 
-
 def parse_cpu_limit_cores(limit_str):
-    """Convert a Kubernetes CPU limit string to a float number of cores.
-
-    Examples: '4' → 4.0; '1500m' → 1.5; '100m' → 0.1; '' / None → None.
-    The trailing 'm' suffix denotes millicores (1/1000 of a core), the
-    convention used everywhere in kubectl / kube-state-metrics output.
-    """
     if not limit_str:
         return None
     s = str(limit_str).strip()
@@ -304,7 +218,6 @@ def parse_cpu_limit_cores(limit_str):
         return float(s)
     except ValueError:
         return None
-
 
 def try_queries(base_url, queries, start, end, step):
     last_error = None
@@ -320,15 +233,11 @@ def try_queries(base_url, queries, start, end, step):
         raise last_error
     return [], ""
 
-
 def apply_time_axis(ax):
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
     ax.tick_params(axis="x", rotation=20)
 
-
 def apply_minute_axis(ax, test_start):
-    """Switch x-axis from absolute datetime to minutes-from-test-start, with
-    a major tick at every minute and minor ticks at 30-second intervals."""
     from matplotlib.ticker import FuncFormatter, MultipleLocator
     if test_start is None:
         return
@@ -345,13 +254,7 @@ def apply_minute_axis(ax, test_start):
     ax.tick_params(axis="x", which="major", length=4, labelbottom=True)
     ax.tick_params(axis="x", which="minor", length=2)
 
-
 def to_minutes_from_start(series_with_datetime, test_start):
-    """Convert [(datetime, value), ...] -> ([minutes, ...], [values, ...]).
-
-    Used to render per-run charts on a relative-minute x-axis aligned
-    with the aggregate charts.
-    """
     if not series_with_datetime or test_start is None:
         return [], []
     xs, ys = [], []
@@ -360,12 +263,7 @@ def to_minutes_from_start(series_with_datetime, test_start):
         ys.append(v)
     return xs, ys
 
-
 def overlay_vus_per_run(ax, vus_values, test_start, color="#999999"):
-    """Faint shaded VU profile overlay on twin y-axis, matching the style
-    used by overlay_vus_background in aggregate_timeseries.py. Returns the
-    twin axis so callers can offset its spine when another twin already
-    occupies the right edge."""
     if not vus_values or test_start is None:
         return None
     xs, ys = to_minutes_from_start(vus_values, test_start)
@@ -382,10 +280,7 @@ def overlay_vus_per_run(ax, vus_values, test_start, color="#999999"):
     ax.patch.set_visible(False)
     return ax_v
 
-
 def overlay_rps_per_run(ax, throughput_values, test_start, color="#9ec5d8"):
-    """Faint shaded RPS profile overlay, same style as VU overlay but for
-    successful-rate-context on charts like the latency timeline."""
     if not throughput_values or test_start is None:
         return None
     xs, ys = to_minutes_from_start(throughput_values, test_start)
@@ -402,13 +297,7 @@ def overlay_rps_per_run(ax, throughput_values, test_start, color="#9ec5d8"):
     ax.patch.set_visible(False)
     return ax_r
 
-
 def restart_delta_series(snapshots, field):
-    """Return (minutes_from_start, restart_count_during_test) — counter is
-    rebased to 0 at the first snapshot so the line shows how many restarts
-    happened DURING the test window, not the cumulative pod-lifetime value
-    that may include events from before the test started.
-    """
     if not snapshots:
         return [], []
     test_start = snapshots[0]["timestamp"]
@@ -421,15 +310,8 @@ def restart_delta_series(snapshots, field):
         ys.append(delta)
     return xs, ys
 
-
 def plot_latency_timeline(output_dir, metrics_by_label,
                           throughput_values=None, test_start=None):
-    """Response-time percentiles (P50/P95/P99) over time.
-
-    When called for a single run, an RPS overlay is drawn as a faint
-    shaded twin-axis background so the reader can correlate latency
-    spikes with throughput dips during crash windows.
-    """
     fig, ax = plt.subplots(figsize=(12, 5))
     colors = {"p50": "#1f77b4", "p95": "#ff7f0e", "p99": "#d62728"}
 
@@ -475,30 +357,10 @@ def plot_latency_timeline(output_dir, metrics_by_label,
     fig.savefig(output_dir / "response_time_timeline.png")
     plt.close(fig)
 
-
 def plot_throughput_error(output_dir, label, throughput_values, error_values,
                           k6_error_rate_percent=None, vus_values=None,
                           test_start=None, latency_p95_values=None,
                           draw_saturation_markers=True):
-    """Per-run throughput + error chart:
-        Panel 1 — RPS stacked area: green = successful, red = failed (on top)
-                  with a thin dark line tracing the total at the top edge.
-        Panel 2 — Error rate %, plotted as a line with 1 % reference line.
-    VU profile overlaid on each panel as a faint shaded twin axis.
-    X-axis: minutes from test start, major tick per minute.
-
-    Saturation zones are shaded across both panels (breakpoint tests only)
-    based on data-driven thresholds:
-      - Throughput-knee marker: first minute where RPS reaches 90% of peak
-      - SLO-breach marker:      first minute where windowed P95 ≥ 3 s
-      - Transition zone (orange tint): between knee and SLO-breach — where
-        the system is adapting to saturation and burst errors typically occur
-      - Saturated zone (red tint): from SLO-breach onward — post-saturation
-        queueing equilibrium where RPS plateaus and latency dominates
-    Computed per-run from the run's own data, so each chart's zones
-    reflect that specific run's behaviour. Skips zones for non-breakpoint
-    runs and when input data is insufficient.
-    """
     if not throughput_values and not error_values:
         return
 
@@ -616,29 +478,9 @@ def plot_throughput_error(output_dir, label, throughput_values, error_values,
                 bbox_inches="tight")
     plt.close(fig)
 
-
 def _find_throughput_saturation_minute(throughput_values, test_start,
                                        peak_tolerance=0.05,
                                        future_overshoot=0.02):
-    """First minute where RPS reaches its observed peak AND stops growing.
-
-    Earlier versions used "first time RPS ≥ 0.9 × peak", which fired
-    while RPS was still climbing — placing the marker before the curve
-    visibly bent. That definition mathematically captures "the load level
-    at which 90% throughput is delivered" but NOT "the load level beyond
-    which throughput stops scaling".
-
-    Revised definition (matches the visual knee):
-      - Find the earliest sample where RPS is within `peak_tolerance` of
-        the observed peak (default 5 %), AND
-      - No subsequent sample exceeds that value by more than
-        `future_overshoot` (default 2 %).
-
-    The persistence check filters early-ramp samples that happen to spike
-    near-peak before settling. Returns the time of true throughput
-    saturation onset — beyond which RPS plateaus and adding more VUs only
-    grows latency (Little's Law: λ = λ_max constant, W ∝ N).
-    """
     if not throughput_values:
         return None
     peak = max(v for _, v in throughput_values)
@@ -654,23 +496,13 @@ def _find_throughput_saturation_minute(throughput_values, test_start,
             return (ts - test_start).total_seconds() / 60.0
     return None
 
-
 def _find_slo_breach_minute(p95_values, test_start, threshold_seconds=3.0):
-    """Earliest minute where windowed P95 latency exceeds `threshold_seconds`.
-
-    Uses windowed P95 (5-second flush window per k6 push) rather than
-    global P95 because we need the time at which the SLO is FIRST
-    violated, not the test-average value. Returns None if the threshold
-    is never crossed within the data — that's a valid result meaning the
-    SLO held throughout the test.
-    """
     if not p95_values:
         return None
     for ts, v in p95_values:
         if v is not None and v >= threshold_seconds:
             return (ts - test_start).total_seconds() / 60.0
     return None
-
 
 def plot_vu_profile(output_dir, label, vus_values):
     if not vus_values:
@@ -690,7 +522,6 @@ def plot_vu_profile(output_dir, label, vus_values):
     fig.savefig(output_dir / f"load_profile_vus_{slugify(label)}.png")
     plt.close(fig)
 
-
 def load_snapshots(path):
     if not path.exists():
         return []
@@ -707,29 +538,8 @@ def load_snapshots(path):
             rows.append(row)
     return rows
 
-
 def compute_pod_load_distribution(base_url, start, end, pod_regex,
                                   deployment_label):
-    """Per-pod request-share evidence — for the thesis claim "load is evenly
-    distributed across pods". Reports three plain-percentage fields that
-    require no statistical interpretation:
-
-        {deployment}_pod_count                — N pods in the deployment
-        {deployment}_min_pod_share_percent    — least-busy pod's share
-        {deployment}_max_pod_share_percent    — busiest pod's share
-        {deployment}_pod_share_spread_percent — max − min
-
-    Ideal even split = 100 / N percent. If min and max are both within
-    ~1 percentage point of that value, distribution is uniform.
-
-    Underlying signal: cAdvisor's `container_network_receive_packets_total`,
-    integrated over the test window. Each HTTP request involves a similar
-    number of TCP packets across pods, so the ratio of per-pod packet
-    counts is a reliable proxy for the ratio of per-pod request counts.
-    Absolute packet count does not equal absolute request count (TCP
-    handshakes, ACKs, retries are included), but the RATIO is what the
-    distribution claim depends on, and ratios are preserved.
-    """
     try:
         duration = int((end - start).total_seconds())
         if duration <= 0:
@@ -762,33 +572,7 @@ def compute_pod_load_distribution(base_url, start, end, pod_regex,
         f"{deployment_label}_pod_share_spread_percent":  round(shares[-1] - shares[0], 2),
     }
 
-
 def compute_resource_area(snapshots, env_snapshot):
-    """Compute resource-time-area metrics for HPA-vs-prescaled efficiency.
-
-    Resource-time area = integral of (replicas × per-pod request) over the
-    test duration. Quantifies how much CPU/memory the cluster *reserved*
-    on behalf of the workload — the right accounting unit because the
-    K8s scheduler bin-packs by request, not by actual usage. Charging is
-    also by reserved capacity in any pay-per-pod model.
-
-    Prescaled fleets: integrand is constant → simple rectangle.
-    HPA-driven fleets: integrand is a step function tracking replica
-    count → staircase area, smaller than the prescaled rectangle by the
-    "savings".
-
-    Replica counts are integrated via the trapezoidal rule, which gives
-    the exact area for a step function as long as the sample spacing is
-    not coarser than the replica-change events (with a 15 s snapshot
-    grid and HPA stabilisation windows ≥ 60 s, that holds).
-
-    Returns a dict of metrics ready to drop into the summary CSV; empty
-    dict when there is not enough data to compute. Test duration is
-    measured from first to last snapshot — cooldown ramp-down IS
-    included because that's still "test resources consumed", and HPA's
-    scale-down during cooldown is a real efficiency benefit that should
-    not be hidden by trimming the tail.
-    """
     if not snapshots or len(snapshots) < 2:
         return {}
 
@@ -846,15 +630,7 @@ def compute_resource_area(snapshots, env_snapshot):
         "avg_jobs_replicas":             round(sum(jobs_replicas_samples) / len(jobs_replicas_samples), 2),
     }
 
-
 def load_jobs_queue(path):
-    """Load jobs-queue.csv produced by collect-jobs-metrics.sh.
-
-    Returns a list of dicts sorted by timestamp. Throughput (jobs/min) is
-    derived post-hoc from the cumulative `total_processed_cumulative` counter
-    using the time delta between consecutive samples — delayed_job removes
-    rows on success, so n_tup_del is monotonic.
-    """
     if not path.exists():
         return []
 
@@ -893,17 +669,7 @@ def load_jobs_queue(path):
             last_nonzero_count = cur_count
     return rows
 
-
 def plot_jobs_queue(output_dir, label, jobs_rows, snapshots=None):
-    """Three-panel jobs-tier chart: queue depth + replicas, age, throughput.
-
-    queue_depth: pending jobs over time, with jobs replicas overlay if
-                 snapshots provided. Direct visual of "is HPA scaling enough?"
-    age:         oldest pending job age in seconds — proxy for end-user-
-                 perceived latency-to-start. SLO line drawn at 10s.
-    throughput:  jobs processed per minute (derived from delayed_jobs n_tup_del
-                 counter). Counterpart of HTTP RPS for the async tier.
-    """
     if not jobs_rows:
         return
 
@@ -964,10 +730,7 @@ def plot_jobs_queue(output_dir, label, jobs_rows, snapshots=None):
     fig.savefig(output_dir / f"jobs_queue_{slugify(label)}.png")
     plt.close(fig)
 
-
 def load_postgres_health(path):
-    """Load postgres-health.csv produced by collect-postgres-metrics.sh.
-    Returns list of dicts sorted by timestamp."""
     if not path.exists():
         return []
     rows = []
@@ -982,15 +745,7 @@ def load_postgres_health(path):
             rows.append(row)
     return rows
 
-
 def load_redis_health(path):
-    """Load redis-health.csv. Cumulative counters from INFO stats are kept as-is
-    in the CSV; here we derive a *rolling-window* hit ratio per sample (delta
-    hits / (delta hits + delta misses) since the previous sample), which
-    reflects the current workload — the cumulative ratio drifts toward the
-    pod-lifetime average and lags the current behavior. First sample has no
-    predecessor so it falls back to the cumulative value.
-    """
     if not path.exists():
         return []
     rows = []
@@ -1030,15 +785,7 @@ def load_redis_health(path):
             100.0 * h / (h + m) if (h + m) > 0 else 100.0, 2)
     return rows
 
-
 def plot_db_health(output_dir, label, pg_rows, web_mem_limit_mb=None):
-    """4-panel Postgres health chart for "DB is not the bottleneck" defense.
-
-    Panel 1: CPU% (vs 70% threshold) and memory MiB
-    Panel 2: Active connections / max_connections (% utilization)
-    Panel 3: Cache hit ratio (% — should stay > 99%) and slow queries (>1s)
-    Panel 4: Lock waits + idle-in-transaction (both should be 0)
-    """
     if not pg_rows:
         return
 
@@ -1109,13 +856,7 @@ def plot_db_health(output_dir, label, pg_rows, web_mem_limit_mb=None):
     fig.savefig(output_dir / f"db_health_{slugify(label)}.png")
     plt.close(fig)
 
-
 def plot_redis_health(output_dir, label, redis_rows):
-    """2-panel Redis health chart.
-
-    Panel 1: CPU + memory used vs maxmemory
-    Panel 2: Hit ratio % + ops/sec + cumulative evictions
-    """
     if not redis_rows:
         return
 
@@ -1172,11 +913,7 @@ def plot_redis_health(output_dir, label, redis_rows):
     fig.savefig(output_dir / f"redis_health_{slugify(label)}.png")
     plt.close(fig)
 
-
 def compute_db_summary(pg_rows, redis_rows):
-    """Reduce Postgres + Redis health CSVs to scalar invariants. Returns 0
-    for everything when no data so summary CSV stays consistent across runs.
-    """
     out = {
         "peak_postgres_cpu_millicores": 0,
         "peak_postgres_memory_mib": 0,
@@ -1213,13 +950,7 @@ def compute_db_summary(pg_rows, redis_rows):
         out["redis_evictions_total"]       = int(max(_finite(r.get("evicted_keys_cumulative") for r in redis_rows), default=0))
     return out
 
-
 def compute_jobs_summary(jobs_rows):
-    """Reduce jobs-queue.csv to scalar metrics for the summary CSV row.
-
-    Returns 0 for every metric when no data present so summary CSV stays
-    consistent across runs (some old runs predate the collector).
-    """
     if not jobs_rows:
         return {
             "peak_queue_depth": 0,
@@ -1251,34 +982,11 @@ def compute_jobs_summary(jobs_rows):
         "peak_failed_jobs":       int(max(failed, default=0)),
     }
 
-
 def plot_cpu_replicas(output_dir, label,
                       web_cpu_per_pod, jobs_cpu_per_pod, snapshots,
                       web_cpu_limit_cores=None, jobs_cpu_limit_cores=None,
                       vus_values=None, test_start=None,
                       split_threshold=4):
-    """Per-pod CPU consumption (cores) + replica step lines + per-pod
-    CPU-limit reference lines.
-
-    Mirrors the per-pod treatment of plot_memory so the chart story for
-    OOM-style limit comparisons is identical for CPU throttle risk:
-    every line is a single pod, every limit line is per-pod, the eye
-    immediately sees who is approaching their ceiling.
-
-    Layout adapts to pod count:
-      - ≤ split_threshold combined pods: single panel with both
-        deployments on the same axes.
-      - > split_threshold: two stacked panels (web top, jobs bottom,
-        sharex) so the legend never gets crowded.
-
-    Replica step lines remain on a twin axis next to each deployment
-    panel, but are drawn ONLY when the replica count actually changes —
-    a flat line at constant N pods adds no information and clutters
-    the chart (HPA-driven changes only).
-
-    Line palette, marker cycle, and spawn-order sort match plot_memory
-    so a reader can visually align CPU and memory charts pod-by-pod.
-    """
     web_has_data = bool(web_cpu_per_pod)
     jobs_has_data = bool(jobs_cpu_per_pod)
     if not web_has_data and not jobs_has_data and not snapshots:
@@ -1413,16 +1121,7 @@ def plot_cpu_replicas(output_dir, label,
                 bbox_inches="tight")
     plt.close(fig)
 
-
 def parse_memory_limit_mb(limit_str):
-    """Convert a Kubernetes memory limit string (e.g. '3Gi', '3500Mi') to MiB.
-
-    Returns binary MiB (1 MiB = 1024² bytes) to match the Prometheus query
-    that divides container_memory_working_set_bytes by 1024² (1_048_576).
-    The legacy field name `_mb` is kept for backward compatibility; the
-    unit is binary MiB throughout the chart pipeline. Users commonly call
-    this "MB" in everyday usage.
-    """
     if not limit_str:
         return None
     limit_str = limit_str.strip()
@@ -1437,16 +1136,7 @@ def parse_memory_limit_mb(limit_str):
     except ValueError:
         return None
 
-
 def _short_pod_label(pod_name, deployment_prefix):
-    """Return a compact line label for a per-pod memory series.
-
-    K8s pod names follow ``<deployment>-<rs_hash>-<5char_random>``; the
-    final 5-char suffix is unique within a deployment and stays stable
-    for the lifetime of that pod instance, so it's the right anchor for
-    a chart legend. Falls back to the raw name if the convention is not
-    followed (e.g. statefulset, bare pod).
-    """
     if not pod_name:
         return deployment_prefix
     suffix = pod_name.rsplit("-", 1)[-1]
@@ -1454,29 +1144,8 @@ def _short_pod_label(pod_name, deployment_prefix):
         return f"{deployment_prefix}-{suffix}"
     return pod_name
 
-
 def plot_replicas_vs_vus(output_dir, label, snapshots, vus_values,
                          test_start=None):
-    """Dual-axis elasticity chart for HPA-vs-prescaled comparison:
-        Left Y:  VUs (load — the demand signal)
-        Right Y: Replicas (web + jobs step lines — the supply response)
-        X:       Minutes from test start
-
-    Prescaled fleets render as flat horizontal replica lines regardless
-    of VU ramp — visualises "supply does not track demand". The reader
-    sees both the load curve and the constant supply on the same axes,
-    making the over-provisioning during low-load minutes self-evident.
-
-    HPA-driven fleets render as a staircase that lags the VU ramp by
-    ~1-2 minutes (HPA's metrics-server sampling window plus its
-    stabilisation delay) — visualises both scalability (up-scaling
-    under load) and elasticity (down-scaling during cool-down).
-
-    Companion to the resource-time-area metrics in summary_*.csv:
-    the chart shows the qualitative shape, the metrics give the
-    quantitative savings (% CPU·min and % memory·min saved vs. the
-    prescaled rectangle).
-    """
     if not snapshots:
         return
     if test_start is None and snapshots:
@@ -1547,32 +1216,11 @@ def plot_replicas_vs_vus(output_dir, label, snapshots, vus_values,
                 bbox_inches="tight")
     plt.close(fig)
 
-
 def plot_memory(output_dir, label,
                 web_memory_per_pod, jobs_memory_per_pod,
                 web_memory_limit_mb=None, jobs_memory_limit_mb=None,
                 vus_values=None, test_start=None,
                 split_threshold=4):
-    """One line per pod so OOM risk is directly visible against the
-    per-pod limit reference. Each line is comparable to the limit line
-    because there is no cross-pod aggregation.
-
-    Layout adapts to pod count:
-      - ≤ split_threshold total pods (web + jobs combined): single panel
-        with both deployments on the same axes, so the eye can compare
-        memory pressure side-by-side.
-      - > split_threshold total pods: two stacked panels (web on top,
-        jobs on bottom, sharex) so the legend stays readable when
-        Stage 2/3/4 have 5+ pods.
-
-    The aggregated web_memory / jobs_memory series (sum across pods) are
-    NOT used here — that path remains intact upstream because the
-    summary CSV's avg_*_memory_mb fields still consume them.
-
-    Limit reference lines are only drawn when the caller passes explicit
-    values (via metadata.env or CLI flag). They are per-pod limits, which
-    now correctly compare against the per-pod data lines.
-    """
     def _spawn_order(pod_dict):
         def _key(pod):
             series = pod_dict.get(pod) or []
@@ -1677,19 +1325,8 @@ def plot_memory(output_dir, label,
     fig.savefig(output_dir / f"memory_{slugify(label)}.png", bbox_inches="tight")
     plt.close(fig)
 
-
 def plot_hpa_cpu(output_dir, label, hpa_cpu_values, target_percent=None,
                  test_start=None):
-    """HPA CPU utilisation % with the configured scale-out threshold line.
-
-    Reads the actual HPA target threshold from the env_snapshot (via the
-    `target_percent` argument) so the reference line matches the deployed
-    HPA configuration. Falls back to 70 % when not provided.
-
-    X-axis is "minutes from test start" — matches the convention used by
-    every other per-run chart so HPA scaling events can be cross-referenced
-    against throughput / latency / replica charts at the same time index.
-    """
     if not hpa_cpu_values:
         return
 
@@ -1713,17 +1350,8 @@ def plot_hpa_cpu(output_dir, label, hpa_cpu_values, target_percent=None,
     fig.savefig(output_dir / f"hpa_cpu_{slugify(label)}.png")
     plt.close(fig)
 
-
 def plot_restart_counts(output_dir, label, snapshots,
                         vus_values=None):
-    """Pod restart count DURING the test, rebased to zero at test start.
-
-    `web_restart_total` and `jobs_restart_total` in the snapshot CSV are
-    Kubernetes container restartCount values — lifetime counters that do
-    not reset when the test begins and can be non-zero from prior incidents.
-    Subtracting the first sample isolates restarts that happened in the
-    test window only.
-    """
     if not snapshots:
         return
 
@@ -1751,7 +1379,6 @@ def plot_restart_counts(output_dir, label, snapshots,
     fig.tight_layout()
     fig.savefig(output_dir / f"pod_restart_count_{slugify(label)}.png", bbox_inches="tight")
     plt.close(fig)
-
 
 def compute_scale_events(snapshots):
     if not snapshots:
@@ -1801,7 +1428,6 @@ def compute_scale_events(snapshots):
 
     return scale_out, scale_in, direction_changes
 
-
 def plot_scale_latency(output_dir, label, snapshots):
     scale_out, scale_in, direction_changes = compute_scale_events(snapshots)
     if not scale_out and not scale_in:
@@ -1838,21 +1464,12 @@ def plot_scale_latency(output_dir, label, snapshots):
         "oscillation_count": direction_changes,
     }
 
-
 def average_value(values):
     if not values:
         return 0.0
     return sum(value for _, value in values) / len(values)
 
-
 def infer_scaling_mode(snapshots):
-    """Infer baseline / hpa / prescaled from k8s snapshot data.
-
-    The previous version hard-coded prescaled=5 replicas, which broke when
-    Stage 2 was max-packed at 3 web pods on m6a.2xlarge — the run was
-    classified as "unknown". Detect prescaled by "no HPA active AND replica
-    count is constant > 1" instead, accepting any fixed pod count.
-    """
     if not snapshots:
         return "unknown"
     web_specs = _finite(row["web_spec_replicas"] for row in snapshots)
@@ -1869,23 +1486,11 @@ def infer_scaling_mode(snapshots):
         return "prescaled"
     return "unknown"
 
-
 def k6_or_prom(k6_summary, k6_key, prom_value, scale=1.0):
-    """Prefer k6 final-summary value over Prometheus time-average.
-
-    k6 summary metrics (error rate, p50, p95, throughput) are computed
-    over every request in the test and are unaffected by the setup() phase
-    or equal-weight time-averaging that Prometheus applies.
-
-    The `scale` factor (e.g. 1000 to convert seconds → milliseconds) is
-    applied to BOTH paths so callers can rely on a consistent unit
-    regardless of whether k6 supplied the value or Prometheus did.
-    """
     v = k6_summary.get(k6_key)
     if v is not None:
         return round(v * scale, 3)
     return round(prom_value * scale, 3)
-
 
 def plot_comparison_p95(output_dir, comparison_rows):
     if not comparison_rows:
@@ -1902,7 +1507,6 @@ def plot_comparison_p95(output_dir, comparison_rows):
     fig.savefig(output_dir / "comparison_p95_latency.png")
     plt.close(fig)
 
-
 def write_summary(output_dir, label, metrics):
     summary_path = output_dir / f"summary_{slugify(label)}.csv"
     with summary_path.open("w", encoding="utf-8", newline="") as handle:
@@ -1911,11 +1515,9 @@ def write_summary(output_dir, label, metrics):
         for key, value in metrics.items():
             writer.writerow([key, value])
 
-
 def series_for_metric(base_url, metric_name, selector, start, end, step):
     query = f"{metric_name}{selector}"
     return select_first_series(query_range(base_url, query, start, end, step))
-
 
 def fallback_latency_series(start, end, step, seconds_value):
     if seconds_value <= 0:
@@ -1928,7 +1530,6 @@ def fallback_latency_series(start, end, step, seconds_value):
         values.append((current, seconds_value))
         current += step_delta
     return values
-
 
 def apply_k6_summary_fallbacks(latency, throughput, error_rate, vus, start, end, step, k6_summary_metrics):
     fallback_used = False
@@ -1954,12 +1555,9 @@ def apply_k6_summary_fallbacks(latency, throughput, error_rate, vus, start, end,
 
     return latency, throughput, error_rate, vus, fallback_used
 
-
 MAX_PROMETHEUS_POINTS = 10000
 
-
 def safe_step(start, end, requested_step_str):
-    """Return a step string that keeps data points under MAX_PROMETHEUS_POINTS."""
     try:
         step_seconds = int(requested_step_str.rstrip("s")) if requested_step_str.endswith("s") else 15
     except ValueError:
@@ -1967,7 +1565,6 @@ def safe_step(start, end, requested_step_str):
     range_seconds = (end - start).total_seconds()
     min_step = max(step_seconds, int(range_seconds / MAX_PROMETHEUS_POINTS) + 1)
     return f"{min_step}s"
-
 
 def run_window(args, run_dir):
     metadata = load_env_file(run_dir / "metadata.env") if run_dir else {}
@@ -1982,7 +1579,6 @@ def run_window(args, run_dir):
     end = dt.datetime.now(dt.UTC)
     start = end - dt.timedelta(minutes=args.minutes)
     return start, end, metadata
-
 
 def collect_run_metrics(base_url, selector, start, end, step):
     latency = {}
@@ -2138,7 +1734,6 @@ def collect_run_metrics(base_url, selector, start, end, step):
             web_memory_per_pod, jobs_memory_per_pod,
             hpa_cpu)
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--prometheus-url", default="http://127.0.0.1:30090")
@@ -2223,7 +1818,6 @@ def main():
         )
 
         scaling_mode = infer_scaling_mode(snapshots)
-
 
         plot_latency_timeline(output_dir, {label: latency},
                               throughput_values=throughput, test_start=start)
@@ -2356,7 +1950,6 @@ def main():
     if len(comparison_rows) > 1:
         plot_comparison_p95(output_dir, comparison_rows)
         write_summary(output_dir, "comparison", {row["label"]: row["avg_p95_ms"] for row in comparison_rows})
-
 
 if __name__ == "__main__":
     main()
