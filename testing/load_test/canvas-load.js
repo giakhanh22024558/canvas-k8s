@@ -186,23 +186,8 @@ function chooseRandom(items) {
   return items[Math.floor(Math.random() * items.length)];
 }
 
-function chooseOperation(context) {
-  const operations = [
-    "assignments",
-    "courseList",
-    "modules",
-    "quizzes",
-  ];
-
-  if (loginEmail && loginPassword) {
-    operations.push("login");
-  }
-
-  if (submissionApiToken && context.courses.some((course) => course.assignmentIds.length > 0)) {
-    operations.push("submitAssignment");
-  }
-
-  return chooseRandom(operations);
+function thinkSleep() {
+  sleep(Math.random() * (thinkTimeMax - thinkTimeMin) + thinkTimeMin);
 }
 
 function requestAssignments(course) {
@@ -310,46 +295,23 @@ function loginCanvas() {
 
 export default function (context) {
   const course = chooseRandom(context.courses);
-  const operation = chooseOperation(context);
 
-  switch (operation) {
-    case "assignments":
-      if (course) {
-        requestAssignments(course);
-      } else {
-        requestCourseList();
-      }
-      break;
-    case "courseList":
-      requestCourseList();
-      break;
-    case "modules":
-      if (course) {
-        requestModules(course);
-      } else {
-        requestCourseList();
-      }
-      break;
-    case "quizzes":
-      if (course) {
-        requestQuizzes(course);
-      } else {
-        requestCourseList();
-      }
-      break;
-    case "submitAssignment":
-      if (course) {
-        submitAssignment(course);
-      } else {
-        requestCourseList();
-      }
-      break;
-    case "login":
-      loginCanvas();
-      break;
-    default:
-      requestCourseList();
+  requestCourseList();
+  thinkSleep();
+
+  if (course) {
+    requestModules(course);
+    thinkSleep();
+
+    requestAssignments(course);
+    thinkSleep();
+
+    requestQuizzes(course);
+    thinkSleep();
+
+    if (submissionApiToken && course.assignmentIds.length > 0) {
+      submitAssignment(course);
+      thinkSleep();
+    }
   }
-
-  sleep(Math.random() * (thinkTimeMax - thinkTimeMin) + thinkTimeMin);
 }
