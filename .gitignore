@@ -13,19 +13,3 @@ __pycache__/
 *.py[cod]
 .venv/
 .pytest_cache/
-
-# Temporarily untracked — kept local only, mirrored with VS Code files.exclude
-/reset-and-bootstrap.sh
-/setup-host-nginx.sh
-/job-db-bootstrap.yaml
-/job-db-migrate.yaml
-testing/clear-results.sh
-testing/watch-jobs-queue.sh
-testing/finalize-run.sh
-testing/hpa-clean-start.sh
-testing/capture-cluster-env.sh
-testing/publish-results.sh
-testing/charts/setup-python.sh
-testing/testing.env.example
-testing/common.sh
-testing/results/

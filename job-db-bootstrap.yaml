@@ -1,0 +1,75 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: canvas-db-bootstrap
+  namespace: canvas
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: bootstrap
+          image: khanhdev13/canvas-lms:latest
+          envFrom:
+            - secretRef:
+                name: canvas-secret
+          env:
+            - name: RAILS_ENV
+              value: production
+            - name: RAILS_SERVE_STATIC_FILES
+              value: "1"
+            - name: CANVAS_LMS_ADMIN_EMAIL
+              value: admin@canvas.local
+            - name: CANVAS_LMS_ADMIN_PASSWORD
+              value: Admin123!
+            - name: CANVAS_LMS_ACCOUNT_NAME
+              value: Canvas
+            - name: CANVAS_LMS_STATS_COLLECTION
+              value: opt_out
+          command:
+            - sh
+            - -c
+            - |
+              bundle exec rake db:create
+              bundle exec rake db:initial_setup
+          volumeMounts:
+            - name: canvas-config
+              mountPath: /usr/src/app/config/database.yml
+              subPath: database.yml
+            - name: canvas-config
+              mountPath: /usr/src/app/config/redis.yml
+              subPath: redis.yml
+            - name: canvas-config
+              mountPath: /usr/src/app/config/domain.yml
+              subPath: domain.yml
+            - name: canvas-config
+              mountPath: /usr/src/app/config/session_store.yml
+              subPath: session_store.yml
+            - name: canvas-config
+              mountPath: /usr/src/app/config/delayed_jobs.yml
+              subPath: delayed_jobs.yml
+            - name: canvas-config
+              mountPath: /usr/src/app/config/outgoing_mail.yml
+              subPath: outgoing_mail.yml
+            - name: canvas-config
+              mountPath: /usr/src/app/config/file_store.yml
+              subPath: file_store.yml
+            - name: canvas-security
+              mountPath: /usr/src/app/config/security.yml
+              subPath: security.yml
+            - name: canvas-storage
+              mountPath: /usr/src/app/tmp/files
+      volumes:
+        - name: canvas-config
+          configMap:
+            name: canvas-config
+        - name: canvas-security
+          secret:
+            secretName: canvas-secret
+            items:
+              - key: security.yml
+                path: security.yml
+        - name: canvas-storage
+          persistentVolumeClaim:
+            claimName: canvas-storage
