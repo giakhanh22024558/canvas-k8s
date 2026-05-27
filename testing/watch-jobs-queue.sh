@@ -12,9 +12,6 @@ DB_USER="${POSTGRES_USER:-canvas}"
 INTERVAL="${INTERVAL:-1}"
 LIMIT="${LIMIT:-10}"
 
-# Two queries each tick:
-#   (a) Aggregate stats: total / pending / running / failed / oldest age
-#   (b) Most recent N rows: id, run_at, locked_at, attempts, handler_class
 SQL_STATS="SELECT
   count(*)                                                              AS total_rows,
   count(*) FILTER (WHERE locked_at IS NULL AND failed_at IS NULL)       AS pending,

@@ -18,7 +18,6 @@ if [[ -z "$EXPERIMENT_NAME" ]]; then
   exit 1
 fi
 
-# ── Find Python (venv first, then system) ────────────────────────────────────
 PYTHON=""
 for candidate in \
   "$ROOT_DIR/.venv/bin/python3" \
@@ -37,7 +36,6 @@ if [[ -z "$PYTHON" ]]; then
 fi
 echo "Using Python: $PYTHON"
 
-# ── Pull latest code so charts use most recent plotting logic ─────────────────
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 BRANCH="$(git -C "$ROOT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
 if [[ -n "$BRANCH" ]]; then
@@ -46,7 +44,6 @@ if [[ -n "$BRANCH" ]]; then
   echo ""
 fi
 
-# ── Run aggregation ───────────────────────────────────────────────────────────
 echo "============================================================"
 echo "  Aggregating results for: $EXPERIMENT_NAME"
 echo "  Results dir : $RESULTS_DIR"
@@ -65,15 +62,11 @@ fi
   --output-dir "$OUTPUT_DIR" \
   $EXTRA_ARGS
 
-# ── Optional git push ─────────────────────────────────────────────────────────
 if [[ "$PUSH_GIT" == "true" ]]; then
   echo ""
   echo "Pushing analysis output to git..."
   cd "$ROOT_DIR"
   git pull origin "$BRANCH" --rebase || true
-  # `git add -A` (not plain `git add`) so files the new code no longer
-  # produces — e.g. the boxplot_*.png renamed to metric_*.png — get staged
-  # as deletions instead of lingering as orphans in the repo.
   git add -A "testing/results/analysis-${EXPERIMENT_NAME}/"
   if git diff --cached --quiet; then
     echo "Nothing new to commit."

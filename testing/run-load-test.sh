@@ -92,7 +92,6 @@ SUT_SSH_KEY="${SUT_SSH_KEY:-}"
 SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
 [[ -n "$SUT_SSH_KEY" ]] && SSH_OPTS="$SSH_OPTS -i $SUT_SSH_KEY"
 
-# Returns 0 (true) when cluster ops should run via SSH, 1 (false) when local.
 remote_mode() { [[ -n "$SUT_SSH_HOST" ]]; }
 
 snapshot_captured=false
@@ -180,8 +179,6 @@ cleanup() {
     echo "ended_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$RUN_DIR/metadata.env"
   fi
 
-  # Garbage-collect the run folder if the test never produced a usable summary
-  # AND the operator has not opted in to keeping incomplete runs for debugging.
   if [[ "$RUN_COMPLETED" != "true" && "$KEEP_INCOMPLETE_RUNS" != "true" && -d "$RUN_DIR" ]]; then
     echo ""
     echo "============================================================"
@@ -195,7 +192,6 @@ cleanup() {
     echo ""
     echo "WARN: run did not complete but KEEP_INCOMPLETE_RUNS=true — folder kept:"
     echo "  $RUN_DIR"
-    # Mark the folder so post-run analysis tools can ignore it.
     echo "completed=false" >> "$RUN_DIR/metadata.env"
   fi
 }
@@ -209,20 +205,12 @@ echo "Using API token: $token_preview (length: $token_len)"
 echo "Login flow enabled: $login_enabled"
 echo "Submission flow enabled: $submission_enabled"
 
-# NOTE: metadata.env (with started_at) is intentionally written LATER — after
-# hpa-clean-start's warmup and the collector launch, immediately before k6.
-# See the block just above the `k6 run` invocation for the rationale.
 
-# HPA clean-start is implemented in testing/hpa-clean-start.sh — that script is
-# the single source of truth. Local runs invoke it directly; remote runs SSH
-# into the SUT and execute the same script from the SUT's checkout.
 if remote_mode; then
   echo "Running HPA clean-start on SUT ($SUT_SSH_HOST) ..."
   ssh $SSH_OPTS "$SUT_SSH_HOST" \
     "cd $SUT_REPO_DIR && WARMUP_SECONDS=${WARMUP_SECONDS:-240} bash testing/hpa-clean-start.sh" \
     || echo "WARN: remote hpa-clean-start.sh failed — continuing anyway."
-  # Cluster snapshot collection runs on the SUT via start-collectors.sh (next
-  # block), so we deliberately skip the local collect-k8s-snapshots.sh here.
 elif command -v kubectl >/dev/null 2>&1; then
   ensure_kubeconfig
   if kubectl get namespace canvas >/dev/null 2>&1; then
@@ -256,9 +244,6 @@ fi
   echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 } > "$RUN_DIR/metadata.env"
 
-# k6 exits non-zero when thresholds fail (exit code 108) — expected under stress
-# conditions where error rate is high. Use || true so the matrix continues to
-# the next run instead of stopping after the first threshold breach.
 K6_PROMETHEUS_RW_SERVER_URL="$PROM_URL" \
 K6_PROMETHEUS_RW_TREND_STATS="p(50),p(95),p(99),avg,min,max" \
 k6 run -o experimental-prometheus-rw --tag testid="$TEST_ID" "$SCRIPT_DIR/load_test/canvas-load.js" 2>&1 | tee "$LOG_FILE" || true
@@ -277,8 +262,6 @@ fi
 echo "Raw data saved to $RUN_DIR"
 echo "  k6-summary.txt, k8s-snapshots.csv, metadata.env, environment.env"
 
-# Skip downstream publish if the run didn't complete — there's no useful
-# data to upload, and cleanup() will remove the folder shortly anyway.
 if [[ "$RUN_COMPLETED" != "true" ]]; then
   echo "Skipping finalize-run.sh: run did not complete successfully."
   exit 0

@@ -5,12 +5,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RESULTS_DIR="${RESULTS_DIR:-$SCRIPT_DIR/results}"
 
-# ── colour helpers ────────────────────────────────────────────────────────────
 RED='\033[0;31m'; YELLOW='\033[1;33m'; GREEN='\033[0;32m'
 CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
 
-# ── argument parsing ──────────────────────────────────────────────────────────
-MODE=""          # all | type | id | keep | interactive
+MODE=""
 FILTER_TYPE=""
 FILTER_ID=""
 KEEP_SUBSTR=""
@@ -46,13 +44,11 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-# ── guard: results dir must exist ─────────────────────────────────────────────
 if [[ ! -d "$RESULTS_DIR" ]]; then
   echo -e "${YELLOW}Results directory not found: $RESULTS_DIR${RESET}"
   exit 0
 fi
 
-# ── helpers ───────────────────────────────────────────────────────────────────
 get_test_type() {
   local dir="$1"
   local meta="$dir/metadata.env"
@@ -89,7 +85,6 @@ delete_folder() {
   fi
 }
 
-# ── build list of all run folders ─────────────────────────────────────────────
 mapfile -t ALL_RUNS < <(find "$RESULTS_DIR" -mindepth 1 -maxdepth 1 -type d | sort)
 
 if [[ ${#ALL_RUNS[@]} -eq 0 ]]; then
@@ -97,7 +92,6 @@ if [[ ${#ALL_RUNS[@]} -eq 0 ]]; then
   exit 0
 fi
 
-# ── interactive mode: show menu if no flags given ─────────────────────────────
 if [[ -z "$MODE" ]]; then
   echo -e "${BOLD}Available test runs:${RESET}"
   echo ""
@@ -133,7 +127,6 @@ if [[ -z "$MODE" ]]; then
   esac
 fi
 
-# ── build target list based on mode ──────────────────────────────────────────
 TARGETS=()
 
 case "$MODE" in
@@ -178,7 +171,6 @@ if [[ ${#TARGETS[@]} -eq 0 ]]; then
   exit 0
 fi
 
-# ── confirm before deleting ───────────────────────────────────────────────────
 echo ""
 echo -e "${BOLD}The following runs will be deleted:${RESET}"
 TOTAL_SIZE=0
@@ -200,7 +192,6 @@ else
   fi
 fi
 
-# ── delete ────────────────────────────────────────────────────────────────────
 echo ""
 for dir in "${TARGETS[@]}"; do
   delete_folder "$dir"

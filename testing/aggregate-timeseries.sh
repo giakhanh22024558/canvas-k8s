@@ -11,9 +11,6 @@ RESULTS_DIR="${RESULTS_DIR:-$SCRIPT_DIR/results}"
 OUTPUT_DIR="${OUTPUT_DIR:-$RESULTS_DIR/analysis-${EXPERIMENT_NAME}}"
 STEP_SECONDS="${STEP_SECONDS:-15}"
 PUSH_GIT="${PUSH_GIT:-false}"
-# Saturation markers — defaults off (only meaningful for breakpoint).
-# Auto-enable when EXPERIMENT_NAME contains "breakpoint" so the most
-# common use case (Stage 2/breakpoint aggregate) just works.
 if [[ -z "${SATURATION_MARKERS:-}" ]]; then
   if [[ "$EXPERIMENT_NAME" == *breakpoint* ]]; then
     SATURATION_MARKERS="on"
@@ -29,9 +26,6 @@ if [[ -z "$EXPERIMENT_NAME" ]]; then
   exit 1
 fi
 
-# ── Optional: pull canvas-* run folders from remote load gen ─────────────────
-# Set LOADGEN_SSH_HOST in testing.env (e.g. "ubuntu@172.31.6.227") when k6 runs
-# on a separate instance. Skipped silently if unset.
 LOADGEN_SSH_HOST="${LOADGEN_SSH_HOST:-}"
 LOADGEN_RESULTS_DIR="${LOADGEN_RESULTS_DIR:-/home/ubuntu/canvas-k8s/testing/results}"
 LOADGEN_SSH_KEY="${LOADGEN_SSH_KEY:-}"
@@ -52,7 +46,6 @@ if [[ -n "$LOADGEN_SSH_HOST" ]]; then
   echo ""
 fi
 
-# ── Find Python (venv first) ──────────────────────────────────────────────────
 PYTHON=""
 for c in "$ROOT_DIR/.venv/bin/python3" "$ROOT_DIR/.venv/bin/python" \
          "$(command -v python3 2>/dev/null)" "$(command -v python 2>/dev/null)"; do
@@ -68,7 +61,6 @@ PROM_QUERY_URL="$(prometheus_query_url)"
 echo "Prometheus URL: $PROM_QUERY_URL"
 echo ""
 
-# ── Pull latest plotting code ─────────────────────────────────────────────────
 BRANCH="$(git -C "$ROOT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
 if [[ -n "$BRANCH" ]]; then
   echo "Pulling latest code on branch $BRANCH ..."
@@ -104,7 +96,6 @@ if [[ "${NO_STATS:-false}" != "true" ]]; then
     --no-boxplots
 fi
 
-# ── Optional push ─────────────────────────────────────────────────────────────
 if [[ "$PUSH_GIT" == "true" ]]; then
   echo ""
   echo "Pushing charts to git..."

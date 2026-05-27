@@ -6,14 +6,12 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 WEB="$REPO_ROOT/deployment/deployment-web.yaml"
 JOBS="$REPO_ROOT/deployment/deployment-jobs.yaml"
 
-# Default values — VPA target for requests, VPA upper bound for limits.
-# Override per-run if VPA recommends different numbers.
 WEB_CPU_REQ="${WEB_CPU_REQ:-813m}"
-WEB_MEM_REQ="${WEB_MEM_REQ:-4400Mi}"   # 4.2Gi rounded up
+WEB_MEM_REQ="${WEB_MEM_REQ:-4400Mi}"
 WEB_CPU_LIM="${WEB_CPU_LIM:-4}"
 WEB_MEM_LIM="${WEB_MEM_LIM:-8Gi}"
 
-JOBS_CPU_REQ="${JOBS_CPU_REQ:-300m}"   # ~VPA target 296m
+JOBS_CPU_REQ="${JOBS_CPU_REQ:-300m}"
 JOBS_MEM_REQ="${JOBS_MEM_REQ:-4Gi}"
 JOBS_CPU_LIM="${JOBS_CPU_LIM:-2}"
 JOBS_MEM_LIM="${JOBS_MEM_LIM:-4Gi}"

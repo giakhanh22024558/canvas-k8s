@@ -25,9 +25,6 @@ case "$MODE" in
     SCALING_MODE="hpa"
     ;;
   prescaled)
-    # Fixed at HPA-maximum replicas (web=5, jobs=3) with no autoscaler.
-    # Use this to isolate whether HPA's benefit comes from auto-scaling
-    # behaviour or simply from having more pods available.
     DB_MODE="migrate"
     SCALING_MODE="prescaled"
     ;;
@@ -116,7 +113,6 @@ case "$SCALING_MODE" in
     kubectl apply -f deployment/hpa.yaml
     ;;
   prescaled)
-    # Remove HPA so Kubernetes cannot override the replica counts
     kubectl delete -f deployment/hpa.yaml --ignore-not-found
     web_replicas="${PRESCALED_WEB_REPLICAS:-5}"
     jobs_replicas="${PRESCALED_JOBS_REPLICAS:-3}"

@@ -10,7 +10,7 @@ spec:
     kind: Deployment
     name: canvas-web
   updatePolicy:
-    updateMode: "Off"       # recommendation only — never touches actual pods
+    updateMode: "Off"
   resourcePolicy:
     containerPolicies:
       - containerName: web

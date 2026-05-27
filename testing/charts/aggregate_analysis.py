@@ -23,25 +23,21 @@ import matplotlib.patches as mpatches
 import numpy as np
 
 
-# ── Constants ─────────────────────────────────────────────────────────────────
 
-# `long-stress` is kept alongside `staircase` so manifests written before the
-# rename still parse. New runs should record `staircase`.
 KNOWN_SCENARIOS = {"smoke", "load", "stress", "staircase", "staircase-tuned",
                    "long-stress", "soak", "breakpoint"}
 
 SCENARIO_ORDER = ["smoke", "load", "stress", "staircase", "long-stress", "soak", "breakpoint"]
 
 MODE_COLORS = {
-    "baseline":  "#1f77b4",   # blue
-    "prescaled": "#2ca02c",   # green
-    "hpa":       "#ff7f0e",   # orange
-    "vpa":       "#d62728",   # red
-    "tuned":     "#9467bd",   # purple
+    "baseline":  "#1f77b4",
+    "prescaled": "#2ca02c",
+    "hpa":       "#ff7f0e",
+    "vpa":       "#d62728",
+    "tuned":     "#9467bd",
 }
 DEFAULT_COLOR = "#8c564b"
 
-# (display label, y-axis unit, lower-is-better)
 METRIC_META = {
     "avg_throughput_rps":      ("Throughput",          "req/s",  False),
     "avg_error_rate_percent":  ("Error Rate (k6)",     "%",      True),
@@ -54,7 +50,6 @@ METRIC_META = {
     "avg_web_memory_mb":       ("Avg Web Memory",      "MB",     True),
 }
 
-# Subset shown in the console table and bar summary
 SUMMARY_METRICS = [
     "avg_error_rate_percent",
     "avg_p95_ms",
@@ -65,7 +60,6 @@ SUMMARY_METRICS = [
 ]
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def load_summary_csv(path: Path) -> dict:
     """Load a summary_*.csv into {metric: raw_string_value}."""
@@ -103,20 +97,16 @@ def parse_run_dir(name: str, experiment: str):
     prefix = experiment + "-"
     if not name.startswith(prefix):
         return None
-    remainder = name[len(prefix):]          # e.g. "run01-20260514-020236"
+    remainder = name[len(prefix):]
 
-    # Strip the trailing -YYYYMMDD-HHMMSS timestamp run-load-test.sh appends.
     remainder = re.sub(r"-\d{8}-\d{6}$", "", remainder)
 
-    # `run{nn}` may be the whole string ("run01") or hyphen-suffixed onto a
-    # lead segment ("vpa-run01", "baseline-long-stress-run01").
     m = re.match(r"^(.*?)-?run(\d+)$", remainder)
     if not m:
         return None
-    lead = m.group(1)                        # "", "vpa", "baseline-long-stress", ...
+    lead = m.group(1)
     run_number = int(m.group(2))
 
-    # Strip a known scenario suffix from `lead`; whatever remains is the mode.
     mode = lead
     for scenario in sorted(KNOWN_SCENARIOS, key=len, reverse=True):
         if lead == scenario:
@@ -152,7 +142,6 @@ def discover_runs(results_dir: Path, experiment: str) -> dict:
         summary_path = summaries[0]
         scenario = summary_path.stem[len("summary_"):].replace("_", "-")
 
-        # Empty mode → "default" so the group key is a stable, printable tuple.
         mode = mode or "default"
 
         row = load_summary_csv(summary_path)
@@ -161,7 +150,6 @@ def discover_runs(results_dir: Path, experiment: str) -> dict:
         row["_test_id"] = d.name
         groups[(mode, scenario)].append(row)
 
-    # Sort each group by run number
     for key in groups:
         groups[key].sort(key=lambda r: r["_run_number"])
 
@@ -203,7 +191,6 @@ def fmt(value, decimals=1):
     return f"{value:.{decimals}f}"
 
 
-# ── CSV output ────────────────────────────────────────────────────────────────
 
 def write_aggregate_csv(groups: dict, output_path: Path):
     all_metrics = list(METRIC_META.keys())
@@ -232,7 +219,6 @@ def write_aggregate_csv(groups: dict, output_path: Path):
     print(f"  Saved: {output_path.name}")
 
 
-# ── Console table ─────────────────────────────────────────────────────────────
 
 def print_console_table(groups: dict):
     print()
@@ -265,7 +251,6 @@ def print_console_table(groups: dict):
     print()
 
 
-# ── Per-run table ─────────────────────────────────────────────────────────────
 
 def print_per_run_table(groups: dict):
     print()
@@ -287,7 +272,6 @@ def print_per_run_table(groups: dict):
     print()
 
 
-# ── Per-metric run plots ──────────────────────────────────────────────────────
 
 BOXPLOT_MIN_N = 5
 
@@ -358,7 +342,6 @@ def plot_boxplots(groups: dict, output_dir: Path):
                 )
             subtitle = "Distribution Across Runs"
         else:
-            # Strip plot: individual run values + mean marker + mean ± 1 SD bar.
             for i, (values, color) in enumerate(zip(plot_data, colors), start=1):
                 jitter = rng.uniform(-0.10, 0.10, size=len(values))
                 ax.scatter(
@@ -402,7 +385,6 @@ def plot_boxplots(groups: dict, output_dir: Path):
         print(f"  Saved: {out.name}")
 
 
-# ── Multi-panel bar summary ───────────────────────────────────────────────────
 
 def plot_bar_summary(groups: dict, output_dir: Path, experiment: str):
     """Multi-panel bar chart: mean ± std for each metric."""
@@ -453,11 +435,9 @@ def plot_bar_summary(groups: dict, output_dir: Path, experiment: str):
         ax.grid(axis="y", linestyle="--", alpha=0.35)
         ax.set_ylim(bottom=0)
 
-    # Hide unused panels
     for i in range(n_metrics, len(axes_flat)):
         axes_flat[i].set_visible(False)
 
-    # Unified legend from last plotted axis
     handles, lbls = axes_flat[0].get_legend_handles_labels()
     if handles:
         fig.legend(
@@ -478,7 +458,6 @@ def plot_bar_summary(groups: dict, output_dir: Path, experiment: str):
     print(f"  Saved: {out.name}")
 
 
-# ── Outlier detection ─────────────────────────────────────────────────────────
 
 def flag_outliers(groups: dict):
     """
@@ -506,7 +485,6 @@ def flag_outliers(groups: dict):
         print()
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(
@@ -555,19 +533,14 @@ def main():
         print(f"  {len(runs):>2} run(s)  mode={mode:<14}  scenario={scenario}")
     print(f"\n  Total: {total_runs} run(s) across {len(groups)} group(s)")
 
-    # Console tables
     print_per_run_table(groups)
     print_console_table(groups)
 
-    # Outlier check
     flag_outliers(groups)
 
-    # CSV
     print("Writing aggregate CSV...")
     write_aggregate_csv(groups, output_dir / f"aggregate_stats_{args.experiment}.csv")
 
-    # Always clear stale per-metric plot files first — runs even when the
-    # per-metric plots are skipped, so --no-boxplots doesn't leave orphans.
     clean_stale_metric_plots(output_dir,
                              drop_metric_plots=args.no_boxplots or args.no_plots)
 

@@ -14,12 +14,6 @@ data:
         url: http://prometheus.canvas-monitoring.svc.cluster.local:9090
         isDefault: true
         editable: true
-      # Direct PostgreSQL data source for live jobs-tier metrics. Reads
-      # delayed_jobs and pg_stat_user_tables on every panel refresh — gives
-      # instantaneous queue depth, oldest pending age, and cumulative
-      # throughput counter without needing an exporter. Credentials are
-      # injected from the canvas-secret-mirror Secret (must exist in this
-      # namespace; see kustomize/grafana-secret-sync README note).
       - name: CanvasPostgres
         uid: canvas-postgres
         type: postgres
@@ -74,10 +68,6 @@ spec:
               value: admin
             - name: GF_SECURITY_ADMIN_PASSWORD
               value: admin
-            # Postgres credentials interpolated by Grafana into datasources.yaml
-            # ($DB_USER / $DB_PASSWORD / $DB_NAME). The canvas-secret-mirror
-            # Secret in canvas-monitoring is created by mirroring the canvas
-            # namespace's canvas-secret — see jobs-grafana-setup.sh.
             - name: DB_USER
               valueFrom:
                 secretKeyRef:

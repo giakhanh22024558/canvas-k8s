@@ -10,15 +10,11 @@ load_testing_env() {
   fi
 
   while IFS= read -r line || [[ -n "$line" ]]; do
-    # Skip blank lines and comments
     [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-    # Match KEY=VALUE — KEY is shell-identifier, VALUE keeps quotes/spaces as-is
     if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
       local key="${BASH_REMATCH[1]}"
       local value="${BASH_REMATCH[2]}"
-      # Only set when caller hasn't already exported it.
       if [[ -z "${!key+x}" ]]; then
-        # Strip surrounding single or double quotes if present
         if [[ "$value" =~ ^\"(.*)\"$ ]] || [[ "$value" =~ ^\'(.*)\'$ ]]; then
           value="${BASH_REMATCH[1]}"
         fi

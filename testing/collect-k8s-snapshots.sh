@@ -28,8 +28,6 @@ jsonpath_value() {
   fi
 }
 
-# Same failure/empty discipline as jsonpath_value: a failed kubectl call
-# yields empty (NaN in the chart), not a fabricated 0 restart count.
 restart_sum() {
   local label="$1" out
   if out="$(timeout 4 kubectl get pods -n "$NAMESPACE" -l "app=$label" \
@@ -57,9 +55,6 @@ while true; do
   web_restarts="$(restart_sum canvas-web)"
   jobs_restarts="$(restart_sum canvas-jobs)"
 
-  # jsonpath_value / restart_sum already return either a genuine value, "0"
-  # for a legitimately-absent field, or "" for a failed kubectl call — so the
-  # :-0 fallbacks that used to mask scrape failures are intentionally gone.
   echo "${timestamp},${web_ready},${web_available},${web_spec},${jobs_ready},${jobs_available},${jobs_spec},${web_hpa_current},${web_hpa_desired},${jobs_hpa_current},${jobs_hpa_desired},${web_restarts},${jobs_restarts}" >> "$OUTPUT_FILE"
   sleep "$INTERVAL_SECONDS"
 done

@@ -24,14 +24,11 @@ if [[ -n "$LOADGEN_SSH_HOST" ]]; then
   mkdir -p "$RESULTS_DIR"
 
   if [[ -n "$TEST_ID" ]]; then
-    # Targeted sync — single run requested.
     rsync -az --info=stats1 -e "ssh $SSH_OPTS" \
       "$LOADGEN_SSH_HOST:$LOADGEN_RESULTS_DIR/$TEST_ID/" \
       "$RESULTS_DIR/$TEST_ID/" \
       || { echo "ERROR: rsync of $TEST_ID failed"; exit 1; }
   else
-    # Pull all canvas-* run folders so the latest one resolves correctly below.
-    # --update keeps locally newer files (e.g. charts already regenerated here).
     rsync -az --update --info=stats1 -e "ssh $SSH_OPTS" \
       --include='canvas-*/' --include='canvas-*/**' --exclude='*' \
       "$LOADGEN_SSH_HOST:$LOADGEN_RESULTS_DIR/" \
@@ -63,7 +60,6 @@ PROM_QUERY_URL="$(prometheus_query_url)"
 echo "Publishing results for test: $TEST_ID"
 echo "Prometheus query URL: $PROM_QUERY_URL"
 
-# --- Find Python in venv or system ---
 PYTHON=""
 for candidate in "$REPO_ROOT/.venv/bin/python3" "$REPO_ROOT/.venv/bin/python" "$(command -v python3 2>/dev/null)" "$(command -v python 2>/dev/null)"; do
   if [[ -x "$candidate" ]]; then
@@ -79,15 +75,11 @@ fi
 
 echo "Using Python: $PYTHON"
 
-# --- Pull latest code BEFORE generating charts so plot fixes are applied ---
 cd "$REPO_ROOT"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 echo "Pulling latest changes on branch $BRANCH ..."
 git pull origin "$BRANCH" --rebase || echo "WARNING: git pull failed. Continuing with local code."
 
-# Remove stale generated files before regenerating so files that the new code
-# no longer produces (e.g. hpa_cpu for baseline, comparison bar for single run)
-# don't linger in the results directory and mislead readers.
 echo "Cleaning stale chart files in $RUN_DIR ..."
 rm -f "$RUN_DIR"/*.png
 rm -f "$RUN_DIR"/summary_comparison.csv
